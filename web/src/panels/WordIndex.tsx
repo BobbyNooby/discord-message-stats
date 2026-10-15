@@ -1,0 +1,191 @@
+import type { ECharts, EChartsOption } from "echarts";
+import { useCallback, useMemo, useRef, useState } from "react";
+
+import { useWords } from "../api/queries";
+import { EmptyState, Panel } from "../components/Panel";
+import { EChart } from "../lib/echart";
+
+/**
+ * "Word index" — the mockup's `drawWords` plus the search box.
+ *
+ * The 500-word slice in the payload is searchable in the browser, so typing
+ * never touches the network (§9.1). The full server-side index is 54,570 words,
+ * so a query the slice cannot answer falls back to `useWords` — and only then.
+ */
+
+/** How many bars the panel has room for, as in the mockup. */
+const INDEX_ROWS = 22;
+
+const nf = new Intl.NumberFormat("en-US");
+const fmt = (n: number) => nf.format(Math.round(n));
+const kfmt = (n: number) => {
+  const rounded = Math.round(n);
+  if (rounded >= 1e6) return `${(rounded / 1e6).toFixed(1).replace(/\.0$/, "")}M`;
+  if (rounded >= 1e3) return `${(rounded / 1e3).toFixed(1).replace(/\.0$/, "")}k`;
+  return String(rounded);
+};
+
+export type WordIndexProps = {
+  /** The embedded slice, `payload.words`. */
+  words: [string, number][];
+  selected: string | null;
+  onSelect: (word: string) => void;
+};
+
+export function WordIndex({ words, selected, onSelect }: WordIndexProps) {
+  const [query, setQuery] = useState("");
+  const [highlight, setHighlight] = useState(0);
+  const needle = query.trim().toLowerCase();
+
+  const matches = useMemo(
+    () => (needle ? words.filter(([word]) => word.includes(needle)) : words),
+    [words, needle],
+  );
+  const shown = matches.slice(0, INDEX_ROWS);
+
+  // The one place a word search may leave the browser: nothing in the slice matched.
+  const needsServer = needle.length > 0 && matches.length === 0;
+  const remote = useWords(query, needsServer);
+  const remoteRows = needsServer ? (remote.data ?? []) : [];
+
+  const cursor = Math.min(highlight, Math.max(shown.length - 1, 0));
+  const tag = needle
+    ? matches.length
+      ? `${fmt(matches.length)} ${matches.length === 1 ? "match" : "matches"}`
+      : remote.isFetching
+        ? "searching the full index…"
+        : `${fmt(remoteRows.length)} on the server`
+    : `top ${fmt(shown.length)} of ${fmt(words.length)} indexed`;
+
+  const option = useMemo<EChartsOption>(
+    () => {
+      const rows = shown.slice().reverse();
+      return {
+        tooltip: {
+          backgroundColor: "#171b25",
+          borderColor: "#2b3244",
+          textStyle: { color: "#e7eaf2", fontSize: 12 },
+          formatter: (p: any) => `“${p.name}”<br><b>${fmt(p.value)}</b> uses — click to see who`,
+        },
+        grid: { left: 6, right: 46, top: 4, bottom: 4, containLabel: true },
+        xAxis: {
+          type: "value",
+          splitLine: { lineStyle: { color: "#1b202c" } },
+          axisLabel: { color: "#8a93a8", fontSize: 10.5, formatter: (v: number) => kfmt(v) },
+        },
+        yAxis: {
+          type: "category",
+          data: rows.map(([word]) => word),
+          axisLabel: { color: "#8a93a8", fontSize: 10.5 },
+          axisLine: { lineStyle: { color: "#2b3244" } },
+          axisTick: { show: false },
+        },
+        series: [
+          {
+            type: "bar",
+            barWidth: "66%",
+            data: rows.map(([word, uses]) => ({
+              value: uses,
+              itemStyle: {
+                color: word === selected ? "#eb459e" : word === shown[cursor]?.[0] ? "#c9cdfc" : "#5865f2",
+                borderRadius: [0, 4, 4, 0] as [number, number, number, number],
+              },
+            })),
+            label: {
+              show: true,
+              position: "right",
+              color: "#8a93a8",
+              fontSize: 10,
+              formatter: (p: any) => kfmt(p.value as number),
+            },
+          },
+        ],
+      };
+    },
+    [shown, selected, cursor],
+  );
+
+  // ECharts is imperative: wire the click once, and always to the current callback.
+  const pick = useRef(onSelect);
+  pick.current = onSelect;
+  const wired = useRef(false);
+  const handleReady = useCallback((chart: ECharts) => {
+    if (wired.current) return;
+    wired.current = true;
+    chart.on("click", (params: unknown) => {
+      const name = (params as { name?: string }).name;
+      if (name) pick.current(name);
+    });
+  }, []);
+
+  const selectHighlighted = () => {
+    const local = shown[cursor];
+    if (local) pick.current(local[0]);
+    else if (remoteRows[0]) pick.current(remoteRows[0].word);
+  };
+
+  return (
+    <Panel
+      title="Word index"
+      subtitle="type to search the embedded index · press Enter or click a bar for who says it"
+      badge={
+        <span className="text-[10px] uppercase tracking-wider text-[var(--color-muted)]">{tag}</span>
+      }
+    >
+      <input
+        type="search"
+        aria-label="Search words"
+        autoComplete="off"
+        placeholder="search any word… try play, car, gpu, exam"
+        className="mb-2 w-full rounded border border-[var(--color-line)] bg-[var(--color-surface-2)] px-3 py-1.5 text-xs text-[var(--color-text)] placeholder:text-[var(--color-muted)]"
+        value={query}
+        onChange={(event) => {
+          setQuery(event.target.value);
+          setHighlight(0);
+        }}
+        onKeyDown={(event) => {
+          if (event.key === "ArrowDown") {
+            event.preventDefault();
+            setHighlight((h) => Math.min(h + 1, Math.max(shown.length - 1, 0)));
+          } else if (event.key === "ArrowUp") {
+            event.preventDefault();
+            setHighlight((h) => Math.max(h - 1, 0));
+          } else if (event.key === "Enter") {
+            event.preventDefault();
+            selectHighlighted();
+          } else if (event.key === "Escape") {
+            setQuery("");
+            setHighlight(0);
+          }
+        }}
+      />
+
+      {shown.length ? (
+        <EChart option={option} height={288} onReady={handleReady} />
+      ) : needle ? (
+        remoteRows.length ? (
+          <ul className="max-h-[288px] overflow-auto" aria-label="Words matching your search">
+            {remoteRows.map((row) => (
+              <li key={row.word}>
+                <button
+                  type="button"
+                  onClick={() => pick.current(row.word)}
+                  className="flex w-full items-baseline justify-between gap-2 rounded px-2 py-1 text-left text-xs hover:bg-[var(--color-surface-2)]"
+                >
+                  <span className="text-[var(--color-text)]">{row.word}</span>
+                  <span className="text-[var(--color-muted)]">{fmt(row.total)} uses</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <EmptyState>
+            {remote.isFetching ? "Searching the full word index…" : `Nothing indexed matches “${query.trim()}”.`}
+          </EmptyState>
+        )
+      ) : (
+        <EmptyState>No indexed words in this payload.</EmptyState>
+      )}
+    </Panel>
+  );
+}
