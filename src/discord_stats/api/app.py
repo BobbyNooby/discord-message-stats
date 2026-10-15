@@ -31,6 +31,12 @@ from discord_scraper.auth.session import (
 from discord_scraper.config import Config
 
 STATE_COOKIE = "dsh_oauth_state"
+
+
+def _now() -> str:
+    from datetime import datetime, timezone
+
+    return datetime.now(timezone.utc).isoformat(timespec="seconds")
 SESSION_MAX_AGE = SESSION_DAYS * 24 * 3600
 
 
@@ -68,7 +74,23 @@ def create_app(cfg: Config, db_path: str | Path) -> FastAPI:
 
     @app.get("/api/health")
     def health() -> dict:
-        return {"ok": True}
+        """Liveness plus the banner state (spec §11.7).
+
+        Read from the database on every request, never cached in the process: a
+        restart must not reset the banner to healthy.
+        """
+        from discord_scraper.worker.state import banner_for
+
+        conn = writable()
+        try:
+            stored = {}
+            if conn.execute(
+                "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'worker_state'"
+            ).fetchone():
+                stored = dict(conn.execute("SELECT key, value FROM worker_state"))
+        finally:
+            conn.close()
+        return {"ok": True, "checked_at": _now(), "banner": banner_for(stored)}
 
     @app.get("/auth/login")
     def login(request: Request):
