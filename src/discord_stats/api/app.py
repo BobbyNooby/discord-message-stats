@@ -26,9 +26,9 @@ from discord_scraper.auth.session import (
     establish_session,
     require_viewer,
     revoke_session,
-    session_level,
 )
 from discord_scraper.config import Config
+from discord_scraper.rollups import query
 
 STATE_COOKIE = "dsh_oauth_state"
 
@@ -159,7 +159,19 @@ def create_app(cfg: Config, db_path: str | Path) -> FastAPI:
         conn = connection()
         try:
             _require_rollups(conn)
-            return viewer.bootstrap(conn, cfg)
+            # Admin overrides count as "the configured timezone" (§7.1).
+            effective = admin.effective_for(conn, cfg)
+            recorded = query.provenance_row(conn, effective.channel_id, "activity")
+            if recorded and recorded["timezone"] != effective.timezone:
+                raise HTTPException(
+                    status_code=409,
+                    detail=(
+                        f"rollups were built in {recorded['timezone']}, the configured "
+                        f"timezone is {effective.timezone} — run: discord-scraper "
+                        "rollups rebuild"
+                    ),
+                )
+            return viewer.bootstrap(conn, effective)
         finally:
             conn.close()
 

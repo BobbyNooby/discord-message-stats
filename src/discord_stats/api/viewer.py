@@ -16,6 +16,8 @@ from typing import Any
 
 from discord_scraper.config import Config
 from discord_scraper.rollups import query
+from discord_scraper.rollups.build import config_digest
+from discord_scraper.rollups.schema import is_stale
 from discord_scraper.text import load_stopwords
 
 # The spec ships a slice, not the vocabulary: 54,570 distinct words is not a
@@ -36,7 +38,7 @@ def bootstrap(conn: sqlite3.Connection, cfg: Config) -> dict[str, Any]:
     cells = query.activity_cells(conn, channel, day_index, author_index)
     heat = query.heat_cells(conn, channel, author_index)
     words = query.top_words(conn, channel, WORD_SLICE)
-    indexed_words = [word for word, _uses in words[:WORD_AUTHOR_SLICE]]
+    indexed_words = {word for word, _uses in words[:WORD_AUTHOR_SLICE]}
     by_word: dict[str, list[list[int]]] = {}
     author_totals = [0] * len(author_rows)
     author_distinct = [0] * len(author_rows)
@@ -46,16 +48,25 @@ def bootstrap(conn: sqlite3.Connection, cfg: Config) -> dict[str, Any]:
             continue
         author_totals[index] += uses
         author_distinct[index] += 1
-        if word in set(indexed_words):
+        if word in indexed_words:
             by_word.setdefault(word, []).append([index, uses])
 
     domains, host_index, host_keys = query.link_tables(conn, channel)
     provenance = query.provenance_row(conn, channel, "activity") or {}
+    # The zone the numbers were *built* in, not the one configured now: after a
+    # timezone edit the buckets are still last-zone until a rebuild, and
+    # labelling them with the new zone is worse than labelling them old (§7.1).
+    built_in = provenance.get("timezone") or cfg.timezone
+    stale = (not provenance) or is_stale(conn, channel, "activity",
+                                         config_hash=config_digest(cfg))
     types = query.type_rows(conn, channel)
 
     payload: dict[str, Any] = {
         "meta": {
-            "total": int(provenance.get("source_count", 0)),
+            "total": query.counted_total(conn, channel),
+            "source_count": int(provenance.get("source_count", 0)),
+            "stale": stale,
+            "timezone": built_in,
             "authors": len(author_rows),
             "cells": len(cells),
             "heat_cells": len(heat),
@@ -91,7 +102,7 @@ def bootstrap(conn: sqlite3.Connection, cfg: Config) -> dict[str, Any]:
         "emoji": query.pairs(conn, channel, "rollup_emoji", "emoji", "uses"),
         "reactions": query.pairs(conn, channel, "rollup_reaction", "emoji", "count"),
         "types": types,
-        "tz": {"name": cfg.timezone, "label": cfg.timezone},
+        "tz": {"name": built_in, "label": built_in},
         "channel_hint": channel,
     }
     # The mockup prints the payload's own size, so it is measured, not guessed.
