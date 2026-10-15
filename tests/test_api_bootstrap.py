@@ -133,21 +133,18 @@ def test_database_is_opened_read_only(seeded_db_path):
         conn.close()
 
 
-def test_bootstrap_is_served_from_rollups_only(seeded_db_path, tmp_path):
+def test_bootstrap_is_served_from_rollups_only(db_cfg, client_for):
     """Drop the messages table: the payload must still assemble (spec §5.3)."""
-    from discord_scraper.rollups.build import rebuild_all
+    from discord_scraper.auth.session import Level
 
-    conn = sqlite3.connect(seeded_db_path)
+    _cfg, path = db_cfg
+    conn = sqlite3.connect(path)
     try:
-        conn.executescript(__import__("discord_scraper.scraper.database", fromlist=["SCHEMA"]).SCHEMA)
-        rebuild_all(conn, cfg_for(tmp_path))
         conn.execute("DROP TABLE messages")
         conn.commit()
     finally:
         conn.close()
-    from fastapi.testclient import TestClient
 
-    client = TestClient(create_app(cfg_for(tmp_path), seeded_db_path))
-    body = client.get("/api/bootstrap")
+    body = client_for(Level.VIEWER).get("/api/bootstrap")
     assert body.status_code == 200
     assert body.json()["meta"]["total"] == 7      # from provenance, not a scan
