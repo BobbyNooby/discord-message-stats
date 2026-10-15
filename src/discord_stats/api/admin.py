@@ -16,7 +16,9 @@ from datetime import datetime, timezone
 from typing import Any
 from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from pathlib import Path
+
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile
 from pydantic import BaseModel
 
 from discord_scraper.api.deps import connect_writable
@@ -39,6 +41,11 @@ JOB_STATUSES = ("queued", "running", "done", "failed")
 
 class JobRequest(BaseModel):
     kind: str
+
+
+# Staged uploads, keyed by the id handed to the operator. In-process on purpose:
+# a pending upload is only meaningful to the process that validated it.
+PENDING_UPLOADS: dict[str, Any] = {}
 
 
 def _now() -> str:
@@ -301,3 +308,105 @@ def search(
         }
     finally:
         conn.close()
+
+
+def _running_jobs(conn: sqlite3.Connection) -> int:
+    return int(conn.execute("SELECT COUNT(*) FROM jobs WHERE status = 'running'").fetchone()[0])
+
+
+def _describe_existing(target: Path) -> dict[str, Any]:
+    """What is about to be replaced, so the operator sees both sides (§10.6)."""
+    if not target.exists():
+        return {"rows": 0, "first": None, "last": None, "size_bytes": 0}
+    try:
+        conn = sqlite3.connect(f"file:{target}?mode=ro", uri=True)
+        try:
+            rows, first, last = conn.execute(
+                "SELECT COUNT(*), MIN(created_at), MAX(created_at) FROM messages"
+            ).fetchone()
+        finally:
+            conn.close()
+    except sqlite3.Error:
+        return {"rows": 0, "first": None, "last": None, "size_bytes": target.stat().st_size}
+    return {
+        "rows": int(rows or 0),
+        "first": (first or "")[:10] or None,
+        "last": (last or "")[:10] or None,
+        "size_bytes": target.stat().st_size,
+    }
+
+
+@router.post("/upload")
+def upload_database(request: Request, file: UploadFile = File(...)) -> dict:
+    """Stage and validate an upload. Nothing is replaced until the commit call."""
+    from discord_scraper.api import upload as staging
+
+    target = Path(request.app.state.db_path)
+    conn = _conn(request)
+    try:
+        running = _running_jobs(conn)
+    finally:
+        conn.close()
+    if running:
+        # A rebuild mid-upload would read a moving file (§10.6 step 1).
+        raise HTTPException(
+            status_code=409,
+            detail=f"{running} job(s) are running — wait for them to finish before uploading",
+        )
+
+    try:
+        staged = staging.stage(file.file, target)
+    except staging.UploadTooLarge as exc:
+        raise HTTPException(status_code=413, detail=str(exc)) from None
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from None
+
+    PENDING_UPLOADS[staged.upload_id] = staged
+    return {
+        "upload_id": staged.upload_id,
+        "rows": staged.rows,
+        "first": staged.first,
+        "last": staged.last,
+        "size_bytes": staged.size_bytes,
+        "replaces": _describe_existing(target),
+    }
+
+
+@router.post("/upload/{upload_id}/commit", status_code=202)
+def commit_upload(request: Request, upload_id: str) -> dict:
+    """Swap the staged file in, keep a `.bak`, and queue a rebuild."""
+    from discord_scraper.api import upload as staging
+    from discord_scraper.rollups.schema import create_control_tables, create_rollup_tables
+
+    staged = PENDING_UPLOADS.pop(upload_id, None)
+    if staged is None:
+        raise HTTPException(status_code=404, detail="no such upload — stage it again")
+    backup = staging.commit(staged)
+
+    # A database built elsewhere has messages and meta but neither the rollups
+    # nor the control plane; the rebuild about to be queued needs both.
+    conn = _conn(request)
+    try:
+        create_rollup_tables(conn)
+        create_control_tables(conn)
+        conn.commit()
+    finally:
+        conn.close()
+
+    job = create_job(request, JobRequest(kind="rebuild_rollups"))
+    return {
+        "rows": staged.rows,
+        "first": staged.first,
+        "last": staged.last,
+        "backup": str(backup),
+        "job": job,
+    }
+
+
+@router.delete("/upload/{upload_id}", status_code=204)
+def discard_upload(upload_id: str) -> None:
+    from discord_scraper.api import upload as staging
+
+    staged = PENDING_UPLOADS.pop(upload_id, None)
+    if staged is not None:
+        staging.discard(staged)
