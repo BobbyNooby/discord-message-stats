@@ -10,11 +10,28 @@ from __future__ import annotations
 import sqlite3
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, Query
+import secrets
+
+from fastapi import Depends, FastAPI, HTTPException, Query, Request
+from fastapi.responses import RedirectResponse
 
 from discord_scraper.api import viewer
-from discord_scraper.api.deps import connect
+from discord_scraper.api.deps import connect, connect_writable
+from discord_scraper.auth import oauth
+from discord_scraper.auth.allowlist import decision_for, record_login_attempt, too_many_attempts
+from discord_scraper.auth.session import (
+    SESSION_COOKIE,
+    SESSION_DAYS,
+    Level,
+    establish_session,
+    require_viewer,
+    revoke_session,
+    session_level,
+)
 from discord_scraper.config import Config
+
+STATE_COOKIE = "dsh_oauth_state"
+SESSION_MAX_AGE = SESSION_DAYS * 24 * 3600
 
 
 def _require_rollups(conn: sqlite3.Connection) -> None:
@@ -41,12 +58,81 @@ def create_app(cfg: Config, db_path: str | Path) -> FastAPI:
     def connection() -> sqlite3.Connection:
         return connect(app.state.db_path)
 
+    def writable() -> sqlite3.Connection:
+        return connect_writable(app.state.db_path)
+
+    def safe_redirect() -> str:
+        """Where to land after login — the payload the browser came for."""
+        return "/" if app.state.cfg.redirect_uri else "/"
+
     @app.get("/api/health")
     def health() -> dict:
         return {"ok": True}
 
+    @app.get("/auth/login")
+    def login(request: Request):
+        ip = request.client.host if request.client else "unknown"
+        conn = writable()
+        try:
+            if too_many_attempts(conn, ip):
+                raise HTTPException(status_code=429, detail="too many login attempts")
+        finally:
+            conn.close()
+        if not cfg.client_id or not cfg.redirect_uri:
+            raise HTTPException(
+                status_code=503,
+                detail="OAuth is not configured — set access.client_id and access.redirect_uri",
+            )
+        state = secrets.token_urlsafe(24)
+        response = RedirectResponse(oauth.authorize_url(cfg.client_id, cfg.redirect_uri, state))
+        response.set_cookie(STATE_COOKIE, state, max_age=600, httponly=True, samesite="lax",
+                            secure=True)
+        return response
+
+    @app.get("/auth/callback")
+    def callback(request: Request, code: str = "", state: str = ""):
+        ip = request.client.host if request.client else "unknown"
+        expected = request.cookies.get(STATE_COOKIE, "")
+        if not state or not expected or not secrets.compare_digest(state, expected):
+            raise HTTPException(status_code=400, detail="state mismatch")
+        token = oauth.exchange_code(cfg.client_id, cfg.client_secret or "", code, cfg.redirect_uri)
+        identity = oauth.fetch_identity(token) if token else None
+        conn = writable()
+        try:
+            if not identity or not identity.get("id"):
+                record_login_attempt(conn, ip, ok=False)
+                raise HTTPException(status_code=403, detail="login failed")
+            level = decision_for(conn, cfg, str(identity["id"]))
+            if level is None:
+                record_login_attempt(conn, ip, ok=False)
+                raise HTTPException(status_code=403, detail="not a member of this chat")
+            record_login_attempt(conn, ip, ok=True)
+            session = establish_session(conn, str(identity["id"]), level)
+        finally:
+            conn.close()
+        response = RedirectResponse(safe_redirect())
+        response.set_cookie(
+            SESSION_COOKIE, session, max_age=SESSION_MAX_AGE, httponly=True, samesite="lax",
+            secure=True,
+        )
+        response.delete_cookie(STATE_COOKIE)
+        return response
+
+    @app.get("/auth/logout")
+    def logout(request: Request):
+        token = request.cookies.get(SESSION_COOKIE, "")
+        if token:
+            conn = writable()
+            try:
+                revoke_session(conn, token)
+            finally:
+                conn.close()
+        response = RedirectResponse("/")
+        response.delete_cookie(SESSION_COOKIE)
+        return response
+
     @app.get("/api/bootstrap")
-    def bootstrap() -> dict:
+    def bootstrap(_level: Level = Depends(require_viewer)) -> dict:
         conn = connection()
         try:
             _require_rollups(conn)
@@ -55,7 +141,8 @@ def create_app(cfg: Config, db_path: str | Path) -> FastAPI:
             conn.close()
 
     @app.get("/api/words")
-    def words(q: str = Query(..., min_length=1), limit: int = Query(50, ge=1, le=500)) -> dict:
+    def words(q: str = Query(..., min_length=1), limit: int = Query(50, ge=1, le=500),
+              _level: Level = Depends(require_viewer)) -> dict:
         """Search the **full** word index, which the payload only slices."""
         conn = connection()
         try:
