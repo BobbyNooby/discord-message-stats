@@ -13,7 +13,8 @@ from pathlib import Path
 import secrets
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Request
-from fastapi.responses import RedirectResponse
+from fastapi.responses import FileResponse, RedirectResponse
+from fastapi.staticfiles import StaticFiles
 
 from discord_scraper.api import admin, viewer
 from discord_scraper.api.deps import connect, connect_writable
@@ -56,7 +57,7 @@ def _require_rollups(conn: sqlite3.Connection) -> None:
         )
 
 
-def create_app(cfg: Config, db_path: str | Path) -> FastAPI:
+def create_app(cfg: Config, db_path: str | Path, static_dir: str | Path | None = None) -> FastAPI:
     app = FastAPI(title=cfg.app_name, docs_url=None, redoc_url=None)
     app.state.cfg = cfg
     app.state.db_path = str(db_path)
@@ -175,6 +176,18 @@ def create_app(cfg: Config, db_path: str | Path) -> FastAPI:
         finally:
             conn.close()
 
+    @app.get("/api/recent")
+    def recent_messages(_level: Level = Depends(require_viewer)) -> dict:
+        """The "is this still alive" strip (§11.8), bounded by ``ui.show_recent``."""
+        from discord_scraper.api.recent import recent
+
+        conn = connection()
+        try:
+            effective = admin.effective_for(conn, cfg)
+            return recent(conn, effective)
+        finally:
+            conn.close()
+
     @app.get("/api/words")
     def words(q: str = Query(..., min_length=1), limit: int = Query(50, ge=1, le=500),
               _level: Level = Depends(require_viewer)) -> dict:
@@ -197,4 +210,28 @@ def create_app(cfg: Config, db_path: str | Path) -> FastAPI:
         finally:
             conn.close()
 
+    _mount_spa(app, static_dir)
     return app
+
+
+def _mount_spa(app: FastAPI, static_dir: str | Path | None) -> None:
+    """Serve the built SPA from the same port as the API (§4.7).
+
+    Registered last, so every ``/api`` route matches first. ``/admin`` and
+    ``/login`` are routes rather than files because the SPA owns those paths —
+    without them a deep link would 404 on refresh, which is the classic way a
+    single-port SPA deployment loses its admin page.
+    """
+    if static_dir is None:
+        return
+    directory = Path(static_dir)
+    index = directory / "index.html"
+    if not index.is_file():
+        return
+
+    @app.get("/admin", include_in_schema=False)
+    @app.get("/login", include_in_schema=False)
+    def spa_route():
+        return FileResponse(index)
+
+    app.mount("/", StaticFiles(directory=str(directory), html=True), name="spa")
