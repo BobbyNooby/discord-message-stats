@@ -1,0 +1,21 @@
+@import "tailwindcss";
+
+/* Dark by default (spec §11): the palette is defined once here so a chart and
+   its panel cannot drift apart. */
+@theme {
+  --color-ink: #0b0e14;
+  --color-surface: #141822;
+  --color-surface-2: #1b202c;
+  --color-line: #2b3244;
+  --color-text: #e7eaf2;
+  --color-muted: #8a93a8;
+  --color-accent: #5865f2;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  background: var(--color-ink);
+  color: var(--color-text);
+}
