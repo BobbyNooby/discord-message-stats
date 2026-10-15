@@ -3,8 +3,6 @@ import sqlite3
 
 import pytest
 
-from discord_scraper.auth.session import Level
-
 
 def test_status_never_leaks_the_token(admin_client):
     body = admin_client.get("/api/admin/status").json()
@@ -90,13 +88,3 @@ def test_search_requires_a_query(admin_client):
 @pytest.fixture
 def anon_client(client_unauthenticated):
     return client_unauthenticated
-
-
-@pytest.fixture
-def viewer_client(client_for):
-    return client_for(Level.VIEWER)
-
-
-@pytest.fixture
-def admin_client(client_for):
-    return client_for(Level.ADMIN)
