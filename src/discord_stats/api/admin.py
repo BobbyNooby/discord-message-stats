@@ -1,0 +1,298 @@
+"""The admin surface.
+
+Everything here is admin-only, and one endpoint is genuinely different from the
+rest of the API: ``/api/admin/search`` returns **message text**. That is the sole
+exception to "the API returns aggregates, never message text" (§4.4), which is
+why it is separated in one place and guarded by ``require_admin`` rather than
+being a flag someone could forget to check.
+"""
+
+from __future__ import annotations
+
+import json
+import sqlite3
+from dataclasses import replace
+from datetime import datetime, timezone
+from typing import Any
+from zoneinfo import ZoneInfo
+
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from pydantic import BaseModel
+
+from discord_scraper.api.deps import connect_writable
+from discord_scraper.auth.session import require_admin
+from discord_scraper.config import Config, config_from_settings
+from discord_scraper.rollups import query
+from discord_scraper.rollups.build import config_digest
+from discord_scraper.rollups.schema import FAMILIES, is_stale
+
+router = APIRouter(prefix="/api/admin", dependencies=[Depends(require_admin)])
+
+JOB_KINDS = ("catch_up", "backfill", "probe", "rebuild_rollups")
+ALLOWLIST_POLICIES = ("posted", "explicit")
+# The control-plane `config` table holds operator overrides. A fixed key set:
+# an admin endpoint that writes arbitrary rows is a liability, not a feature.
+OVERRIDABLE = ("channel_id", "timezone", "ignore_words", "allowlist_policy")
+
+JOB_STATUSES = ("queued", "running", "done", "failed")
+
+
+class JobRequest(BaseModel):
+    kind: str
+
+
+def _now() -> str:
+    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+
+def _conn(request: Request) -> sqlite3.Connection:
+    return connect_writable(request.app.state.db_path)
+
+
+def _overrides(conn: sqlite3.Connection) -> dict[str, str]:
+    return dict(conn.execute("SELECT key, value FROM config"))
+
+
+def effective_config(base: Config, overrides: dict[str, str]) -> Config:
+    """``base`` with the operator's overrides applied."""
+    changes: dict[str, Any] = {}
+    if "channel_id" in overrides:
+        changes["channel_id"] = overrides["channel_id"]
+    if "timezone" in overrides:
+        changes["timezone"] = overrides["timezone"]
+    if "allowlist_policy" in overrides:
+        changes["allowlist"] = overrides["allowlist_policy"]
+    if "ignore_words" in overrides:
+        try:
+            changes["ignore_words"] = json.loads(overrides["ignore_words"])
+        except ValueError:
+            changes["ignore_words"] = []
+    return config_from_settings(replace(base.settings, **changes)) if changes else base
+
+
+def _effective_for(request: Request, conn: sqlite3.Connection) -> Config:
+    return effective_config(request.app.state.cfg, _overrides(conn))
+
+
+def _job_counts(conn: sqlite3.Connection) -> dict[str, int]:
+    counts = {status: 0 for status in JOB_STATUSES}
+    for status, total in conn.execute("SELECT status, COUNT(*) FROM jobs GROUP BY status"):
+        counts[str(status)] = int(total)
+    return counts
+
+
+def _worker_view(conn: sqlite3.Connection) -> dict[str, Any]:
+    """Worker health, with the raw key names translated.
+
+    ``worker_state`` stores ``token_checked_at`` and friends; this view renames
+    them to ``checked_at``/``last_ok_at`` so that the response contains no key
+    starting with ``token`` other than the state itself. The bot token's *value*
+    was never here — this is about not inviting a future edit to put it here.
+    """
+    stored = dict(conn.execute("SELECT key, value FROM worker_state"))
+    return {
+        "token_status": stored.get("token_status", "unknown"),
+        "checked_at": stored.get("token_checked_at"),
+        "last_ok_at": stored.get("token_last_ok_at"),
+        "last_ingest_at": stored.get("last_ingest_at"),
+        "last_ingest_added": stored.get("last_ingest_added"),
+        "last_seen_at": stored.get("last_seen_at"),
+        "consecutive_failures": stored.get("consecutive_failures"),
+        "cron_enabled": stored.get("cron_enabled"),
+        "cron_hours": stored.get("cron_hours"),
+    }
+
+
+@router.get("/status")
+def status(request: Request) -> dict:
+    conn = _conn(request)
+    try:
+        cfg = _effective_for(request, conn)
+        digest = config_digest(cfg)
+        rollups: dict[str, Any] = {}
+        stale = False
+        for family in FAMILIES:
+            table = f"rollup_{family}"
+            count = conn.execute(
+                f"SELECT COUNT(*) FROM {table} WHERE channel_id = ?", (cfg.channel_id,)
+            ).fetchone()[0]
+            meta = query.provenance_row(conn, cfg.channel_id, family)
+            family_stale = is_stale(conn, cfg.channel_id, family, config_hash=digest)
+            stale = stale or family_stale
+            rollups[family] = {
+                "rows": int(count),
+                "stale": family_stale,
+                "computed_at": meta["computed_at"] if meta else None,
+            }
+        active_sessions = conn.execute(
+            "SELECT COUNT(*) FROM sessions WHERE revoked = 0 AND expires_at > ?", (_now(),)
+        ).fetchone()[0]
+        return {
+            "app": cfg.app_name,
+            "channel_id": cfg.channel_id,
+            "timezone": cfg.timezone,
+            "cache_stale": stale,
+            "config_hash": digest,
+            "rollups": rollups,
+            "worker": _worker_view(conn),
+            "jobs": _job_counts(conn),
+            "sessions": {"active": int(active_sessions)},
+            "checked_at": _now(),
+        }
+    finally:
+        conn.close()
+
+
+@router.get("/config")
+def get_config(request: Request) -> dict:
+    conn = _conn(request)
+    try:
+        overrides = _overrides(conn)
+        cfg = effective_config(request.app.state.cfg, overrides)
+        return {
+            "effective": {
+                "channel_id": cfg.channel_id,
+                "timezone": cfg.timezone,
+                "ignore_words": list(cfg.ignore_words),
+                "allowlist_policy": cfg.allowlist,
+                "app_name": cfg.app_name,
+                "count_types": list(cfg.count_types),
+                "exclude_bots": cfg.exclude_bots,
+            },
+            "overridden": sorted(k for k in overrides if k in OVERRIDABLE),
+        }
+    finally:
+        conn.close()
+
+
+@router.put("/config")
+def put_config(request: Request, payload: dict) -> dict:
+    if not payload:
+        raise HTTPException(status_code=400, detail="no settings given")
+    unknown = sorted(set(payload) - set(OVERRIDABLE))
+    if unknown:
+        raise HTTPException(status_code=400, detail=f"not overridable: {', '.join(unknown)}")
+    conn = _conn(request)
+    try:
+        for key, value in payload.items():
+            _validate(key, value)
+        for key, value in payload.items():
+            stored = json.dumps(value) if key == "ignore_words" else str(value)
+            conn.execute(
+                "INSERT INTO config (key, value) VALUES (?, ?) "
+                "ON CONFLICT (key) DO UPDATE SET value = excluded.value",
+                (key, stored),
+            )
+        conn.commit()
+    finally:
+        conn.close()
+    return get_config(request)
+
+
+def _validate(key: str, value: Any) -> None:
+    if key == "timezone":
+        try:
+            ZoneInfo(str(value))
+        except Exception:
+            raise HTTPException(status_code=400, detail=f"unknown timezone: {value}") from None
+    elif key == "allowlist_policy" and str(value) not in ALLOWLIST_POLICIES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"allowlist_policy must be one of {', '.join(ALLOWLIST_POLICIES)}",
+        )
+    elif key == "ignore_words" and not isinstance(value, list):
+        raise HTTPException(status_code=400, detail="ignore_words must be a list")
+    elif key == "channel_id" and not str(value).strip():
+        raise HTTPException(status_code=400, detail="channel_id cannot be empty")
+
+
+@router.get("/jobs")
+def list_jobs(request: Request, limit: int = Query(50, ge=1, le=200)) -> dict:
+    conn = _conn(request)
+    try:
+        found = query.rows(
+            conn,
+            """
+            SELECT id, channel_id, kind, status, requested_at, started_at, finished_at,
+                   result, error
+              FROM jobs ORDER BY id DESC LIMIT ?
+            """,
+            (limit,),
+        )
+        fields = ("id", "channel_id", "kind", "status", "requested_at", "started_at",
+                  "finished_at", "result", "error")
+        return {"jobs": [dict(zip(fields, row)) for row in found]}
+    finally:
+        conn.close()
+
+
+@router.post("/jobs", status_code=201)
+def create_job(request: Request, body: JobRequest) -> dict:
+    if body.kind not in JOB_KINDS:
+        raise HTTPException(status_code=400, detail=f"kind must be one of {', '.join(JOB_KINDS)}")
+    conn = _conn(request)
+    try:
+        cfg = _effective_for(request, conn)
+        cursor = conn.execute(
+            "INSERT INTO jobs (channel_id, kind, status, requested_at) VALUES (?, ?, 'queued', ?)",
+            (cfg.channel_id, body.kind, _now()),
+        )
+        conn.commit()
+        return {"id": int(cursor.lastrowid), "channel_id": cfg.channel_id,
+                "kind": body.kind, "status": "queued"}
+    finally:
+        conn.close()
+
+
+@router.post("/recalculate", status_code=202)
+def recalculate(request: Request) -> dict:
+    """Queue a full rebuild. The worker runs it; the API never rebuilds inline."""
+    return create_job(request, JobRequest(kind="rebuild_rollups"))
+
+
+@router.get("/search")
+def search(
+    request: Request,
+    q: str = Query(..., min_length=1),
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+) -> dict:
+    """The one endpoint that returns message text (§4.4)."""
+    conn = _conn(request)
+    try:
+        cfg = _effective_for(request, conn)
+        pattern = f"%{q}%"
+        total = conn.execute(
+            "SELECT COUNT(*) FROM messages WHERE channel_id = ? AND content LIKE ?",
+            (cfg.channel_id, pattern),
+        ).fetchone()[0]
+        found = query.rows(
+            conn,
+            """
+            SELECT m.id, m.author_id, m.created_at, m.content, n.name
+              FROM messages m
+              LEFT JOIN author_names n
+                     ON n.channel_id = m.channel_id AND n.author_id = m.author_id
+             WHERE m.channel_id = ? AND m.content LIKE ?
+             ORDER BY m.created_at DESC, m.id DESC
+             LIMIT ? OFFSET ?
+            """,
+            (cfg.channel_id, pattern, limit, offset),
+        )
+        return {
+            "total": int(total),
+            "limit": limit,
+            "offset": offset,
+            "rows": [
+                {
+                    "id": row[0],
+                    "author_id": row[1],
+                    "created_at": row[2],
+                    "content": row[3],
+                    "author_name": row[4] or row[1],
+                }
+                for row in found
+            ],
+        }
+    finally:
+        conn.close()
