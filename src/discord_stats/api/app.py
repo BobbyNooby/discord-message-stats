@@ -15,7 +15,7 @@ import secrets
 from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.responses import RedirectResponse
 
-from discord_scraper.api import viewer
+from discord_scraper.api import admin, viewer
 from discord_scraper.api.deps import connect, connect_writable
 from discord_scraper.auth import oauth
 from discord_scraper.auth.allowlist import decision_for, record_login_attempt, too_many_attempts
@@ -54,6 +54,7 @@ def create_app(cfg: Config, db_path: str | Path) -> FastAPI:
     app = FastAPI(title=cfg.app_name, docs_url=None, redoc_url=None)
     app.state.cfg = cfg
     app.state.db_path = str(db_path)
+    app.include_router(admin.router)
 
     def connection() -> sqlite3.Connection:
         return connect(app.state.db_path)
