@@ -70,6 +70,11 @@ def effective_config(base: Config, overrides: dict[str, str]) -> Config:
     return config_from_settings(replace(base.settings, **changes)) if changes else base
 
 
+def effective_for(conn: sqlite3.Connection, base: Config) -> Config:
+    """``base`` with the stored operator overrides — public for other modules."""
+    return effective_config(base, _overrides(conn))
+
+
 def _effective_for(request: Request, conn: sqlite3.Connection) -> Config:
     return effective_config(request.app.state.cfg, _overrides(conn))
 

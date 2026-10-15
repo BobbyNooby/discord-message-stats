@@ -61,7 +61,8 @@ def test_bootstrap_carries_the_golden_numbers(client):
     assert body["meta"]["cells"] == 2
     totals = {body["authors"][cell[1]]["name"]: cell[2] for cell in body["cells"]}
     assert totals == {"GlobalName": 3, "plain_user": 2}
-    assert body["meta"]["total"] == 7        # every source row, bots and joins included
+    assert body["meta"]["total"] == 5        # counted messages, not the table size
+    assert body["meta"]["source_count"] == 7  # every row, for staleness
 
 
 def test_bootstrap_never_returns_message_text(client):
@@ -147,4 +148,88 @@ def test_bootstrap_is_served_from_rollups_only(db_cfg, client_for):
 
     body = client_for(Level.VIEWER).get("/api/bootstrap")
     assert body.status_code == 200
-    assert body.json()["meta"]["total"] == 7      # from provenance, not a scan
+    meta = body.json()["meta"]
+    assert meta["total"] == 5            # from rollup_activity, not a scan
+    assert meta["source_count"] == 7     # from provenance, not a scan
+    assert meta["stale"] is True         # nothing can be current without a source
+
+
+def test_total_is_the_counted_message_count_not_the_table(client):
+    """Spec §18.1: the headline must agree with `analyze stats`.
+
+    `source_count` stays for staleness (it fingerprints the whole table); the
+    number a reader sees is what the configured rules count.
+    """
+    meta = client.get("/api/bootstrap").json()["meta"]
+    assert meta["total"] == 5            # counted: real types, no bots
+    assert meta["source_count"] == 7     # every row in the channel
+
+
+def test_link_stats_report_messages_hosts_and_unfurled(client, conn):
+    """The three numbers under "Where the chat lives" (spec §5.11).
+
+    `msgs` is messages containing a URL, `domains` is distinct hosts uncapped,
+    and `both` is messages carrying a link *and* an embed — none of which the
+    top-60 grain can answer.
+    """
+    from tests.conftest import author_raw, seed_messages
+
+    seed_messages(conn, [
+        ("u1", "u1", "u1handle", "look https://youtube.com/watch?v=x",
+         "2026-02-01T10:00:00+00:00", None, None, 0, 0, author_raw("u1", "u1handle")),
+        ("u2", "u2", "plain_user", "https://example.org/a and an embed",
+         "2026-02-01T10:01:00+00:00", None, None, 0, 0,
+         author_raw("u2", "plain_user", embeds=[{"type": "link"}])),
+    ])
+    from discord_scraper.rollups.build import rebuild_all
+
+    rebuild_all(conn, cfg_for_writes(conn))
+    stats = client.get("/api/bootstrap").json()["linkStats"]
+    assert stats == {"msgs": 2, "domains": 2, "both": 1}
+
+
+def cfg_for_writes(conn):
+    import sqlite3
+
+    from discord_scraper.config import config_from_settings, load_settings
+
+    path = conn.execute("PRAGMA database_list").fetchone()[2]
+    import tempfile
+    from pathlib import Path
+
+    directory = Path(tempfile.mkdtemp())
+    for row in conn.execute("SELECT channel_id FROM messages LIMIT 1"):
+        channel = row[0]
+    (directory / "config.toml").write_text(
+        f'[source]\nchannel_id = "{channel}"\ntimezone = "UTC"\n', encoding="utf-8"
+    )
+    return config_from_settings(load_settings(config_path=directory / "config.toml"))
+
+
+def test_meta_reports_the_rollup_timezone_and_freshness(client, conn):
+    from tests.conftest import author_raw, seed_messages
+
+    meta = client.get("/api/bootstrap").json()["meta"]
+    assert meta["timezone"] == "UTC"     # the zone the numbers were built in
+    assert meta["stale"] is False
+
+    seed_messages(conn, [("later", "u1", "u1handle", "new news", "2026-03-01T10:00:00+00:00",
+                          None, None, 0, 0, author_raw("u1", "u1handle"))])
+    assert client.get("/api/bootstrap").json()["meta"]["stale"] is True
+
+
+def test_a_timezone_change_is_refused_not_mislabelled(db_cfg, tmp_path, conn):
+    """Spec §7.1: refuse rollups whose recorded timezone differs from config."""
+    from fastapi.testclient import TestClient
+
+    from discord_scraper.api.app import create_app
+    from discord_scraper.auth.session import SESSION_COOKIE, Level, establish_session
+    from tests.conftest import cfg_fixture
+
+    _cfg, path = db_cfg
+    moved = cfg_fixture(tmp_path, timezone="Europe/London")
+    client = TestClient(create_app(moved, path))
+    client.cookies.set(SESSION_COOKIE, establish_session(conn, "u1", Level.VIEWER))
+    response = client.get("/api/bootstrap")
+    assert response.status_code == 409
+    assert "rollups rebuild" in response.json()["detail"]
