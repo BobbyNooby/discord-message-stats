@@ -10,6 +10,7 @@ import { initialFilters, filtersReducer } from "./filters/reducer";
 import { Calendar } from "./panels/Calendar";
 import { LinksSection } from "./panels/LinksSection";
 import { MediaSection } from "./panels/MediaSection";
+import { RichMediaSection } from "./panels/RichMedia";
 import { OverviewSection } from "./panels/OverviewSection";
 import { PeopleSection } from "./panels/PeopleSection";
 import { TimeSection } from "./panels/TimeSection";
@@ -94,6 +95,7 @@ function DashboardBody({
       <PeopleSection payload={payload} filters={filters} />
       <WordsSection payload={payload} filters={filters} dispatch={dispatch} />
       <LinksSection payload={payload} filters={filters} />
+      <RichMediaSection payload={payload} filters={filters} />
       <MediaSection payload={payload} filters={filters} />
       <footer className="pb-8 text-[11px] text-[var(--color-muted)]">
         {payload.meta.payload_kb} KB payload ({payload.meta.payload_gzip_kb} KB gzipped) ·{" "}
