@@ -68,7 +68,7 @@ const PAYLOAD = {
   authors: [
     {
       id: "1",
-      name: "joyt",
+      name: "alice",
       msgs: 400,
       accounts: ["1", "2"],
     },
@@ -224,7 +224,7 @@ describe("<Admin>", () => {
     renderAdmin();
 
     await user.click(await screen.findByRole("button", { name: "Who shows" }));
-    await user.click(await screen.findByRole("checkbox", { name: /joyt/ }));
+    await user.click(await screen.findByRole("checkbox", { name: /alice/ }));
 
     await waitFor(() => expect(recorded("PUT", "/api/admin/inclusions")).toBe(true));
     expect(recordedCall("PUT", "/api/admin/inclusions")?.body).toEqual({
@@ -243,7 +243,7 @@ describe("<Admin>", () => {
     renderAdmin();
 
     await user.click(await screen.findByRole("button", { name: "Who shows" }));
-    await user.click(await screen.findByRole("checkbox", { name: /joyt/ }));
+    await user.click(await screen.findByRole("checkbox", { name: /alice/ }));
 
     const alarm = await screen.findByRole("alert");
     expect(alarm).toHaveTextContent(/not saved: no such identity/i);
@@ -255,7 +255,7 @@ describe("<Admin>", () => {
     renderAdmin();
 
     await user.click(await screen.findByRole("button", { name: "Identity merge" }));
-    await user.selectOptions(await screen.findByLabelText(/add an alt account to joyt/i), "3");
+    await user.selectOptions(await screen.findByLabelText(/add an alt account to alice/i), "3");
     await user.click(screen.getByRole("button", { name: /add alt/i }));
 
     await waitFor(() => expect(recorded("PUT", "/api/admin/identity")).toBe(true));
@@ -273,7 +273,7 @@ describe("<Admin>", () => {
     renderAdmin();
 
     await user.click(await screen.findByRole("button", { name: "Identity merge" }));
-    await user.selectOptions(await screen.findByLabelText(/add an alt account to joyt/i), "3");
+    await user.selectOptions(await screen.findByLabelText(/add an alt account to alice/i), "3");
     await user.click(screen.getByRole("button", { name: /add alt/i }));
 
     const alarm = await screen.findByRole("alert");
