@@ -63,7 +63,7 @@ export function WhoSaysIt({
       grid: { left: 6, right: 52, top: 8, bottom: 8, containLabel: true },
       xAxis: {
         type: "value",
-        axisLabel: { color: "#8a93a8", fontSize: 10.5 },
+        axisLabel: { color: "#8a93a8", fontSize: 10.5, interval: 0, width: 96, overflow: "truncate" },
         splitLine: { lineStyle: { color: "#1b202c" } },
       },
       yAxis: {

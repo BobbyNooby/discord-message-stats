@@ -52,7 +52,7 @@ export function ReplyMatrix({
     xAxis: {
       type: "category",
       data: matrix.names,
-      axisLabel: { color: AXIS_TEXT, fontSize: 9, rotate: 50 },
+      axisLabel: { color: AXIS_TEXT, fontSize: 9, rotate: 50, interval: 0 },
       axisLine: { lineStyle: { color: AXIS_LINE } },
       axisTick: { show: false },
     },
@@ -60,7 +60,7 @@ export function ReplyMatrix({
       type: "category",
       inverse: true,
       data: matrix.names,
-      axisLabel: { color: AXIS_TEXT, fontSize: 9 },
+      axisLabel: { color: AXIS_TEXT, fontSize: 9, interval: 0, width: 74, overflow: "truncate" },
       axisLine: { lineStyle: { color: AXIS_LINE } },
       axisTick: { show: false },
     },
