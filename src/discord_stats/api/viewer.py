@@ -97,6 +97,8 @@ def bootstrap(conn: sqlite3.Connection, cfg: Config) -> dict[str, Any]:
         "linkCells": query.link_cells(conn, channel, day_index, author_index, host_index),
         "topLinks": [list(row) for row in host_keys[:60]],
         "providers": query.pairs(conn, channel, "rollup_provider", "provider", "embeds"),
+        "topMedia": query.top_media(conn, channel, cfg.media_top_n),
+        "mediaThumbnails": cfg.media_thumbnails,
         "embedTypes": query.pairs(conn, channel, "rollup_embed_type", "embed_type", "embeds"),
         "linkStats": query.link_stats(conn, channel),
         "emoji": query.pairs(conn, channel, "rollup_emoji", "emoji", "uses"),

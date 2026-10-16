@@ -9,11 +9,12 @@ from __future__ import annotations
 
 import sqlite3
 import threading
+import urllib.parse
 from pathlib import Path
 
 import secrets
 
-from fastapi import Depends, FastAPI, HTTPException, Query, Request
+from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response
 from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -111,6 +112,61 @@ def create_app(
     def safe_redirect() -> str:
         """Where to land after login — the payload the browser came for."""
         return "/" if app.state.cfg.redirect_uri else "/"
+
+    # ---- thumbnails ---------------------------------------------------------
+    # A GIF posted 63 times is worth showing, but letting every viewer's browser
+    # fetch it from Tenor hands those CDNs a list of who is reading this chat.
+    # `media.thumbnails = "proxy"` (the default) fetches and caches it here; the
+    # suffix list is what the data actually contains, and it is a hard allowlist
+    # because this endpoint takes a URL from the query string.
+    THUMB_SUFFIXES = (
+        "ytimg.com", "ggpht.com", "ytimg.googleusercontent.com",
+        "tenor.com", "tenor.co", "klipy.com",
+        "twimg.com", "discordapp.net", "discordapp.com",
+        "akamaihd.net", "scdn.co", "streamable.com", "imgur.com", "redd.it", "reddit.com",
+    )
+    THUMB_MAX_BYTES = 2 * 1024 * 1024
+    thumb_cache: dict[str, tuple[float, bytes, str]] = {}
+
+    def _thumb_allowed(url: str) -> bool:
+        try:
+            parsed = urllib.parse.urlparse(url)
+        except ValueError:
+            return False
+        if parsed.scheme not in ("http", "https") or not parsed.hostname:
+            return False
+        host = parsed.hostname.lower()
+        return any(host == s or host.endswith("." + s) for s in THUMB_SUFFIXES)
+
+    @app.get("/api/thumb")
+    def thumb(u: str = Query(..., max_length=2048),
+              _level: Level = Depends(require_viewer)) -> Response:
+        import time as _time
+
+        import httpx
+
+        if not _thumb_allowed(u):
+            raise HTTPException(status_code=400, detail="that host is not on the thumbnail allowlist")
+        now = _time.monotonic()
+        hit = thumb_cache.get(u)
+        if hit and hit[0] > now:
+            return Response(hit[1], media_type=hit[2],
+                            headers={"Cache-Control": "public, max-age=86400"})
+        try:
+            # Redirects are not followed: a redirect is how an allowlisted host
+            # would be used to reach one that is not.
+            response = httpx.get(u, timeout=6.0, follow_redirects=False)
+        except Exception as exc:
+            raise HTTPException(status_code=502, detail=f"thumbnail fetch failed: {exc}") from exc
+        kind = response.headers.get("content-type", "").split(";")[0].strip().lower()
+        if response.status_code != 200 or not kind.startswith("image/"):
+            raise HTTPException(status_code=502, detail="that URL did not return an image")
+        body = response.content[:THUMB_MAX_BYTES]
+        if len(thumb_cache) > 400:
+            thumb_cache.clear()
+        thumb_cache[u] = (now + 86400, body, kind)
+        return Response(body, media_type=kind,
+                        headers={"Cache-Control": "public, max-age=86400"})
 
     @app.get("/api/health")
     def health() -> dict:
