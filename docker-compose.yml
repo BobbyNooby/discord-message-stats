@@ -1,0 +1,24 @@
+# Two services, one volume (spec §4.2, §14). The split exists so the Discord
+# token can live on the worker, which serves no HTTP: `api` runs without it.
+services:
+  api:
+    build: .
+    image: discord-scraper
+    command: ["discord-scraper", "serve", "--api", "--host", "0.0.0.0", "--port", "8000"]
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/data
+    restart: unless-stopped
+
+  worker:
+    build: .
+    image: discord-scraper
+    command: ["discord-scraper", "serve", "--worker"]
+    env_file:
+      - .env
+    volumes:
+      - ./data:/data
+    restart: unless-stopped
+    depends_on:
+      - api
