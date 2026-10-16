@@ -30,11 +30,6 @@ function Dashboard() {
   const recent = useRecent(bootstrap.isSuccess);
 
   const payload = bootstrap.data;
-  const [filters, dispatch] = useReducer(
-    filtersReducer,
-    payload ?? ({ authors: [] } as never),
-    (seed) => initialFilters(seed),
-  );
 
   if (bootstrap.isLoading) {
     return <main className="p-6 text-sm text-[var(--color-muted)]">Loading…</main>;
@@ -50,6 +45,25 @@ function Dashboard() {
     );
   }
 
+  // Mounted only once the payload exists: the reducer seeds `active` from the
+  // author list, and seeding it from a placeholder left every chip reading
+  // "off" while the charts still drew everybody.
+  return (
+    <DashboardBody payload={payload} banner={health.data?.banner ?? null}
+                   recent={recent.data} />
+  );
+}
+
+function DashboardBody({
+  payload,
+  banner,
+  recent,
+}: {
+  payload: NonNullable<ReturnType<typeof useBootstrap>["data"]>;
+  banner: "stale" | "token_dead" | null;
+  recent?: { messages: { author: string; created_at: string; body: string }[]; truncated?: boolean };
+}) {
+  const [filters, dispatch] = useReducer(filtersReducer, payload, (seed) => initialFilters(seed));
   const years = [...new Set(payload.days.map((day) => Number(day.slice(0, 4))))].sort();
 
   return (
@@ -70,12 +84,8 @@ function Dashboard() {
         </>
       }
     >
-      <HealthBanner
-        banner={health.data?.banner ?? null}
-        stale={payload.meta.stale}
-        staleAt={payload.meta.computed_at}
-      />
-      <RecentStrip messages={recent.data?.messages ?? []} truncated={recent.data?.truncated} />
+      <HealthBanner banner={banner} stale={payload.meta.stale} staleAt={payload.meta.computed_at} />
+      <RecentStrip messages={recent?.messages ?? []} truncated={recent?.truncated} />
       {/* Six sections in the spec's order; the calendar sits inside Time &
           rhythm where §11.1 puts it. */}
       <OverviewSection payload={payload} filters={filters} />
