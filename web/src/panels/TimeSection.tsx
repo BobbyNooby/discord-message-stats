@@ -33,7 +33,7 @@ export function TimeSection({
         <Activity payload={payload} filters={filters} />
         <Cumulative payload={payload} filters={filters} />
         <Conversational payload={payload} filters={filters} />
-        {calendar}
+        <div className="lg:col-span-2 xl:col-span-3">{calendar}</div>
         <Heat payload={payload} filters={filters} />
         <TimeOfDay payload={payload} filters={filters} />
         <Season payload={payload} filters={filters} />
