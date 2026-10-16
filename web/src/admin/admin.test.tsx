@@ -1,10 +1,12 @@
 /**
- * The three behaviours §11.6 turns on, driven through the real route:
+ * The behaviours §11.6 turns on, driven through the real route:
  *
  * 1. "Save only" and "Save & recalculate" are different actions — the fake
  *    fetch records which endpoint each one hits;
  * 2. a 409 from the upload is "wait for the running job", not a failure;
- * 3. a rollup family that is stale is shown as stale.
+ * 3. a rollup family that is stale is shown as stale;
+ * 4. every write an admin makes — an include toggle, a merge, revoke-all, the
+ *    cron switch — really goes to the API and marks the cache stale.
  *
  * The fetch stub returns the exact shapes from `src/discord_scraper/api/admin.py`.
  */
@@ -23,6 +25,8 @@ const STATUS: AdminStatus = {
   channel_id: "c1",
   timezone: "Asia/Kuala_Lumpur",
   cache_stale: false,
+  database: { size_bytes: 5242880, path: "/data/messages.db" },
+  admin: { discord_id: "4242" },
   config_hash: "abc123def4567890",
   rollups: {
     activity: { rows: 120, stale: true, computed_at: "2026-10-14T20:00:00+00:00" },
@@ -53,6 +57,8 @@ const CONFIG: AdminConfig = {
     app_name: "Discord Scraper",
     count_types: ["default"],
     exclude_bots: true,
+    cron_enabled: true,
+    cron_hours: 6,
   },
   overridden: ["timezone"],
 };
@@ -71,10 +77,10 @@ const PAYLOAD = {
   identities: [{ canonical: "1", members: ["1", "2"] }],
 } as unknown as Payload;
 
-type Call = { url: string; method: string };
+type Call = { url: string; method: string; body?: unknown };
 
 let calls: Call[];
-let handlers: Record<string, () => Response>;
+let handlers: Record<string, (init?: RequestInit) => Response>;
 
 function response(status: number, body?: unknown): Response {
   return {
@@ -83,6 +89,11 @@ function response(status: number, body?: unknown): Response {
     statusText: status === 409 ? "Conflict" : "OK",
     json: async () => body,
   } as unknown as Response;
+}
+
+function bodyOf(init?: RequestInit): Record<string, unknown> | undefined {
+  if (typeof init?.body !== "string") return undefined;
+  return JSON.parse(init.body) as Record<string, unknown>;
 }
 
 function key(method: string, url: string): string {
@@ -96,6 +107,11 @@ beforeEach(() => {
     "GET /api/admin/config": () => response(200, CONFIG),
     "GET /api/bootstrap": () => response(200, PAYLOAD),
     "PUT /api/admin/config": () => response(200, CONFIG),
+    "PUT /api/admin/inclusions": (init) =>
+      response(200, { included: bodyOf(init)?.included ?? {}, cache_stale: true }),
+    "PUT /api/admin/identity": () =>
+      response(200, { merges: [{ canonical: "1", accounts: ["1", "2", "3"] }], cache_stale: true }),
+    "POST /api/admin/sessions/revoke-all": () => response(200, { revoked: 3 }),
     "POST /api/admin/recalculate": () =>
       response(202, { id: 7, channel_id: "c1", kind: "rebuild_rollups", status: "queued" }),
     "GET /api/admin/jobs": () => response(200, { jobs: [] }),
@@ -105,10 +121,10 @@ beforeEach(() => {
     vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
       const method = (init?.method ?? "GET").toUpperCase();
-      calls.push({ url, method });
+      calls.push({ url, method, body: bodyOf(init) });
       const handler = handlers[key(method, url)];
       if (!handler) throw new Error(`unexpected request: ${method} ${url}`);
-      return handler();
+      return handler(init);
     }),
   );
 });
@@ -130,6 +146,9 @@ function renderAdmin() {
 
 const recorded = (method: string, url: string) =>
   calls.some((call) => call.method === method && call.url === url);
+
+const recordedCall = (method: string, url: string) =>
+  calls.find((call) => call.method === method && call.url === url);
 
 describe("<Admin>", () => {
   it("Save only writes the config without enqueueing a rebuild, and still marks the cache stale", async () => {
@@ -198,5 +217,98 @@ describe("<Admin>", () => {
 
     expect(await screen.findByText("2 accounts")).toBeInTheDocument();
     expect(screen.getByText(/applied at build time/i)).toBeInTheDocument();
+  });
+
+  it("writes an include toggle through the API and marks the cache stale", async () => {
+    const user = userEvent.setup();
+    renderAdmin();
+
+    await user.click(await screen.findByRole("button", { name: "Who shows" }));
+    await user.click(await screen.findByRole("checkbox", { name: /joyt/ }));
+
+    await waitFor(() => expect(recorded("PUT", "/api/admin/inclusions")).toBe(true));
+    expect(recordedCall("PUT", "/api/admin/inclusions")?.body).toEqual({
+      included: { "1": false },
+    });
+    expect(await screen.findByText(/cache marked stale/i)).toBeInTheDocument();
+    expect(await screen.findByText(/include setting saved/i)).toBeInTheDocument();
+    expect(screen.queryByText(/^not saved:/i)).not.toBeInTheDocument();
+  });
+
+  it("says so and keeps the warning when the include write fails", async () => {
+    handlers["PUT /api/admin/inclusions"] = () =>
+      response(400, { detail: "no such identity" });
+
+    const user = userEvent.setup();
+    renderAdmin();
+
+    await user.click(await screen.findByRole("button", { name: "Who shows" }));
+    await user.click(await screen.findByRole("checkbox", { name: /joyt/ }));
+
+    const alarm = await screen.findByRole("alert");
+    expect(alarm).toHaveTextContent(/not saved: no such identity/i);
+    expect(screen.queryByText(/include setting saved/i)).not.toBeInTheDocument();
+  });
+
+  it("sends the whole merge set when an alt is added", async () => {
+    const user = userEvent.setup();
+    renderAdmin();
+
+    await user.click(await screen.findByRole("button", { name: "Identity merge" }));
+    await user.selectOptions(await screen.findByLabelText(/add an alt account to joyt/i), "3");
+    await user.click(screen.getByRole("button", { name: /add alt/i }));
+
+    await waitFor(() => expect(recorded("PUT", "/api/admin/identity")).toBe(true));
+    expect(recordedCall("PUT", "/api/admin/identity")?.body).toEqual({
+      merges: [{ canonical: "1", accounts: ["1", "2", "3"] }],
+    });
+    expect(await screen.findByText(/cache marked stale/i)).toBeInTheDocument();
+  });
+
+  it("surfaces a failed merge instead of quietly swallowing it", async () => {
+    handlers["PUT /api/admin/identity"] = () =>
+      response(400, { detail: "duplicate account in 1" });
+
+    const user = userEvent.setup();
+    renderAdmin();
+
+    await user.click(await screen.findByRole("button", { name: "Identity merge" }));
+    await user.selectOptions(await screen.findByLabelText(/add an alt account to joyt/i), "3");
+    await user.click(screen.getByRole("button", { name: /add alt/i }));
+
+    const alarm = await screen.findByRole("alert");
+    expect(alarm).toHaveTextContent(/not saved: duplicate account in 1/i);
+  });
+
+  it("revokes every other session and reports how many ended", async () => {
+    const user = userEvent.setup();
+    renderAdmin();
+
+    await user.click(await screen.findByRole("button", { name: "Access" }));
+    await user.click(await screen.findByRole("button", { name: /revoke all sessions/i }));
+
+    await waitFor(() => expect(recorded("POST", "/api/admin/sessions/revoke-all")).toBe(true));
+    expect(await screen.findByText(/3 sessions revoked/i)).toBeInTheDocument();
+    expect(screen.getByText(/you stay signed in/i)).toBeInTheDocument();
+  });
+
+  it("writes the cron switch through the config Save path", async () => {
+    const user = userEvent.setup();
+    renderAdmin();
+
+    await user.click(await screen.findByRole("button", { name: "Ingest" }));
+    const hours = await screen.findByLabelText(/interval in hours/i);
+    await user.clear(hours);
+    await user.type(hours, "12");
+    await user.click(screen.getByLabelText(/scheduled ingest/i));
+    await user.click(screen.getByRole("button", { name: "Save only" }));
+
+    await waitFor(() => expect(recorded("PUT", "/api/admin/config")).toBe(true));
+    expect(recordedCall("PUT", "/api/admin/config")?.body).toEqual({
+      cron_enabled: false,
+      cron_hours: 12,
+    });
+    expect(recorded("POST", "/api/admin/recalculate")).toBe(false);
+    expect(await screen.findByText(/cache marked stale/i)).toBeInTheDocument();
   });
 });

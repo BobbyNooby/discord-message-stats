@@ -159,9 +159,10 @@ export function DataSource({
         />
         <StatCard
           label="DB size"
-          value="not reported"
-          sub="the admin API exposes no database file size"
+          value={formatBytes(status.database.size_bytes)}
+          sub={status.database.path}
         />
+        
       </div>
 
       <section
