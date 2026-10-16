@@ -1,0 +1,86 @@
+import type { EChartsOption } from "echarts";
+
+import { EmptyState, Panel } from "../components/Panel";
+import { EChart } from "../lib/echart";
+import { DOW, TOOLTIP, clock, emptyLabel, fmt, heatGrid, type PanelProps } from "./timeAggregates";
+
+const HOURS = Array.from({ length: 24 }, (_, hour) => hour);
+
+/**
+ * When the chat comes alive — `drawHeat`, fed by `rollup_heat` rather than the
+ * calendar cells so it survives any time filter coarser than a day.
+ *
+ * The map is the mockup's: dark = quiet to light = busy, monotonically, so a
+ * busy hour can never render darker than a quiet one (§11.4's second finding).
+ */
+export function Heat({ payload, filters }: PanelProps) {
+  const heat = heatGrid(payload, filters);
+  const subtitle = `${fmt(heat.total)} messages · ${payload.tz.label} · busiest ${
+    DOW[heat.peakDow]
+  } ${clock(heat.peakHour)}`;
+
+  if (!heat.total) {
+    return (
+      <Panel title="When the chat comes alive" subtitle={subtitle} className="lg:col-span-2 xl:col-span-3">
+        <EmptyState>{emptyLabel(payload, filters)}</EmptyState>
+      </Panel>
+    );
+  }
+
+  const data: [number, number, number][] = [];
+  for (let dow = 0; dow < 7; dow += 1) {
+    for (let hour = 0; hour < 24; hour += 1) data.push([hour, dow, heat.grid[dow * 24 + hour]]);
+  }
+
+  const option: EChartsOption = {
+    tooltip: {
+      ...TOOLTIP,
+      formatter: (p: any) =>
+        `${DOW[p.value[1]]} ${clock(p.value[0])} — <b>${fmt(p.value[2])}</b> msgs`,
+    },
+    grid: { left: 40, right: 10, top: 8, bottom: 52 },
+    xAxis: {
+      type: "category",
+      data: HOURS,
+      axisLabel: { color: "#8a93a8", fontSize: 10, interval: 2 },
+      axisLine: { lineStyle: { color: "#2b3244" } },
+      axisTick: { show: false },
+    },
+    yAxis: {
+      type: "category",
+      data: [...DOW],
+      axisLabel: { color: "#8a93a8", fontSize: 10.5, interval: 0 },
+      axisLine: { lineStyle: { color: "#2b3244" } },
+      axisTick: { show: false },
+    },
+    visualMap: {
+      min: 0,
+      max: heat.max || 1,
+      orient: "horizontal",
+      left: "center",
+      bottom: 2,
+      itemWidth: 120,
+      itemHeight: 10,
+      textStyle: { color: "#8a93a8", fontSize: 10 },
+      inRange: { color: ["#141a2e", "#28386e", "#4155c9", "#7b86f5", "#c3c8fb"] },
+    },
+    series: [
+      {
+        type: "heatmap",
+        data,
+        progressive: 2000,
+        itemStyle: { borderColor: "#11141c", borderWidth: 1 },
+      },
+    ],
+  };
+
+  return (
+    <Panel
+      title="When the chat comes alive"
+      subtitle={subtitle}
+      className="lg:col-span-2 xl:col-span-3"
+    >
+      <EChart option={option} height={280} />
+    </Panel>
+  );
+}

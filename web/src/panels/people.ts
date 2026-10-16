@@ -3,7 +3,7 @@
  * components so the numbers can be tested without a DOM (§11.2: every panel is
  * a pure function of `(payload, filters)`).
  *
- * Two of the four rollups behind these panels — `rollup_reply`, `rollup_response`,
+ * Four of the rollups behind these panels — `rollup_reply`, `rollup_response`,
  * `rollup_starter`, `rollup_edit_speed` — have no date column. They are read
  * through `activeEdges`/`globalTotals`, which honour the author filter and
  * deliberately ignore the time filter, and the panels that use them wear a
@@ -13,6 +13,7 @@
 import type { EChartsOption } from "echarts";
 
 import {
+  C_AUTHOR,
   C_CHARS,
   C_DAY,
   C_EDITS,
@@ -59,7 +60,8 @@ export const TOOLTIP = {
 
 export type Row = { index: number; name: string; value: number; n: number };
 
-function authorName(payload: Payload, index: number): string {
+/** An author's display name, standing in for the index if a stale payload names one we do not have. */
+export function authorName(payload: Payload, index: number): string {
   return payload.authors[index]?.name ?? `#${index}`;
 }
 
@@ -169,7 +171,7 @@ export function matrixData(payload: Payload, filters: Filters): Matrix {
   for (let row = 0; row < k; row++) {
     for (let column = 0; column < k; column++) data.push([column, row, grid[row][column]]);
   }
-  return { names: visible.map((index) => payload.authors[index].name), data, k, total };
+  return { names: visible.map((index) => authorName(payload, index)), data, k, total };
 }
 
 /* ---------- reply balance ---------- */
@@ -249,9 +251,9 @@ export type RadarData = {
 
 /**
  * Six traits, each normalised to 100 against the busiest author on that trait so
- * a long message and a long reply wait cannot share an axis meaning. Volume,
- * length, reply rate and media rate come from the filtered cells; "starts conv"
- * and "vocabulary" have no date dimension and are read whole.
+ * messages, characters and seconds can share one axis. Volume, length, reply rate
+ * and media rate come from the filtered cells; "starts conv" and "vocabulary"
+ * have no date dimension and are read whole.
  */
 export function radarData(payload: Payload, filters: Filters): RadarData {
   const totals = selectAuthors(payload, filters);
@@ -423,7 +425,7 @@ export function hbarOption(rows: Row[], options: BarOptions = {}): EChartsOption
   return {
     tooltip: {
       ...TOOLTIP,
-      formatter: (params: { dataIndex: number }) => {
+      formatter: (params: any) => {
         const row = sorted[params.dataIndex];
         return options.tooltip ? options.tooltip(row) : `${row.name}<br><b>${axis(row.value)}</b>`;
       },
@@ -454,7 +456,7 @@ export function hbarOption(rows: Row[], options: BarOptions = {}): EChartsOption
           position: "right",
           color: AXIS_TEXT,
           fontSize: 10,
-          formatter: (params: { dataIndex: number }) => label(sorted[params.dataIndex]),
+          formatter: (params: any) => label(sorted[params.dataIndex]),
         },
       },
     ],

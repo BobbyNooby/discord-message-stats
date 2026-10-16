@@ -60,7 +60,7 @@ export function ShareOfVoice({ payload, filters }: PanelProps) {
           formatter: (p: any) => (p.percent >= 3 ? `${p.percent.toFixed(0)}%` : ""),
         },
         labelLine: { lineStyle: { color: "#3a4257" } },
-        emphasis: { label: { color: "#e7eaf2", fontSize: 12, fontWeight: "600" } },
+        emphasis: { label: { color: "#e7eaf2", fontSize: 12, fontWeight: 600 } },
         data: slices.map((slice) => ({
           name: slice.name,
           value: slice.value,

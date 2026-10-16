@@ -4,7 +4,7 @@ import { C_DAY, C_MSGS } from "../api/types";
 import { EmptyState, Panel } from "../components/Panel";
 import { selectVisibleCells, yearOf } from "../filters/selectors";
 import { EChart } from "../lib/echart";
-import { AXIS, TOOLTIP, emptyLabel, fmt, kfmt, type PanelProps } from "./timeAggregates";
+import { AXIS, TOOLTIP, emptyLabel, fmt, kfmt, yearCountLabel, type PanelProps } from "./timeAggregates";
 
 /**
  * Messages per year — `drawYearBar`. Counts, not shares: this is the same data
@@ -75,7 +75,7 @@ export function MessagesPerYear({ payload, filters }: PanelProps) {
   return (
     <Panel
       title="Messages per year"
-      subtitle={`${fmt(total)} messages · ${years.length} years · peak ${peakYear}`}
+      subtitle={`${fmt(total)} messages · ${yearCountLabel(years.length)} · peak ${peakYear}`}
       className="lg:col-span-2"
     >
       <EChart option={option} height={220} />

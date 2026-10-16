@@ -22,7 +22,7 @@ export function TextVsMedia({ payload, filters }: MediaPanelProps) {
   return (
     <Panel
       title={TITLE}
-      subtitle={`share carrying an attachment · ${fmt(media)} of ${fmt(total)} messages (${pctOf(
+      subtitle={`share carrying an attachment or embed · ${fmt(media)} of ${fmt(total)} messages (${pctOf(
         media,
         total,
       )}%)`}

@@ -11,6 +11,8 @@ import { EChart } from "../lib/echart";
  * The 500-word slice in the payload is searchable in the browser, so typing
  * never touches the network (§9.1). The full server-side index is 54,570 words,
  * so a query the slice cannot answer falls back to `useWords` — and only then.
+ * That endpoint answers for the exact word rather than a list of matches, so its
+ * per-author breakdown is shown in place of the bars.
  */
 
 /** How many bars the panel has room for, as in the mockup. */
@@ -41,12 +43,12 @@ export function WordIndex({ words, selected, onSelect }: WordIndexProps) {
     () => (needle ? words.filter(([word]) => word.includes(needle)) : words),
     [words, needle],
   );
-  const shown = matches.slice(0, INDEX_ROWS);
+  const shown = useMemo(() => matches.slice(0, INDEX_ROWS), [matches]);
 
   // The one place a word search may leave the browser: nothing in the slice matched.
   const needsServer = needle.length > 0 && matches.length === 0;
   const remote = useWords(query, needsServer);
-  const remoteRows = needsServer ? (remote.data ?? []) : [];
+  const found = needsServer ? remote.data : undefined;
 
   const cursor = Math.min(highlight, Math.max(shown.length - 1, 0));
   const tag = needle
@@ -54,7 +56,9 @@ export function WordIndex({ words, selected, onSelect }: WordIndexProps) {
       ? `${fmt(matches.length)} ${matches.length === 1 ? "match" : "matches"}`
       : remote.isFetching
         ? "searching the full index…"
-        : `${fmt(remoteRows.length)} on the server`
+        : found
+          ? `${fmt(found.total)} uses in the full index`
+          : "not in the full index"
     : `top ${fmt(shown.length)} of ${fmt(words.length)} indexed`;
 
   const option = useMemo<EChartsOption>(
@@ -121,7 +125,6 @@ export function WordIndex({ words, selected, onSelect }: WordIndexProps) {
   const selectHighlighted = () => {
     const local = shown[cursor];
     if (local) pick.current(local[0]);
-    else if (remoteRows[0]) pick.current(remoteRows[0].word);
   };
 
   return (
@@ -162,29 +165,31 @@ export function WordIndex({ words, selected, onSelect }: WordIndexProps) {
 
       {shown.length ? (
         <EChart option={option} height={288} onReady={handleReady} />
-      ) : needle ? (
-        remoteRows.length ? (
-          <ul className="max-h-[288px] overflow-auto" aria-label="Words matching your search">
-            {remoteRows.map((row) => (
-              <li key={row.word}>
-                <button
-                  type="button"
-                  onClick={() => pick.current(row.word)}
-                  className="flex w-full items-baseline justify-between gap-2 rounded px-2 py-1 text-left text-xs hover:bg-[var(--color-surface-2)]"
-                >
-                  <span className="text-[var(--color-text)]">{row.word}</span>
-                  <span className="text-[var(--color-muted)]">{fmt(row.total)} uses</span>
-                </button>
+      ) : !needle ? (
+        <EmptyState>No indexed words in this payload.</EmptyState>
+      ) : remote.isFetching ? (
+        <EmptyState>Searching the full word index…</EmptyState>
+      ) : found && found.total > 0 ? (
+        // Outside the shipped 500: the server answers for the exact word, and the
+        // breakdown is shown here because the embedded slice has no row for it.
+        <div>
+          <p className="mb-2 text-xs text-[var(--color-muted)]">
+            “{found.word}” is outside the embedded slice · {fmt(found.total)} uses in the full index
+          </p>
+          <ul aria-label={`Who says “${found.word}”`} className="max-h-[248px] overflow-auto">
+            {found.authors.map((author) => (
+              <li
+                key={author.id}
+                className="flex items-baseline justify-between gap-2 border-b border-[var(--color-line)] px-2 py-1 text-xs last:border-b-0"
+              >
+                <span className="text-[var(--color-text)]">{author.name}</span>
+                <span className="text-[var(--color-muted)]">{fmt(author.count)} uses</span>
               </li>
             ))}
           </ul>
-        ) : (
-          <EmptyState>
-            {remote.isFetching ? "Searching the full word index…" : `Nothing indexed matches “${query.trim()}”.`}
-          </EmptyState>
-        )
+        </div>
       ) : (
-        <EmptyState>No indexed words in this payload.</EmptyState>
+        <EmptyState>Nothing in the full index matches “{query.trim()}”.</EmptyState>
       )}
     </Panel>
   );
