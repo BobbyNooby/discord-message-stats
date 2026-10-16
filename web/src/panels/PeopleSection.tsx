@@ -1,3 +1,4 @@
+import { CARD_COLUMNS } from "../components/Panel";
 import type { Payload } from "../api/types";
 import type { Filters } from "../filters/reducer";
 import { AuthorRadar } from "./AuthorRadar";
@@ -18,7 +19,7 @@ export function PeopleSection({ payload, filters }: { payload: Payload; filters:
       <h2 id="sec-people" className="text-base font-semibold text-[var(--color-text)]">
         People
       </h2>
-      <div className="grid gap-4 xl:grid-cols-2">
+      <div className={CARD_COLUMNS}>
         <Leaderboard payload={payload} filters={filters} />
         <ResponseTime payload={payload} filters={filters} />
         <ReplyNetwork payload={payload} filters={filters} />

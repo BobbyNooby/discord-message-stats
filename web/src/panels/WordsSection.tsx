@@ -1,5 +1,7 @@
 import type { Dispatch } from "react";
 
+import { CARD_COLUMNS } from "../components/Panel";
+
 import type { Payload } from "../api/types";
 import type { Action, Filters } from "../filters/reducer";
 import { WhoSaysIt } from "./WhoSaysIt";
@@ -18,7 +20,7 @@ export function WordsSection({
   dispatch: Dispatch<Action>;
 }) {
   return (
-    <section aria-labelledby="sec-words" className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
+    <section aria-labelledby="sec-words" className={CARD_COLUMNS}>
       <h2 id="sec-words" className="text-base font-semibold text-[var(--color-text)] lg:col-span-2 xl:col-span-3">
         Words
       </h2>

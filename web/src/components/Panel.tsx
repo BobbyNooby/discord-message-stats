@@ -1,5 +1,14 @@
 import type { ReactNode } from "react";
 
+/**
+ * Sections lay their cards out in columns, not grid rows.
+ *
+ * A grid row makes every card as tall as the tallest in it, so a two-series bar
+ * chart sat in a box sized for a calendar — dead space under one card, a clipped
+ * chart in another. Columns let each card be exactly as tall as its own content.
+ */
+export const CARD_COLUMNS = "columns-1 gap-4 lg:columns-2 xl:columns-3";
+
 /** The card + header + subtitle + badge wrapper every chart sits in (§11.0). */
 export function Panel({
   title,
@@ -16,7 +25,7 @@ export function Panel({
 }) {
   return (
     <section
-      className={`rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] p-4 ${className ?? ""}`}
+      className={`mb-4 break-inside-avoid rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] p-4 ${className ?? ""}`}
     >
       <header className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
         <h2 className="text-sm font-semibold tracking-wide text-[var(--color-text)]">{title}</h2>

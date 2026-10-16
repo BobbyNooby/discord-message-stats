@@ -1,3 +1,4 @@
+import { CARD_COLUMNS } from "../components/Panel";
 import type { Payload } from "../api/types";
 import type { Filters } from "../filters/reducer";
 import { EmbedTypes } from "./EmbedTypes";
@@ -8,7 +9,7 @@ import { TopLinks } from "./TopLinks";
 /** The Links & embeds section (§11.1) in the mockup's order: w2, 1, w2, 1. */
 export function LinksSection({ payload, filters }: { payload: Payload; filters: Filters }) {
   return (
-    <section aria-labelledby="sec-links" className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
+    <section aria-labelledby="sec-links" className={CARD_COLUMNS}>
       <h2 id="sec-links" className="text-base font-semibold text-[var(--color-text)] lg:col-span-2 xl:col-span-3">
         Links &amp; embeds
       </h2>

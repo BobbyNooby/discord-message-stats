@@ -4,7 +4,7 @@ import type { EChartsOption } from "echarts";
 
 import type { Payload } from "../api/types";
 import type { Filters } from "../filters/reducer";
-import { EmptyState, GlobalOnlyBadge, Panel } from "../components/Panel";
+import { EmptyState, GlobalOnlyBadge, Panel, CARD_COLUMNS } from "../components/Panel";
 import { hasTimeFilter } from "../filters/selectors";
 import { EChart } from "../lib/echart";
 
@@ -130,7 +130,15 @@ export function RichMedia({ payload, filters }: { payload: Payload; filters: Fil
         .filter((row, index, all) => all.findIndex((other) => other[0] === row[0]) === index)
         .sort((a, b) => b[6] - a[6])
         .slice(0, 12);
-  const providers = payload.providers ?? [];
+  // Raw provider totals, with Discord's unnamed bucket split by host: an
+  // `cdn.discordapp.com` attachment is somebody's own upload, not a mystery.
+  const providers: [string, number][] = Object.values(
+    (payload.providers ?? []).reduce<Record<string, [string, number]>>((acc, [name, count]) => {
+      const key = providerLabel(name, name);
+      acc[key] = [key, (acc[key]?.[1] ?? 0) + count];
+      return acc;
+    }, {}),
+  ).sort((a, b) => b[1] - a[1]);
 
   const option: EChartsOption = {
     // (the provider bar chart follows)
@@ -148,6 +156,8 @@ export function RichMedia({ payload, filters }: { payload: Payload; filters: Fil
     },
     yAxis: {
       type: "category",
+      // The chart reads raw provider names, which is where the internal
+      // 'unprovidenced' sentinel kept leaking to the screen.
       data: providers.slice(0, 12).map(([name]) => name).reverse(),
       axisLabel: { color: "#8a93a8", fontSize: 10.5, interval: 0, width: 96, overflow: "truncate" },
       axisLine: { lineStyle: { color: "#2b3244" } },
@@ -164,8 +174,8 @@ export function RichMedia({ payload, filters }: { payload: Payload; filters: Fil
   };
 
   return (
-    <div className="grid gap-4 xl:grid-cols-3">
-      <div className="xl:col-span-2">
+    <div className={CARD_COLUMNS}>
+      <div>
         <Panel
           title="Most reposted"
           subtitle={`the same link posted again and again · ${fmt(rows.length)} shown`}

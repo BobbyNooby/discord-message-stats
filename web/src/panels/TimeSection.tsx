@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 
+import { CARD_COLUMNS } from "../components/Panel";
+
 import { Activity } from "./Activity";
 import { Conversational } from "./Conversational";
 import { Cumulative } from "./Cumulative";
@@ -29,7 +31,7 @@ export function TimeSection({
       >
         Time &amp; rhythm
       </h2>
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
+      <div className={CARD_COLUMNS}>
         <Activity payload={payload} filters={filters} />
         <Cumulative payload={payload} filters={filters} />
         <Conversational payload={payload} filters={filters} />

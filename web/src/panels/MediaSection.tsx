@@ -1,3 +1,4 @@
+import { CARD_COLUMNS } from "../components/Panel";
 import { Attachments } from "./Attachments";
 import { ChatHealth } from "./ChatHealth";
 import { Emoji } from "./Emoji";
@@ -18,7 +19,7 @@ export function MediaSection({ payload, filters }: MediaPanelProps) {
       <h2 id="sec-media" className="text-base font-semibold text-[var(--color-text)]">
         Media &amp; reactions
       </h2>
-      <div className="grid gap-4 xl:grid-cols-2">
+      <div className={CARD_COLUMNS}>
         <TextVsMedia payload={payload} filters={filters} />
         <RepliesVsStandalone payload={payload} filters={filters} />
         <MessageTypes payload={payload} filters={filters} />
