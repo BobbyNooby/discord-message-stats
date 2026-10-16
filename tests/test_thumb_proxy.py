@@ -71,3 +71,18 @@ def test_thumbnails_need_a_session(db_cfg):
     cfg, path = db_cfg
     client = TestClient(create_app(cfg, path))
     assert client.get("/api/thumb", params={"u": "https://i.ytimg.com/vi/x/hq.jpg"}).status_code == 401
+
+
+def test_an_oversized_image_is_refused_not_truncated(client, monkeypatch):
+    """Half a GIF renders as a broken image, which is worse than none."""
+    class Huge:
+        status_code = 200
+        headers = {"content-type": "image/gif"}
+        content = b"G" * (10 * 1024 * 1024 + 1)
+
+    import httpx
+
+    monkeypatch.setattr(httpx, "get", lambda *a, **k: Huge())
+    response = client.get("/api/thumb", params={"u": "https://media.tenor.com/big.gif"})
+    assert response.status_code == 502
+    assert "larger than" in response.json()["detail"]

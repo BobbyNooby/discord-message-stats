@@ -53,6 +53,9 @@ export type Payload = {
   linkCells: [number, number, number, number][];
   topLinks: [string, number][];
   providers: [string, number][];
+  /** [url, provider, kind, title, thumbnail, uses], most reposted first. */
+  topMedia?: [string, string, string, string, string, number][];
+  mediaThumbnails?: string;
   embedTypes: [string, number][];
   linkStats: { msgs: number; domains: number; both: number };
   emoji: [string, number][];

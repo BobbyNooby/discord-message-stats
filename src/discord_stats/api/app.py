@@ -125,7 +125,9 @@ def create_app(
         "twimg.com", "discordapp.net", "discordapp.com",
         "akamaihd.net", "scdn.co", "streamable.com", "imgur.com", "redd.it", "reddit.com",
     )
-    THUMB_MAX_BYTES = 2 * 1024 * 1024
+    # Tenor GIFs run to several MB. Serving a truncated one draws half an
+    # image, so anything over the cap is refused rather than cut.
+    THUMB_MAX_BYTES = 10 * 1024 * 1024
     thumb_cache: dict[str, tuple[float, bytes, str]] = {}
 
     def _thumb_allowed(url: str) -> bool:
@@ -161,7 +163,12 @@ def create_app(
         kind = response.headers.get("content-type", "").split(";")[0].strip().lower()
         if response.status_code != 200 or not kind.startswith("image/"):
             raise HTTPException(status_code=502, detail="that URL did not return an image")
-        body = response.content[:THUMB_MAX_BYTES]
+        body = response.content
+        if len(body) > THUMB_MAX_BYTES:
+            raise HTTPException(
+                status_code=502,
+                detail=f"that image is larger than {THUMB_MAX_BYTES // 1024 // 1024} MB",
+            )
         if len(thumb_cache) > 400:
             thumb_cache.clear()
         thumb_cache[u] = (now + 86400, body, kind)
