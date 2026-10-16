@@ -1,5 +1,5 @@
 import * as echarts from "echarts";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { EChartsOption } from "echarts";
 
 /**
@@ -11,22 +11,36 @@ import type { EChartsOption } from "echarts";
  * disappears, and dispose on unmount or the instance leaks its canvas and its
  * resize listener. A ResizeObserver keeps it sized when the sidebar collapses
  * or the window changes.
+ *
+ * The canvas is a picture of the panel it sits in, so `role="img"` gets a name
+ * from that panel's heading — a chart a screen reader can only announce as
+ * "image" is a chart nobody can tell apart from its neighbours.
  */
 export function EChart({
   option,
   height,
   onReady,
   className,
+  "aria-label": ariaLabel,
 }: {
   option: EChartsOption;
   height?: number | string;
   onReady?: (chart: echarts.ECharts) => void;
   className?: string;
+  "aria-label"?: string;
 }) {
   const container = useRef<HTMLDivElement>(null);
   const chart = useRef<echarts.ECharts | null>(null);
   const ready = useRef(onReady);
   ready.current = onReady;
+  const [label, setLabel] = useState(ariaLabel ?? "chart");
+
+  useEffect(() => {
+    // The heading is only reachable once the node is in the document, so this
+    // runs on mount rather than during render.
+    const heading = container.current?.closest("section")?.querySelector("h2")?.textContent;
+    setLabel(heading?.trim() || ariaLabel || "chart");
+  }, [ariaLabel]);
 
   useEffect(() => {
     if (!container.current) return;
@@ -53,6 +67,7 @@ export function EChart({
       className={className}
       style={{ width: "100%", height: height ?? 260 }}
       role="img"
+      aria-label={label}
     />
   );
 }

@@ -1,4 +1,4 @@
-import { render } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const instance = {
@@ -40,5 +40,22 @@ describe("<EChart>", () => {
     instance.setOption.mockClear();
     rerender(<EChart option={{ series: [] }} />);
     expect(instance.setOption).toHaveBeenCalledWith(expect.anything(), true);
+  });
+
+  it("names the chart after the heading of the panel it sits in", () => {
+    render(
+      <section>
+        <h2>Share of voice</h2>
+        <EChart option={{ series: [] }} />
+      </section>,
+    );
+
+    expect(screen.getByRole("img", { name: "Share of voice" })).toBeInTheDocument();
+  });
+
+  it("falls back to a name when there is no heading to borrow", () => {
+    render(<EChart option={{ series: [] }} />);
+
+    expect(screen.getByRole("img", { name: "chart" })).toBeInTheDocument();
   });
 });
