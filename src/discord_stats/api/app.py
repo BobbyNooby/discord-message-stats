@@ -125,9 +125,12 @@ def create_app(
         "twimg.com", "discordapp.net", "discordapp.com",
         "akamaihd.net", "scdn.co", "streamable.com", "imgur.com", "redd.it", "reddit.com",
     )
-    # Tenor GIFs run to several MB. Serving a truncated one draws half an
-    # image, so anything over the cap is refused rather than cut.
-    THUMB_MAX_BYTES = 10 * 1024 * 1024
+    # Streamed, not buffered: the body is read in chunks and abandoned the moment
+    # it passes the cap, so a large asset costs a bounded amount of memory rather
+    # than its own size. That is what makes a generous cap safe — and a cap is
+    # still needed, because this endpoint fetches a URL from the query string
+    # (the largest thumbnail in the reference data is 36.8 MB).
+    THUMB_MAX_BYTES = 25 * 1024 * 1024
     thumb_cache: dict[str, tuple[float, bytes, str]] = {}
 
     def _thumb_allowed(url: str) -> bool:
@@ -154,21 +157,27 @@ def create_app(
         if hit and hit[0] > now:
             return Response(hit[1], media_type=hit[2],
                             headers={"Cache-Control": "public, max-age=86400"})
+        too_big = f"that image is larger than {THUMB_MAX_BYTES // 1024 // 1024} MB"
         try:
             # Redirects are not followed: a redirect is how an allowlisted host
             # would be used to reach one that is not.
-            response = httpx.get(u, timeout=6.0, follow_redirects=False)
+            with httpx.stream("GET", u, timeout=10.0, follow_redirects=False) as response:
+                kind = response.headers.get("content-type", "").split(";")[0].strip().lower()
+                if response.status_code != 200 or not kind.startswith("image/"):
+                    raise HTTPException(status_code=502, detail="that URL did not return an image")
+                declared = response.headers.get("content-length", "")
+                if declared.isdigit() and int(declared) > THUMB_MAX_BYTES:
+                    raise HTTPException(status_code=502, detail=too_big)
+                body = bytearray()
+                for chunk in response.iter_bytes():
+                    body += chunk
+                    if len(body) > THUMB_MAX_BYTES:
+                        raise HTTPException(status_code=502, detail=too_big)
+        except HTTPException:
+            raise
         except Exception as exc:
             raise HTTPException(status_code=502, detail=f"thumbnail fetch failed: {exc}") from exc
-        kind = response.headers.get("content-type", "").split(";")[0].strip().lower()
-        if response.status_code != 200 or not kind.startswith("image/"):
-            raise HTTPException(status_code=502, detail="that URL did not return an image")
-        body = response.content
-        if len(body) > THUMB_MAX_BYTES:
-            raise HTTPException(
-                status_code=502,
-                detail=f"that image is larger than {THUMB_MAX_BYTES // 1024 // 1024} MB",
-            )
+        body = bytes(body)
         if len(thumb_cache) > 400:
             thumb_cache.clear()
         thumb_cache[u] = (now + 86400, body, kind)
@@ -371,6 +380,26 @@ def create_app(
         try:
             effective = admin.effective_for(conn, cfg)
             return recent(conn, effective)
+        finally:
+            conn.close()
+
+    @app.get("/api/media")
+    def media(provider: str | None = Query(None, max_length=64),
+              limit: int = Query(12, ge=1, le=100),
+              _level: Level = Depends(require_viewer)) -> dict:
+        """Top reposted media, optionally for one provider.
+
+        The dashboard's payload ranks everything together, where a GIF beats a
+        video link every time; this is how "top YouTube links" becomes visible.
+        """
+        conn = connection()
+        try:
+            _require_rollups(conn)
+            effective = admin.effective_for(conn, cfg)
+            return {
+                "provider": provider,
+                "items": query.top_media(conn, effective.channel_id, limit, provider=provider),
+            }
         finally:
             conn.close()
 
