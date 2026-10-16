@@ -163,7 +163,12 @@ def create_app(
             # would be used to reach one that is not.
             with httpx.stream("GET", u, timeout=10.0, follow_redirects=False) as response:
                 kind = response.headers.get("content-type", "").split(";")[0].strip().lower()
-                if response.status_code != 200 or not kind.startswith("image/"):
+                # mp4 as well as images: the playable asset of a gifv is an mp4,
+                # and routing it through here is what keeps Tenor and Klipy out
+                # of the viewer's browser.
+                if response.status_code != 200 or not (
+                    kind.startswith("image/") or kind in ("video/mp4", "video/webm")
+                ):
                     raise HTTPException(status_code=502, detail="that URL did not return an image")
                 declared = response.headers.get("content-length", "")
                 if declared.isdigit() and int(declared) > THUMB_MAX_BYTES:

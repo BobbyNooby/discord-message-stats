@@ -15,6 +15,8 @@ export const C_EDITS = 6;
 
 export type Cell = [number, number, number, number, number, number, number];
 
+export type MediaRow = [string, string, string, string, string, string, number];
+
 export type Payload = {
   meta: {
     total: number;
@@ -53,8 +55,9 @@ export type Payload = {
   linkCells: [number, number, number, number][];
   topLinks: [string, number][];
   providers: [string, number][];
-  /** [url, provider, kind, title, thumbnail, uses], most reposted first. */
-  topMedia?: [string, string, string, string, string, number][];
+  /** [url, provider, kind, title, thumbnail, animated, uses], most reposted first. */
+  topMedia?: MediaRow[];
+  mediaByProvider?: Record<string, MediaRow[]>;
   mediaThumbnails?: string;
   embedTypes: [string, number][];
   linkStats: { msgs: number; domains: number; both: number };
