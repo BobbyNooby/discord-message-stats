@@ -73,7 +73,7 @@ export function LinkDomains({ payload, filters }: { payload: Payload; filters: F
         yAxis: {
           type: "category",
           data: sorted.map(([domain]) => domain),
-          axisLabel: { color: "#8a93a8", fontSize: 10, width: 150, overflow: "truncate" },
+          axisLabel: { color: "#8a93a8", fontSize: 10, interval: 0, width: 150, overflow: "truncate" },
           axisLine: { lineStyle: { color: "#2b3244" } },
           axisTick: { show: false },
         },

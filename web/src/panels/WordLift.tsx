@@ -66,7 +66,7 @@ export function WordLift({ payload, filters }: { payload: Payload; filters: Filt
       xAxis: {
         type: "category",
         data: grid.names,
-        axisLabel: { color: "#8a93a8", fontSize: 9.5, rotate: 38 },
+        axisLabel: { color: "#8a93a8", fontSize: 9.5, rotate: 38, interval: 0 },
         axisLine: { lineStyle: { color: "#2b3244" } },
         axisTick: { show: false },
       },

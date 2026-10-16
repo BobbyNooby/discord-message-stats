@@ -56,7 +56,7 @@ export function TopLinks({ payload, filters }: { payload: Payload; filters: Filt
         yAxis: {
           type: "category",
           data: sorted.map(([link]) => link),
-          axisLabel: { color: "#8a93a8", fontSize: 10, width: 170, overflow: "truncate" },
+          axisLabel: { color: "#8a93a8", fontSize: 10, interval: 0, width: 170, overflow: "truncate" },
           axisLine: { lineStyle: { color: "#2b3244" } },
           axisTick: { show: false },
         },

@@ -80,14 +80,26 @@ export function WordIndex({ words, selected, onSelect }: WordIndexProps) {
         yAxis: {
           type: "category",
           data: rows.map(([word]) => word),
-          axisLabel: { color: "#8a93a8", fontSize: 10.5 },
+          // One label per bar, always: `interval: "auto"` hides every
+          // other word, which reads as a broken axis.
+          axisLabel: {
+            color: "#8a93a8",
+            fontSize: 10.5,
+            interval: 0,
+            width: 74,
+            overflow: "truncate",
+            // `triggerEvent` did not make axis labels clickable in ECharts 6
+            // (verified: three label clicks, no event), so the bar is the target
+            // and it fills the row.
+            triggerEvent: true,
+          },
           axisLine: { lineStyle: { color: "#2b3244" } },
           axisTick: { show: false },
         },
         series: [
           {
             type: "bar",
-            barWidth: "66%",
+            barWidth: "100%",   // a thumb needs the whole row, not 66% of it
             data: rows.map(([word, uses]) => ({
               value: uses,
               itemStyle: {
@@ -109,16 +121,35 @@ export function WordIndex({ words, selected, onSelect }: WordIndexProps) {
     [shown, selected, cursor],
   );
 
-  // ECharts is imperative: wire the click once, and always to the current callback.
+  // ECharts is imperative: wire the click once, and always to the current
+  // callback. The word is read from the same array that built the axis, by
+  // index — `params.name` is not reliably populated for bar data passed as
+  // objects, which is how clicking a bar silently did nothing.
   const pick = useRef(onSelect);
   pick.current = onSelect;
+  const axisWords = useRef<string[]>([]);
+  axisWords.current = shown
+    .slice()
+    .reverse()
+    .map(([word]) => word);
   const wired = useRef(false);
   const handleReady = useCallback((chart: ECharts) => {
     if (wired.current) return;
     wired.current = true;
     chart.on("click", (params: unknown) => {
-      const name = (params as { name?: string }).name;
-      if (name) pick.current(name);
+      const { componentType, dataIndex, name, value } = params as {
+        componentType?: string;
+        dataIndex?: number;
+        name?: string;
+        value?: string | number;
+      };
+      if (componentType === "yAxis") {
+        // The axis label itself was clicked, so the word is the label's value.
+        if (typeof value === "string") pick.current(value);
+        return;
+      }
+      const word = (dataIndex !== undefined ? axisWords.current[dataIndex] : undefined) ?? name;
+      if (word) pick.current(word);
     });
   }, []);
 
@@ -164,7 +195,7 @@ export function WordIndex({ words, selected, onSelect }: WordIndexProps) {
       />
 
       {shown.length ? (
-        <EChart option={option} height={288} onReady={handleReady} />
+        <EChart option={option} height={288} onReady={handleReady} className="cursor-pointer" />
       ) : !needle ? (
         <EmptyState>No indexed words in this payload.</EmptyState>
       ) : remote.isFetching ? (
