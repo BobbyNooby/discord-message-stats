@@ -11,6 +11,7 @@ import {
   emptyLabel,
   fmt,
   foldSlices,
+  yearCountLabel,
   type PanelProps,
   type Slice,
 } from "./timeAggregates";
@@ -96,7 +97,7 @@ export function ShareOfVoiceByYear({ payload, filters }: PanelProps) {
   return (
     <Panel
       title="Share of voice, year by year"
-      subtitle={`${fmt(total)} messages · ${years.length} years · one doughnut per year`}
+      subtitle={`${fmt(total)} messages · ${yearCountLabel(years.length)} · one doughnut per year`}
       className="xl:col-span-3"
     >
       <EChart option={option} height={300} />

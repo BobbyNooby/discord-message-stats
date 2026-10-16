@@ -7,9 +7,24 @@ import { FilterSidebar } from "./components/FilterSidebar";
 import { HealthBanner } from "./components/HealthBanner";
 import { RecentStrip } from "./components/RecentStrip";
 import { initialFilters, filtersReducer } from "./filters/reducer";
+import { Calendar } from "./panels/Calendar";
+import { LinksSection } from "./panels/LinksSection";
+import { MediaSection } from "./panels/MediaSection";
+import { OverviewSection } from "./panels/OverviewSection";
+import { PeopleSection } from "./panels/PeopleSection";
+import { TimeSection } from "./panels/TimeSection";
+import { WordsSection } from "./panels/WordsSection";
+import { Admin } from "./routes/Admin";
 import { Login } from "./routes/Login";
 
 export default function App() {
+  // The admin board is its own route with its own shell (§11.6), and there is no
+  // router library by design. The path never changes without a reload, so this
+  // stays a render-time branch and the dashboard keeps its hooks unconditional.
+  return window.location.pathname.startsWith("/admin") ? <Admin /> : <Dashboard />;
+}
+
+function Dashboard() {
   const bootstrap = useBootstrap();
   const health = useHealth();
   const recent = useRecent(bootstrap.isSuccess);
@@ -61,6 +76,20 @@ export default function App() {
         staleAt={payload.meta.computed_at}
       />
       <RecentStrip messages={recent.data?.messages ?? []} truncated={recent.data?.truncated} />
+      {/* Six sections in the spec's order; the calendar sits inside Time &
+          rhythm where §11.1 puts it. */}
+      <OverviewSection payload={payload} filters={filters} />
+      <TimeSection payload={payload} filters={filters} calendar={<Calendar payload={payload} filters={filters} />} />
+      <PeopleSection payload={payload} filters={filters} />
+      <WordsSection payload={payload} filters={filters} dispatch={dispatch} />
+      <LinksSection payload={payload} filters={filters} />
+      <MediaSection payload={payload} filters={filters} />
+      <footer className="pb-8 text-[11px] text-[var(--color-muted)]">
+        {payload.meta.payload_kb} KB payload ({payload.meta.payload_gzip_kb} KB gzipped) ·{" "}
+        {payload.meta.cells.toLocaleString()} rollup cells instead of{" "}
+        {payload.meta.source_count.toLocaleString()} message rows · {payload.meta.stopwords}{" "}
+        stopwords
+      </footer>
     </AppShell>
   );
 }

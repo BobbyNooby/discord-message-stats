@@ -37,7 +37,11 @@ export function pct(part: number, whole: number): number {
 
 export function bucketCountLabel(count: number, bucket: Filters["bucket"]): string {
   const noun = bucket === "day" ? "days" : bucket === "month" ? "months" : "years";
-  return `${count} ${noun}`;
+  return `${count} ${count === 1 ? noun.replace(/s$/, "") : noun}`;
+}
+
+export function yearCountLabel(count: number): string {
+  return `${count} ${count === 1 ? "year" : "years"}`;
 }
 
 /**

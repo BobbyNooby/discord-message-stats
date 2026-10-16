@@ -1,0 +1,39 @@
+import type { Payload } from "../api/types";
+import { EmptyState, GlobalOnlyBadge, Panel } from "../components/Panel";
+import type { Filters } from "../filters/reducer";
+import { hasTimeFilter } from "../filters/selectors";
+import { EChart } from "../lib/echart";
+import { dur, fmt, hbarOption, responseRows, weightedAverage } from "./people";
+
+/** "How fast people reply" — `rollup_response`, so the time filter cannot apply. */
+export function ResponseTime({ payload, filters }: { payload: Payload; filters: Filters }) {
+  const rows = responseRows(payload, filters);
+  const badge = hasTimeFilter(filters) ? <GlobalOnlyBadge what="Reply latency" /> : null;
+
+  if (!rows.length) {
+    return (
+      <Panel title="How fast people reply" badge={badge}>
+        <EmptyState>No reply latencies in the payload.</EmptyState>
+      </Panel>
+    );
+  }
+
+  const replies = rows.reduce((sum, row) => sum + row.n, 0);
+  return (
+    <Panel
+      title="How fast people reply"
+      subtitle={`${fmt(replies)} replies · ${dur(weightedAverage(rows))} average wait across ${rows.length} authors`}
+      badge={badge}
+    >
+      <EChart
+        option={hbarOption(rows, {
+          axis: dur,
+          label: (row) => dur(row.value),
+          tooltip: (row) =>
+            `${row.name}<br>averages <b>${dur(row.value)}</b> before replying, over ${fmt(row.n)} replies`,
+        })}
+        height={Math.max(180, rows.length * 26)}
+      />
+    </Panel>
+  );
+}
