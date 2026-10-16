@@ -20,7 +20,28 @@ import { EChart } from "../lib/echart";
  * browser asks them), or "off" (numbers and providers only).
  */
 
-type MediaRow = [string, string, string, string, string, number];
+type MediaRow = [string, string, string, string, string, string, number];
+
+/** Providers Discord does not name, split by what the URL actually points at. */
+function providerLabel(provider: string, url: string): string {
+  if (provider && provider !== "unprovidenced") return provider;
+  return /(^|\.)(discordapp\.(com|net))$/.test(hostOf(url)) ? "Direct upload" : "No provider";
+}
+
+function hostOf(url: string): string {
+  try {
+    return new URL(url).hostname.toLowerCase();
+  } catch {
+    return "";
+  }
+}
+
+const TABS: { id: string; label: string; match?: (row: MediaRow) => boolean }[] = [
+  { id: "all", label: "All" },
+  { id: "video", label: "Video links", match: ([, , kind]) => kind === "video" || kind === "rich" || kind === "article" },
+  { id: "gif", label: "GIFs", match: ([, provider]) => /tenor|klipy/i.test(provider) },
+  { id: "twitter", label: "Twitter", match: ([, provider]) => /twitter|fixupx|fixtweet/i.test(provider) },
+];
 
 const nf = new Intl.NumberFormat("en-US");
 const fmt = (n: number) => nf.format(Math.round(n));
@@ -37,6 +58,11 @@ function label(url: string, title: string): string {
   }
 }
 
+/** A playable file, not a page about one: YouTube's `video.url` is its player. */
+function isPlayable(url: string): boolean {
+  return /\.(mp4|webm|gif)(\?|$)/i.test(url);
+}
+
 function thumbnailSrc(url: string, mode: string): string | null {
   if (mode === "off" || !url) return null;
   if (mode === "direct") return url;
@@ -45,8 +71,28 @@ function thumbnailSrc(url: string, mode: string): string | null {
 
 /** A thumbnail that fails (too large, or the CDN said no) falls back to the
  *  provider label instead of a broken-image icon. */
-function Thumbnail({ src, provider }: { src: string | null; provider: string }) {
+function Thumbnail({ src, animated, provider }: {
+  src: string | null;
+  animated: string | null;
+  provider: string;
+}) {
   const [failed, setFailed] = useState(false);
+  if (animated && isPlayable(animated) && !failed) {
+    // A gifv's playable asset is an mp4: it animates (the thumbnail is often a
+    // static poster) and it is usually much smaller than the GIF.
+    return (
+      <video
+        src={animated}
+        poster={src ?? undefined}
+        autoPlay
+        muted
+        loop
+        playsInline
+        onError={() => setFailed(true)}
+        className="h-24 w-full bg-[var(--color-surface)] object-cover"
+      />
+    );
+  }
   if (!src || failed) {
     return (
       <div className="flex h-24 w-full items-center justify-center bg-[var(--color-surface)] text-xs text-[var(--color-muted)]">
@@ -66,11 +112,28 @@ function Thumbnail({ src, provider }: { src: string | null; provider: string }) 
 }
 
 export function RichMedia({ payload, filters }: { payload: Payload; filters: Filters }) {
-  const rows: MediaRow[] = payload.topMedia ?? [];
+  const everything: MediaRow[] = payload.topMedia ?? [];
+  const byProvider = payload.mediaByProvider ?? {};
   const mode = payload.mediaThumbnails ?? "proxy";
+  const [tab, setTab] = useState("all");
+  const active = TABS.find((entry) => entry.id === tab);
+  // The payload's ranking is dominated by GIFs, so a tab switches to a ranking
+  // that was computed for its own slice rather than filtering twelve rows.
+  const perProvider: MediaRow[] = Object.entries(byProvider)
+    .filter(([, rows]) => rows.length > 0 && active?.match?.([...rows[0]] as MediaRow))
+    .flatMap(([, rows]) => rows as MediaRow[])
+    .sort((a, b) => b[6] - a[6])
+    .slice(0, 12);
+  const rows: MediaRow[] = !active?.match
+    ? everything
+    : [...perProvider, ...everything.filter(active.match)]
+        .filter((row, index, all) => all.findIndex((other) => other[0] === row[0]) === index)
+        .sort((a, b) => b[6] - a[6])
+        .slice(0, 12);
   const providers = payload.providers ?? [];
 
   const option: EChartsOption = {
+    // (the provider bar chart follows)
     tooltip: {
       trigger: "item",
       backgroundColor: "#171b25",
@@ -105,25 +168,46 @@ export function RichMedia({ payload, filters }: { payload: Payload; filters: Fil
       <div className="xl:col-span-2">
         <Panel
           title="Most reposted"
-          subtitle={`the same link posted again and again · top ${fmt(rows.length)} by reposts`}
-          badge={hasTimeFilter(filters) ? <GlobalOnlyBadge what="Most reposted" /> : null}
+          subtitle={`the same link posted again and again · ${fmt(rows.length)} shown`}
+          badge={
+            <span className="flex flex-wrap items-center gap-1">
+              {TABS.map((entry) => (
+                <button
+                  key={entry.id}
+                  type="button"
+                  aria-pressed={tab === entry.id}
+                  onClick={() => setTab(entry.id)}
+                  className={`rounded border px-2 py-0.5 text-[10px] uppercase tracking-wider ${
+                    tab === entry.id
+                      ? "border-[var(--color-accent)] text-[var(--color-text)]"
+                      : "border-[var(--color-line)] text-[var(--color-muted)]"
+                  }`}
+                >
+                  {entry.label}
+                </button>
+              ))}
+              {hasTimeFilter(filters) ? <GlobalOnlyBadge what="Most reposted" /> : null}
+            </span>
+          }
         >
           {rows.length === 0 ? (
             <EmptyState>No embeds in the rollups yet.</EmptyState>
           ) : (
             <ol className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
-              {rows.slice(0, 12).map(([url, provider, kind, title, thumbnail, uses]) => {
+              {rows.slice(0, 12).map(([url, provider, kind, title, thumbnail, animated, uses]) => {
                 const src = thumbnailSrc(thumbnail || url, mode);
+                const animatedSrc = thumbnailSrc(animated || "", mode);
+                const name = providerLabel(provider, url);
                 return (
                   <li key={url} className="overflow-hidden rounded border border-[var(--color-line)]">
                     <a href={url} target="_blank" rel="noreferrer noopener" className="block">
-                      <Thumbnail src={src} provider={provider} />
+                      <Thumbnail src={src} animated={animatedSrc} provider={name} />
                       <div className="space-y-1 p-2">
                         <p className="truncate text-xs text-[var(--color-text)]" title={label(url, title)}>
                           {label(url, title)}
                         </p>
                         <p className="flex items-baseline justify-between gap-2 text-[10px] uppercase tracking-wide text-[var(--color-muted)]">
-                          <span className="truncate">{provider}</span>
+                          <span className="truncate">{name}</span>
                           <span className="tabular-nums">{fmt(uses)}×</span>
                         </p>
                         <p className="text-[10px] text-[var(--color-muted)]">{kind}</p>
