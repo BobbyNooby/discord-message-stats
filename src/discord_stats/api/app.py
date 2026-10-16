@@ -47,10 +47,12 @@ def _require_rollups(conn: sqlite3.Connection) -> None:
     A 503 with the command to run beats a 500 with an SQLite traceback, which is
     what an unbuilt database would otherwise produce.
     """
-    found = conn.execute(
+    built = conn.execute(
         "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'rollup_meta'"
-    ).fetchone()
-    if not found:
+    ).fetchone() is not None and conn.execute(
+        "SELECT 1 FROM rollup_meta LIMIT 1"
+    ).fetchone() is not None
+    if not built:
         raise HTTPException(
             status_code=503,
             detail="rollups are not built — run: discord-scraper rollups rebuild",
@@ -67,6 +69,25 @@ def create_app(
     app.state.cfg = cfg
     app.state.db_path = str(db_path)
     app.include_router(admin.router)
+
+    # Bring the database up to shape once, at boot. `CREATE TABLE IF NOT EXISTS`
+    # never adds a column, so an instance started before a schema addition fails
+    # its first write with "no column named ..." — which is exactly what a
+    # browser saw. Idempotent, control plane only, and skipped when there is no
+    # database yet.
+    if Path(app.state.db_path).exists():
+        from discord_scraper.rollups.schema import create_control_tables, create_rollup_tables
+
+        try:
+            boot = connect_writable(app.state.db_path)
+            try:
+                create_rollup_tables(boot)
+                create_control_tables(boot)
+                boot.commit()
+            finally:
+                boot.close()
+        except sqlite3.OperationalError:
+            pass   # not a database we can migrate; the endpoints will say so
 
     def connection() -> sqlite3.Connection:
         return connect(app.state.db_path)

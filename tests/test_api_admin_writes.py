@@ -101,3 +101,52 @@ def test_cron_settings_are_writable_and_reach_the_worker(admin_client, conn):
 def test_an_invalid_cron_hour_is_rejected(admin_client):
     assert admin_client.put("/api/admin/config", json={"cron_hours": 0}).status_code == 400
     assert admin_client.put("/api/admin/config", json={"cron_hours": 99}).status_code == 400
+
+
+def test_the_api_migrates_an_older_database_at_boot(seeded_db_path, tmp_path):
+    """The bug a browser found: an instance started before a schema addition.
+
+    The old `author_names` shape has no `included` column, and the first write to
+    /api/admin/inclusions failed with "no column named included" — 500, in the
+    UI, on a real database. The fix is a migration at boot.
+    """
+    import sqlite3
+
+    from fastapi.testclient import TestClient
+
+    from discord_scraper.api.app import create_app
+    from discord_scraper.auth.session import SESSION_COOKIE, Level, establish_session
+    from discord_scraper.rollups.schema import create_control_tables
+
+    # rebuild the old table shape over an otherwise valid database
+    conn = sqlite3.connect(seeded_db_path)
+    create_control_tables(conn)
+    conn.execute("DROP TABLE author_names")
+    conn.executescript(
+        """
+        CREATE TABLE author_names (
+          channel_id TEXT NOT NULL,
+          author_id  TEXT NOT NULL,
+          name       TEXT NOT NULL,
+          renamed    INTEGER NOT NULL DEFAULT 0,
+          PRIMARY KEY (channel_id, author_id)
+        );
+        """
+    )
+    conn.commit()
+    token = establish_session(conn, "u1", Level.ADMIN)
+    conn.close()
+
+    cfg = cfg_fixture(tmp_path)
+    from discord_scraper.rollups.build import rebuild_all
+
+    conn = sqlite3.connect(seeded_db_path)
+    try:
+        rebuild_all(conn, cfg)
+    finally:
+        conn.close()
+
+    client = TestClient(create_app(cfg, seeded_db_path))
+    client.cookies.set(SESSION_COOKIE, token)
+    response = client.put("/api/admin/inclusions", json={"included": {"u2": False}})
+    assert response.status_code == 200, response.text
