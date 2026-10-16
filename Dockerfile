@@ -14,9 +14,14 @@ COPY web/ ./
 RUN pnpm build
 
 FROM python:3.12-slim AS runtime
+# The volume is the app's home, not just its database: config.toml, .env and
+# messages.db all live there, so a container needs no config baked into the
+# image and a rebuild never loses a setting.
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    DISCORD_SCRAPER_DB=/data/messages.db
+    DISCORD_SCRAPER_HOME=/data \
+    DISCORD_SCRAPER_DB=/data/messages.db \
+    DISCORD_SCRAPER_STATIC=/app/static
 WORKDIR /app
 
 COPY pyproject.toml README.md ./
