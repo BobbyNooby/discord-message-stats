@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import type { Payload } from "../api/types";
+import { AppShell } from "./AppShell";
 import { FilterSidebar } from "./FilterSidebar";
 import { initialFilters } from "../filters/reducer";
 
@@ -55,5 +56,35 @@ describe("<FilterSidebar>", () => {
     );
     await userEvent.click(screen.getByRole("button", { name: "Reset all filters" }));
     expect(dispatch).toHaveBeenCalledWith({ type: "reset" });
+  });
+});
+
+describe("<AppShell>", () => {
+  it("offers a way into the admin board, but only to an admin", () => {
+    const { rerender, getByRole, queryByRole } = render(
+      <AppShell sidebar={<p>filters</p>} header={<span>range</span>} canAdmin>
+        <p>charts</p>
+      </AppShell>,
+    );
+    expect(getByRole("link", { name: "Admin" })).toHaveAttribute("href", "/admin");
+    rerender(
+      <AppShell sidebar={<p>filters</p>} header={<span>range</span>}>
+        <p>charts</p>
+      </AppShell>,
+    );
+    expect(queryByRole("link", { name: "Admin" })).toBeNull();
+  });
+
+  it("opens the filters as a dismissable drawer on a phone", async () => {
+    const { getByRole, queryByRole } = render(
+      <AppShell sidebar={<p>filter groups</p>} header={null}>
+        <p>charts</p>
+      </AppShell>,
+    );
+    expect(queryByRole("dialog")).toBeNull();
+    await userEvent.click(getByRole("button", { name: "Filters" }));
+    expect(getByRole("dialog", { name: "Filters" })).toBeInTheDocument();
+    await userEvent.click(getByRole("button", { name: "Close" }));
+    expect(queryByRole("dialog")).toBeNull();
   });
 });

@@ -40,7 +40,7 @@ const payload = {
   types: [[0, "default", 2]],
   tz: { name: "UTC", label: "UTC" },
   channel_hint: "c1",
-  meta: { types: [[0, "default", 2]], stale: false, timezone: "UTC", total: 2 },
+  meta: { types: [[0, "default", 2]], stale: false, can_admin: false, timezone: "UTC", total: 2 },
 } as unknown as Payload;
 
 /**

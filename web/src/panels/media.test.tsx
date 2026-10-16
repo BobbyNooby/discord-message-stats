@@ -37,7 +37,7 @@ function fixture(overrides: Partial<Payload> = {}): Payload {
     meta: {
       total: 210,
       source_count: 0,
-      stale: false,
+      stale: false, can_admin: false,
       timezone: "UTC",
       computed_at: null,
       authors: 2,

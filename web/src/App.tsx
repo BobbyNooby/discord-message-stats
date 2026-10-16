@@ -68,6 +68,7 @@ function DashboardBody({
 
   return (
     <AppShell
+      canAdmin={payload.meta.can_admin}
       sidebar={
         <FilterSidebar payload={payload} filters={filters} dispatch={dispatch} years={years} />
       }

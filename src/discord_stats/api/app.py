@@ -257,7 +257,7 @@ def create_app(
     threading.Thread(target=warm_the_payload, daemon=True, name="payload-warmup").start()
 
     @app.get("/api/bootstrap")
-    def bootstrap(_level: Level = Depends(require_viewer)) -> dict:
+    def bootstrap(level: Level = Depends(require_viewer)) -> dict:
         conn = connection()
         try:
             _require_rollups(conn)
@@ -286,6 +286,9 @@ def create_app(
             # message arrives), so it is recomputed rather than cached.
             body["meta"] = {
                 **cached["meta"],
+                # Per-request, like freshness: the payload is shared between
+                # viewers, but "may you see /admin" is about the caller.
+                "can_admin": level >= Level.ADMIN,
                 # `cheap=True`: an indexed MAX(id) instead of a full count. The
                 # scraper only appends, so "is there a newer message?" is the
                 # question here; the exact count is the CLI's audit.

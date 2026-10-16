@@ -69,7 +69,7 @@ function makePayload(over: Partial<Payload> = {}): Payload {
     meta: {
       total: 6,
       source_count: 4,
-      stale: false,
+      stale: false, can_admin: false,
       timezone: "Asia/Kuala_Lumpur",
       computed_at: "2024-01-02T00:00:00Z",
       authors: 2,
