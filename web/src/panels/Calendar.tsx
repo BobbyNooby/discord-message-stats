@@ -24,7 +24,10 @@ import {
  * inconvenience it saves.
  */
 export function Calendar({ payload, filters }: { payload: Payload; filters: Filters }) {
-  const [calSize, setCalSize] = useState(DEFAULT_WEEKS);
+  // The window is the component's own (§11.3), and on a phone 60 weeks would be
+  // ~5px cells: a grey smear rather than a calendar. The default fits the space
+  // until the reader chooses a size themselves.
+  const [calSize, setCalSize] = useState<number | null>(null);
   const [width, setWidth] = useState(0);
   const [calStart, setCalStart] = useState(0);
   const container = useRef<HTMLDivElement>(null);
@@ -39,10 +42,11 @@ export function Calendar({ payload, filters }: { payload: Payload; filters: Filt
     return () => observer.disconnect();
   }, []);
 
-  const newest = clampStart(weeks.weeks.length - calSize, calSize, weeks.weeks.length);
-  const start = clampStart(calStart || newest, calSize, weeks.weeks.length);
-  const visible = weeks.weeks.slice(start, start + calSize);
-  const geometry = calendarGeometry(width || 600, Math.max(MIN_WEEKS, visible.length || calSize));
+  const columns = calSize ?? Math.max(MIN_WEEKS, Math.min(DEFAULT_WEEKS, Math.floor((width || 900) / 14)));
+  const newest = clampStart(weeks.weeks.length - columns, columns, weeks.weeks.length);
+  const start = clampStart(calStart || newest, columns, weeks.weeks.length);
+  const visible = weeks.weeks.slice(start, start + columns);
+  const geometry = calendarGeometry(width || 600, Math.max(MIN_WEEKS, visible.length || columns));
 
   const data = useMemo(() => {
     const points: [number, number, number][] = [];
@@ -66,6 +70,7 @@ export function Calendar({ payload, filters }: { payload: Payload; filters: Filt
   const option = {
     grid: {
       left: 46,
+
       right: 12,
       top: 8,
       bottom: 24,
@@ -73,7 +78,16 @@ export function Calendar({ payload, filters }: { payload: Payload; filters: Filt
       height: geometry.grid.height,
     },
     xAxis: { type: "category" as const, data: visible },
-    yAxis: { type: "category" as const, data: WEEKDAY_LABELS, axisLabel: { interval: 0 } },
+    yAxis: {
+      type: "category" as const,
+      data: WEEKDAY_LABELS,
+      // All seven labels, at a size that fits the row height: a narrow window
+      // makes the cells small, and 12px text in a 7px row is illegible.
+      axisLabel: {
+        interval: 0,
+        fontSize: Math.max(8, Math.min(12, Math.round(geometry.cell * 0.7))),
+      },
+    },
     visualMap: {
       min: 0,
       max: peak,
@@ -89,11 +103,11 @@ export function Calendar({ payload, filters }: { payload: Payload; filters: Filt
       subtitle={`${visible.length} weeks · ${weeks.total.toLocaleString()} messages visible`}
       badge={
         <div className="flex items-center gap-2 text-xs">
-          <button type="button" onClick={() => setCalSize((size) => Math.max(MIN_WEEKS, size - 20))}>
+          <button type="button" onClick={() => setCalSize(Math.max(MIN_WEEKS, columns - 20))}>
             −
           </button>
-          <span className="tabular-nums">{calSize}w</span>
-          <button type="button" onClick={() => setCalSize((size) => size + 20)}>
+          <span className="tabular-nums">{columns}w</span>
+          <button type="button" onClick={() => setCalSize(columns + 20)}>
             +
           </button>
         </div>
@@ -103,7 +117,7 @@ export function Calendar({ payload, filters }: { payload: Payload; filters: Filt
         type="range"
         aria-label="First visible week"
         min={0}
-        max={Math.max(0, weeks.weeks.length - calSize)}
+        max={Math.max(0, weeks.weeks.length - columns)}
         value={start}
         onChange={(event) => setCalStart(Number(event.target.value))}
         className="mb-2 w-full"

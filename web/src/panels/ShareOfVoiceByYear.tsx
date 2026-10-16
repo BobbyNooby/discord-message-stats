@@ -100,7 +100,7 @@ export function ShareOfVoiceByYear({ payload, filters }: PanelProps) {
       subtitle={`${fmt(total)} messages · ${yearCountLabel(years.length)} · one doughnut per year`}
       className="xl:col-span-3"
     >
-      <EChart option={option} height={300} />
+      <EChart option={option} height={210} />
     </Panel>
   );
 }

@@ -14,17 +14,22 @@ import { Treemap } from "./Treemap";
 /** The People section: ten panels, one grid, every one a pure function of the payload and the filters. */
 export function PeopleSection({ payload, filters }: { payload: Payload; filters: Filters }) {
   return (
-    <div className="grid gap-4 xl:grid-cols-2">
-      <Leaderboard payload={payload} filters={filters} />
-      <ResponseTime payload={payload} filters={filters} />
-      <ReplyNetwork payload={payload} filters={filters} />
-      <ReplyBalance payload={payload} filters={filters} />
-      <Starters payload={payload} filters={filters} />
-      <AuthorRadar payload={payload} filters={filters} />
-      <ReplyMatrix payload={payload} filters={filters} className="xl:col-span-2" />
-      <Treemap payload={payload} filters={filters} />
-      <Burstiness payload={payload} filters={filters} />
-      <EditRate payload={payload} filters={filters} />
-    </div>
+    <section aria-labelledby="sec-people" className="space-y-4">
+      <h2 id="sec-people" className="text-base font-semibold text-[var(--color-text)]">
+        People
+      </h2>
+      <div className="grid gap-4 xl:grid-cols-2">
+        <Leaderboard payload={payload} filters={filters} />
+        <ResponseTime payload={payload} filters={filters} />
+        <ReplyNetwork payload={payload} filters={filters} />
+        <ReplyBalance payload={payload} filters={filters} />
+        <Starters payload={payload} filters={filters} />
+        <AuthorRadar payload={payload} filters={filters} />
+        <ReplyMatrix payload={payload} filters={filters} className="xl:col-span-2" />
+        <Treemap payload={payload} filters={filters} />
+        <Burstiness payload={payload} filters={filters} />
+        <EditRate payload={payload} filters={filters} />
+      </div>
+    </section>
   );
 }
