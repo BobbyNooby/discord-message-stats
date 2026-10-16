@@ -8,12 +8,14 @@ real 740 MB file without either knowing about the other.
 from __future__ import annotations
 
 import sqlite3
+import threading
 from pathlib import Path
 
 import secrets
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.responses import FileResponse, RedirectResponse
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from discord_scraper.api import admin, viewer
@@ -30,6 +32,7 @@ from discord_scraper.auth.session import (
 )
 from discord_scraper.config import Config
 from discord_scraper.rollups import query
+from discord_scraper.rollups.schema import is_stale
 
 STATE_COOKIE = "dsh_oauth_state"
 
@@ -67,6 +70,11 @@ def create_app(
     dev_auto_login: str | None = None,
 ) -> FastAPI:
     app = FastAPI(title=cfg.app_name, docs_url=None, redoc_url=None)
+    # 544 KB of JSON per dashboard load, every load. Gzip takes it to ~140 KB.
+    app.add_middleware(GZipMiddleware, minimum_size=1024)
+    # The payload is a pure function of the rollups and the config, and it costs
+    # seconds to assemble — so it is assembled once per rebuild, not per request.
+    app.state.payload_cache: dict[str, dict] = {}
     app.state.cfg = cfg
     app.state.db_path = str(db_path)
     # "viewer" or "admin", or None. Set by `serve --dev-auto-login`.
@@ -80,12 +88,14 @@ def create_app(
     # database yet.
     if Path(app.state.db_path).exists():
         from discord_scraper.rollups.schema import create_control_tables, create_rollup_tables
+        from discord_scraper.scraper.database import INDEXES as MESSAGE_INDEXES
 
         try:
             boot = connect_writable(app.state.db_path)
             try:
                 create_rollup_tables(boot)
                 create_control_tables(boot)
+                boot.executescript(MESSAGE_INDEXES)   # including idx_channel
                 boot.commit()
             finally:
                 boot.close()
@@ -207,6 +217,45 @@ def create_app(
         response.delete_cookie(SESSION_COOKIE)
         return response
 
+    def assemble(conn: sqlite3.Connection, effective, *, why: str) -> dict:
+        import sys
+        import time
+
+        started = time.monotonic()
+        payload = viewer.bootstrap(conn, effective)
+        print(f"payload {why} in {time.monotonic() - started:.2f}s", file=sys.stderr)
+        return payload
+
+    def warm_the_payload() -> None:
+        """Assemble once, in the background, so the first page load is not the one
+        that pays for it.
+
+        Best effort, but not silent: a warm-up that fails must say why, or the
+        next person debugging "why is the first load slow" has nothing to read.
+        """
+        import os
+        import sys
+        if os.environ.get("DISCORD_SCRAPER_NO_WARMUP"):
+            return
+        try:
+            conn = connection()
+            try:
+                if not conn.execute(
+                    "SELECT 1 FROM sqlite_master WHERE type='table' AND name='rollup_meta'"
+                ).fetchone():
+                    return
+                if not conn.execute("SELECT 1 FROM rollup_meta LIMIT 1").fetchone():
+                    return
+                effective = admin.effective_for(conn, cfg)
+                app.state.payload_cache = {_payload_key(conn, effective):
+                                           assemble(conn, effective, why="warmed")}
+            finally:
+                conn.close()
+        except Exception as exc:
+            print(f"payload warm-up skipped: {type(exc).__name__}: {exc}", file=sys.stderr)
+
+    threading.Thread(target=warm_the_payload, daemon=True, name="payload-warmup").start()
+
     @app.get("/api/bootstrap")
     def bootstrap(_level: Level = Depends(require_viewer)) -> dict:
         conn = connection()
@@ -224,7 +273,26 @@ def create_app(
                         "rollups rebuild"
                     ),
                 )
-            return viewer.bootstrap(conn, effective)
+
+            key = _payload_key(conn, effective)
+            cached = app.state.payload_cache.get(key)
+            if cached is None:
+                cached = assemble(conn, effective, why="assembled for a request")
+                # One entry is enough: rollups change when somebody rebuilds, and
+                # a rebuild replaces the key rather than accumulating entries.
+                app.state.payload_cache = {key: cached}
+            body = dict(cached)
+            # Freshness is the one field that can change without a rebuild (a new
+            # message arrives), so it is recomputed rather than cached.
+            body["meta"] = {
+                **cached["meta"],
+                # `cheap=True`: an indexed MAX(id) instead of a full count. The
+                # scraper only appends, so "is there a newer message?" is the
+                # question here; the exact count is the CLI's audit.
+                "stale": is_stale(conn, effective.channel_id, "activity",
+                                  config_hash=key_config_hash(key), cheap=True),
+            }
+            return body
         finally:
             conn.close()
 
@@ -264,6 +332,33 @@ def create_app(
 
     _mount_spa(app, static_dir)
     return app
+
+
+def _payload_key(conn: sqlite3.Connection, cfg) -> str:
+    """What the payload depends on: the rollups' provenance and the config.
+
+    Any rebuild moves ``computed_at``, any config edit moves the digest, so a
+    matching key means the assembled payload is still the right answer.
+    """
+    from discord_scraper.rollups.build import config_digest
+
+    row = conn.execute(
+        "SELECT MAX(computed_at), MAX(source_max_message_id), COUNT(*) "
+        "  FROM rollup_meta WHERE channel_id = ?",
+        (cfg.channel_id,),
+    ).fetchone()
+    return "|".join([
+        cfg.channel_id,
+        str(row[0]), str(row[1]), str(row[2]),
+        config_digest(cfg, conn),
+        cfg.timezone,
+    ])
+
+
+def key_config_hash(key: str) -> str:
+    """The digest is the fifth field of the cache key."""
+    parts = key.split("|")
+    return parts[4] if len(parts) > 4 else ""
 
 
 def _mount_spa(app: FastAPI, static_dir: str | Path | None) -> None:

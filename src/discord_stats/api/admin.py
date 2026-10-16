@@ -137,7 +137,7 @@ def status(request: Request) -> dict:
                 f"SELECT COUNT(*) FROM {table} WHERE channel_id = ?", (cfg.channel_id,)
             ).fetchone()[0]
             meta = query.provenance_row(conn, cfg.channel_id, family)
-            family_stale = is_stale(conn, cfg.channel_id, family, config_hash=digest)
+            family_stale = is_stale(conn, cfg.channel_id, family, config_hash=digest, cheap=True)
             stale = stale or family_stale
             rollups[family] = {
                 "rows": int(count),
