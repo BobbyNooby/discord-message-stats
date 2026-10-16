@@ -165,9 +165,20 @@ export function Admin() {
           onDirty={markStale}
         />
       ) : null}
-      {active === "who-shows" ? <WhoShows payload={bootstrap.data ?? null} /> : null}
-      {active === "identity-merge" ? <IdentityMerge payload={bootstrap.data ?? null} /> : null}
-      {active === "ingest" ? <Ingest status={data} onDirty={markStale} /> : null}
+      {active === "who-shows" ? (
+        <WhoShows payload={bootstrap.data ?? null} onDirty={markStale} />
+      ) : null}
+      {active === "identity-merge" ? (
+        <IdentityMerge payload={bootstrap.data ?? null} onDirty={markStale} />
+      ) : null}
+      {active === "ingest" ? (
+        <Ingest
+          status={data}
+          config={config.data ?? null}
+          onDirty={markStale}
+          onSave={saveConfig}
+        />
+      ) : null}
       {active === "rollup-cache" ? (
         <RollupCache status={data} stale={stale} onDirty={markStale} />
       ) : null}

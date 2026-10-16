@@ -3,19 +3,26 @@
  * toggle. A merge is labelled "N accounts" because that is what the operator is
  * deciding about.
  *
- * Exclusion happens at rollup build time, never in the browser — the note says
- * so out loud, because a toggle that only *looks* like it filtered the page
- * would be the quiet-wrong-numbers failure §11.6 exists to prevent.
+ * Each toggle writes through `PUT /api/admin/inclusions` straight away — the
+ * server hides, never deletes — and the write marks the cache stale so the
+ * consequence is visible before anyone presses Recalculate. Exclusion still
+ * happens at rollup build time, never in the browser: a toggle that only *looked*
+ * like it filtered the page would be the quiet-wrong-numbers failure §11.6
+ * exists to prevent.
  */
 
 import { useMemo, useState } from "react";
 
 import type { Payload } from "../api/types";
 import { EmptyState } from "../components/Panel";
+import { putInclusions } from "./api";
 import { Notice, Section } from "./shared";
 
-export function WhoShows({ payload }: { payload: Payload | null }) {
+export function WhoShows({ payload, onDirty }: { payload: Payload | null; onDirty: () => void }) {
   const [excluded, setExcluded] = useState<Record<string, boolean>>({});
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
 
   const identities = useMemo(() => {
     if (!payload) return [];
@@ -34,16 +41,51 @@ export function WhoShows({ payload }: { payload: Payload | null }) {
 
   const hidden = identities.filter((author) => excluded[author.id]).length;
 
+  /**
+   * `shown` is the value the operator just chose. There is no batch save here:
+   * one toggle, one write, so the cached numbers are never a lie for longer than
+   * the request takes.
+   */
+  async function toggle(authorId: string, shown: boolean) {
+    setExcluded((current) => ({ ...current, [authorId]: !shown }));
+    setError(null);
+    setBusy(authorId);
+    // Conservative and immediate: a write is going out, so the rollups may no
+    // longer match the configuration (§11.6). A failure keeps it stale rather
+    // than pretending the numbers are current.
+    onDirty();
+    try {
+      const written = await putInclusions({ [authorId]: shown });
+      // The response says it too; the server's word is the one that counts.
+      if (written.cache_stale) onDirty();
+      setSaved(true);
+    } catch (failure) {
+      // The toggle stays as the operator set it, but the page says plainly that
+      // the server does not have it, so a rebuild will not apply it.
+      setError((failure as Error).message);
+    } finally {
+      setBusy(null);
+    }
+  }
+
   return (
     <Section id="who-shows" title="Who shows">
-      <Notice tone="warn">
-        Not saved yet: this build&rsquo;s admin API has no endpoint that writes an identity&rsquo;s
-        include flag, so these toggles are staged here for review and a rebuild will not apply them.
-      </Notice>
+      {error ? (
+        <Notice tone="error">
+          Not saved: {error}. This toggle is staged on this page only, so a rebuild will not apply
+          it — switch it again once the API is reachable.
+        </Notice>
+      ) : null}
+      {saved && !error ? (
+        <Notice tone="ok">
+          Include setting saved. The cache is stale until you run Recalculate all.
+        </Notice>
+      ) : null}
 
       <p className="text-xs text-[var(--color-muted)]">
         Exclusion is applied at build time: a hidden identity is removed from every rollup on the
-        next rebuild, not in the browser. {hidden} of {identities.length} staged as hidden.
+        next rebuild, not in the browser. {hidden} of {identities.length} hidden here; the rebuild
+        leaves them out without deleting a single message.
       </p>
 
       <ul className="divide-y divide-[var(--color-line)] rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)]">
@@ -56,9 +98,8 @@ export function WhoShows({ payload }: { payload: Payload | null }) {
                 id={`who-${author.id}`}
                 type="checkbox"
                 checked={included}
-                onChange={(event) =>
-                  setExcluded((current) => ({ ...current, [author.id]: !event.target.checked }))
-                }
+                disabled={busy === author.id}
+                onChange={(event) => void toggle(author.id, event.target.checked)}
                 className="h-4 w-4"
               />
               <label htmlFor={`who-${author.id}`} className="flex-1 text-xs">

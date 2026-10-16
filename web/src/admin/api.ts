@@ -29,6 +29,8 @@ export type ConfigPatch = Partial<{
   timezone: string;
   ignore_words: string[];
   allowlist_policy: string;
+  cron_enabled: boolean;
+  cron_hours: number;
 }>;
 
 export type AdminConfig = {
@@ -40,6 +42,8 @@ export type AdminConfig = {
     app_name: string;
     count_types: string[];
     exclude_bots: boolean;
+    cron_enabled: boolean;
+    cron_hours: number;
   };
   overridden: string[];
 };
@@ -67,6 +71,9 @@ export type AdminStatus = {
   channel_id: string;
   timezone: string;
   cache_stale: boolean;
+  database: { size_bytes: number; path: string };
+  /** The id, never the token: the worker keeps the token in its environment. */
+  admin: { discord_id: string };
   config_hash: string;
   rollups: Record<string, RollupFamily>;
   worker: WorkerView;
@@ -74,6 +81,16 @@ export type AdminStatus = {
   sessions: { active: number };
   checked_at: string;
 };
+
+/** One merge as the API stores it: the canonical account is inside `accounts`. */
+export type MergeEntry = { canonical: string; accounts: string[] };
+
+/** Every write answers with the same two things (§11.6). */
+export type MergeWrite = { merges: MergeEntry[]; cache_stale: boolean };
+
+export type InclusionWrite = { included: Record<string, boolean>; cache_stale: boolean };
+
+export type RevokeResult = { revoked: number };
 
 export type JobKind = "catch_up" | "backfill" | "probe" | "rebuild_rollups";
 
@@ -174,6 +191,22 @@ export const getConfig = () => request<AdminConfig>("/api/admin/config");
 
 export const putConfig = (patch: ConfigPatch) =>
   request<AdminConfig>("/api/admin/config", json("PUT", patch));
+
+/**
+ * Replaces the channel's merges outright: adding an alt and dropping one are
+ * the same call, and `{ merges: [] }` unmerges everything. A duplicate account
+ * inside one merge is a 400 from the server.
+ */
+export const putIdentity = (merges: MergeEntry[]) =>
+  request<MergeWrite>("/api/admin/identity", json("PUT", { merges }));
+
+/** Hide an identity, never delete it: the messages stay and a rebuild folds them out. */
+export const putInclusions = (included: Record<string, boolean>) =>
+  request<InclusionWrite>("/api/admin/inclusions", json("PUT", { included }));
+
+/** Ends every session but the caller's own; the response says how many. */
+export const revokeAllSessions = () =>
+  request<RevokeResult>("/api/admin/sessions/revoke-all", { method: "POST" });
 
 export const listJobs = (limit = 50) =>
   request<{ jobs: Job[] }>(`/api/admin/jobs?limit=${limit}`);

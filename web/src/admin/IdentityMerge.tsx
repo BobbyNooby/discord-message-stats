@@ -6,6 +6,12 @@
  * The heuristic only ever *suggests*: it produces false positives on short or
  * common handles, so a human presses Merge.
  *
+ * Every one of those actions writes the whole merge set through
+ * `PUT /api/admin/identity` — the endpoint replaces, so an unmerge is the same
+ * call without the alt. A write that fails is shown and the list is put back to
+ * what the server still has; a merge that merely looked applied would be worse
+ * than no merge at all.
+ *
  * The message box below is the one place the admin API returns message text
  * (§4.4) — it is here to check whether a suggested alt really is the same
  * person, and it is labelled as the exception rather than hidden.
@@ -16,7 +22,7 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 
 import type { Author, Payload } from "../api/types";
 import { EmptyState } from "../components/Panel";
-import { searchMessages } from "./api";
+import { putIdentity, searchMessages, type MergeEntry } from "./api";
 import { Notice, Section, formatStamp } from "./shared";
 
 type Merge = { canonical: string; members: string[] };
@@ -26,6 +32,21 @@ function mergesFromPayload(payload: Payload | null): Merge[] {
   return payload.identities.map((group) => ({
     canonical: group.canonical,
     members: group.members.filter((member) => member !== group.canonical),
+  }));
+}
+
+/** The API stores the canonical account inside `accounts`; the cards do not. */
+function wireFrom(merges: Merge[]): MergeEntry[] {
+  return merges.map((merge) => ({
+    canonical: merge.canonical,
+    accounts: [merge.canonical, ...merge.members],
+  }));
+}
+
+function mergesFromWire(merges: MergeEntry[]): Merge[] {
+  return merges.map((merge) => ({
+    canonical: merge.canonical,
+    members: merge.accounts.filter((account) => account !== merge.canonical),
   }));
 }
 
@@ -61,9 +82,18 @@ export function suggestsSamePerson(a: string, b: string): boolean {
   return shared >= 5 && shared / shorter.length >= 0.55;
 }
 
-export function IdentityMerge({ payload }: { payload: Payload | null }) {
+export function IdentityMerge({
+  payload,
+  onDirty,
+}: {
+  payload: Payload | null;
+  onDirty: () => void;
+}) {
   const [merges, setMerges] = useState<Merge[]>(() => mergesFromPayload(payload));
   const [altFor, setAltFor] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     setMerges(mergesFromPayload(payload));
@@ -114,40 +144,70 @@ export function IdentityMerge({ payload }: { payload: Payload | null }) {
     (account) => mergedInto.get(account) === undefined || mergedInto.get(account) === account,
   );
 
+  /**
+   * Writes the whole set, because the endpoint replaces rather than patches.
+   * `next` is what the page will show if the call lands; `merges` itself is only
+   * ever moved to what the server answered, so a failed call leaves the list
+   * showing the server's last known state rather than a merge that is not there.
+   */
+  async function persist(next: Merge[], message: string) {
+    setSaving(true);
+    setNotice(null);
+    setError(null);
+    // Immediate and conservative: a write is going out, so the cache may be
+    // stale until a rebuild (§11.6).
+    onDirty();
+    try {
+      const written = await putIdentity(wireFrom(next));
+      if (written.cache_stale) onDirty();
+      setMerges(mergesFromWire(written.merges));
+      setNotice(`${message} The cache is stale until you run Recalculate all.`);
+    } catch (failure) {
+      setError((failure as Error).message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
   function addAlt(canonical: string) {
     const account = altFor[canonical];
     if (!account) return;
-    setMerges((current) =>
-      current.map((merge) =>
-        merge.canonical === canonical && !merge.members.includes(account)
-          ? { ...merge, members: [...merge.members, account] }
-          : merge,
-      ),
+    const next = merges.map((merge) =>
+      merge.canonical === canonical && !merge.members.includes(account)
+        ? { ...merge, members: [...merge.members, account] }
+        : merge,
     );
     setAltFor((current) => ({ ...current, [canonical]: "" }));
+    void persist(next, `Merged ${label(account)} into ${label(canonical)}.`);
   }
 
   function removeAlt(canonical: string, account: string) {
-    setMerges((current) =>
-      current.map((merge) =>
+    // Dropping the last alt drops the merge: an account merged with nobody is
+    // not a merge, and the endpoint stores only what is in the set.
+    const next = merges
+      .map((merge) =>
         merge.canonical === canonical
           ? { ...merge, members: merge.members.filter((member) => member !== account) }
           : merge,
-      ),
-    );
+      )
+      .filter((merge) => merge.members.length > 0);
+    void persist(next, `Unmerged ${label(account)} from ${label(canonical)}.`);
   }
 
   function mergeSuggestion(a: Author, b: Author) {
     const [keep, fold] = a.msgs >= b.msgs ? [a, b] : [b, a];
-    setMerges((current) => {
-      const existing = current.find((merge) => merge.canonical === keep.id);
-      const members = new Set([...(existing?.members ?? [])]);
-      members.add(fold.id);
-      for (const account of fold.accounts ?? []) members.add(account);
-      members.delete(keep.id);
-      const next = current.filter((merge) => merge.canonical !== keep.id);
-      return [...next, { canonical: keep.id, members: [...members].sort() }];
-    });
+    const existing = merges.find((merge) => merge.canonical === keep.id);
+    const folded = merges.find((merge) => merge.canonical === fold.id);
+    const members = new Set([...(existing?.members ?? [])]);
+    members.add(fold.id);
+    for (const account of fold.accounts ?? []) members.add(account);
+    for (const account of folded?.members ?? []) members.add(account);
+    members.delete(keep.id);
+    const next = merges.filter(
+      (merge) => merge.canonical !== keep.id && merge.canonical !== fold.id,
+    );
+    next.push({ canonical: keep.id, members: [...members].sort() });
+    void persist(next, `Merged ${fold.name} into ${keep.name}.`);
   }
 
   if (!payload) {
@@ -162,10 +222,15 @@ export function IdentityMerge({ payload }: { payload: Payload | null }) {
 
   return (
     <Section id="identity-merge" title="Identity merge">
-      <Notice tone="warn">
-        Not saved yet: this build&rsquo;s admin API has no endpoint that writes the identity table,
-        so cards and merges below are staged here for review and a rebuild will not apply them.
-      </Notice>
+      {error ? (
+        <Notice tone="error">
+          Not saved: {error}. The list below is what the server still has, so switch the merge again
+          once the API is reachable.
+        </Notice>
+      ) : null}
+      {notice ? (
+        <Notice tone="ok">{notice}</Notice>
+      ) : null}
 
       <div className="space-y-3">
         {merges.length === 0 ? (
@@ -186,8 +251,9 @@ export function IdentityMerge({ payload }: { payload: Payload | null }) {
                   <button
                     type="button"
                     onClick={() => removeAlt(merge.canonical, member)}
+                    disabled={saving}
                     aria-label={`Remove alt ${label(member)} (${member})`}
-                    className="rounded-full border border-[var(--color-line)] bg-[var(--color-surface-2)] px-2 py-0.5 text-[11px]"
+                    className="rounded-full border border-[var(--color-line)] bg-[var(--color-surface-2)] px-2 py-0.5 text-[11px] disabled:opacity-50"
                   >
                     {chipLabel(member)} ×
                   </button>
@@ -224,7 +290,7 @@ export function IdentityMerge({ payload }: { payload: Payload | null }) {
               <button
                 type="button"
                 onClick={() => addAlt(merge.canonical)}
-                disabled={!altFor[merge.canonical]}
+                disabled={saving || !altFor[merge.canonical]}
                 className="rounded border border-[var(--color-line)] px-3 py-1.5 text-xs disabled:opacity-50"
               >
                 + add alt
@@ -263,7 +329,8 @@ export function IdentityMerge({ payload }: { payload: Payload | null }) {
                 <button
                   type="button"
                   onClick={() => mergeSuggestion(a, b)}
-                  className="rounded border border-[var(--color-line)] px-2 py-1 text-[11px]"
+                  disabled={saving}
+                  className="rounded border border-[var(--color-line)] px-2 py-1 text-[11px] disabled:opacity-50"
                 >
                   Merge {fold.name} into {keep.name}
                 </button>

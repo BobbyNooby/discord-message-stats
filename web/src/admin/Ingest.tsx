@@ -1,17 +1,37 @@
 /**
- * Ingest (§11.6): token health, the last probe, the last ingest, the three
- * manual job buttons, and the job history including failures.
+ * Ingest (§11.6): token health, the last probe, the last ingest, the schedule
+ * switch, the three manual job buttons, and the job history including failures.
  *
  * The token's *value* is never here and never can be: the worker keeps it in its
  * own environment and it is not in any response this page calls. What is shown
  * is `token_status`, a word.
+ *
+ * The cron switch writes through the same `PUT /api/admin/config` and the same
+ * two save buttons as every other settings section — a schedule edit is a config
+ * edit, not a fourth kind of save.
  */
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
-import { createJob, listJobs, type AdminStatus, type JobKind } from "./api";
-import { Def, DefList, Notice, Section, formatStamp, workerOffline } from "./shared";
+import {
+  createJob,
+  listJobs,
+  type AdminConfig,
+  type AdminStatus,
+  type ConfigPatch,
+  type JobKind,
+} from "./api";
+import {
+  Def,
+  DefList,
+  Notice,
+  SaveBar,
+  Section,
+  formatStamp,
+  workerOffline,
+  type SaveMode,
+} from "./shared";
 
 const BUTTONS: { kind: JobKind; label: string; hint: string; changesData: boolean }[] = [
   {
@@ -36,13 +56,60 @@ function tokenTone(status: string): "ok" | "warn" | "error" {
   return "warn";
 }
 
-export function Ingest({ status, onDirty }: { status: AdminStatus; onDirty: () => void }) {
+export function Ingest({
+  status,
+  config,
+  onDirty,
+  onSave,
+}: {
+  status: AdminStatus;
+  config: AdminConfig | null;
+  onDirty: () => void;
+  onSave: (patch: ConfigPatch, mode: SaveMode) => Promise<AdminConfig>;
+}) {
   const queryClient = useQueryClient();
   const jobs = useQuery({ queryKey: ["admin", "jobs"], queryFn: () => listJobs(50) });
   const [queued, setQueued] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [cronEnabled, setCronEnabled] = useState(config?.effective.cron_enabled ?? true);
+  const [cronHours, setCronHours] = useState(String(config?.effective.cron_hours ?? 6));
+  const [cronSaving, setCronSaving] = useState(false);
+  const [cronNotice, setCronNotice] = useState<string | null>(null);
+  const [cronError, setCronError] = useState<string | null>(null);
   const worker = status.worker;
   const offline = workerOffline(worker.last_seen_at);
+
+  useEffect(() => {
+    if (!config) return;
+    setCronEnabled(config.effective.cron_enabled);
+    setCronHours(String(config.effective.cron_hours));
+  }, [config]);
+
+  async function saveCron(mode: SaveMode) {
+    const hours = Number(cronHours);
+    if (!Number.isInteger(hours) || hours < 1 || hours > 24) {
+      // The server rejects this too; catching it here keeps the operator from
+      // reading a 400 as "the whole config failed".
+      setCronNotice(null);
+      setCronError("The interval must be a whole number of hours from 1 to 24.");
+      return;
+    }
+    setCronSaving(true);
+    setCronNotice(null);
+    setCronError(null);
+    try {
+      await onSave({ cron_enabled: cronEnabled, cron_hours: hours }, mode);
+      setCronNotice(
+        mode === "recalculate"
+          ? "Schedule saved and a rebuild queued."
+          : "Schedule saved. The cache is stale until you run Recalculate all.",
+      );
+    } catch (failure) {
+      setCronError((failure as Error).message);
+    } finally {
+      setCronSaving(false);
+    }
+  }
 
   async function enqueue(kind: JobKind, label: string, changesData: boolean) {
     setError(null);
@@ -102,9 +169,52 @@ export function Ingest({ status, onDirty }: { status: AdminStatus; onDirty: () =
             </DefList>
           </div>
           <p className="mt-2 text-[11px] text-[var(--color-muted)]">
-            The schedule is stored in <code>worker_state</code>; this API exposes it read-only, so
-            it is shown here but not switched from this page.
+            The worker reads the schedule from <code>worker_state</code>; saving here writes it
+            there, so a change takes effect without a restart.
           </p>
+
+          <div className="mt-3 rounded border border-[var(--color-line)] bg-[var(--color-surface-2)] p-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                id="admin-cron-enabled"
+                type="checkbox"
+                checked={cronEnabled}
+                onChange={(event) => setCronEnabled(event.target.checked)}
+                className="h-4 w-4"
+              />
+              <label htmlFor="admin-cron-enabled" className="text-xs font-medium">
+                Scheduled ingest
+              </label>
+            </div>
+            <div className="mt-2">
+              <label htmlFor="admin-cron-hours" className="block text-[11px] text-[var(--color-muted)]">
+                Interval in hours (1–24)
+              </label>
+              <input
+                id="admin-cron-hours"
+                type="number"
+                min={1}
+                max={24}
+                step={1}
+                value={cronHours}
+                onChange={(event) => setCronHours(event.target.value)}
+                className="mt-1 w-24 rounded border border-[var(--color-line)] bg-[var(--color-ink)] px-2 py-1.5 text-xs tabular-nums"
+              />
+            </div>
+            <div className="mt-3">
+              <SaveBar onSave={saveCron} busy={cronSaving} disabled={!config} />
+            </div>
+            {cronError ? (
+              <div className="mt-2">
+                <Notice tone="error">{cronError}</Notice>
+              </div>
+            ) : null}
+            {cronNotice ? (
+              <div className="mt-2">
+                <Notice tone="ok">{cronNotice}</Notice>
+              </div>
+            ) : null}
+          </div>
         </div>
       </div>
 
