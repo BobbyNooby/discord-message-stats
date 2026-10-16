@@ -57,7 +57,12 @@ def _require_rollups(conn: sqlite3.Connection) -> None:
         )
 
 
-def create_app(cfg: Config, db_path: str | Path, static_dir: str | Path | None = None) -> FastAPI:
+def create_app(
+    cfg: Config,
+    db_path: str | Path,
+    static_dir: str | Path | None = None,
+    dev_login: bool = False,
+) -> FastAPI:
     app = FastAPI(title=cfg.app_name, docs_url=None, redoc_url=None)
     app.state.cfg = cfg
     app.state.db_path = str(db_path)
@@ -141,6 +146,29 @@ def create_app(cfg: Config, db_path: str | Path, static_dir: str | Path | None =
         )
         response.delete_cookie(STATE_COOKIE)
         return response
+
+    if dev_login:
+        # Deliberately a flag, never a default: an OAuth-less deployment must not
+        # be able to hand out sessions. `serve --dev-login` prints a warning.
+        @app.get("/auth/dev-login")
+        def dev_login_route(level: str = "viewer"):
+            from discord_scraper.auth.session import Level, establish_session
+
+            try:
+                chosen = Level[level.upper()]
+            except KeyError:
+                raise HTTPException(status_code=400, detail="level must be viewer or admin") from None
+            conn = writable()
+            try:
+                token = establish_session(conn, "dev-login", chosen)
+            finally:
+                conn.close()
+            response = RedirectResponse("/")
+            response.set_cookie(
+                SESSION_COOKIE, token, max_age=SESSION_MAX_AGE, httponly=True, samesite="lax",
+                secure=True,
+            )
+            return response
 
     @app.get("/auth/logout")
     def logout(request: Request):

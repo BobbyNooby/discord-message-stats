@@ -3,6 +3,11 @@
 /* Dark by default (spec §11): the palette is defined once here so a chart and
    its panel cannot drift apart. */
 @theme {
+  /* The spec's own breakpoint (§11.0): below ~860px the sidebar stops being
+     sticky and becomes a block above the content. Overriding `md` here means the
+     panel grids and the shell switch at the same width instead of drifting. */
+  --breakpoint-md: 860px;
+
   --color-ink: #0b0e14;
   --color-surface: #141822;
   --color-surface-2: #1b202c;
@@ -18,4 +23,35 @@ body,
   height: 100%;
   background: var(--color-ink);
   color: var(--color-text);
+}
+
+/* Mobile: a finger needs a bigger target than a cursor. Chips, toggles and the
+   calendar's +/- were 16-23px tall, which is a miss-tap waiting to happen.
+   Scoped to the narrow layout so the desktop stays compact. */
+@media (max-width: 860px) {
+  button,
+  input[type="range"],
+  input[type="text"],
+  input[type="search"],
+  select {
+    min-height: 40px;
+  }
+
+  button {
+    min-width: 40px;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+  }
+
+  /* Wide things (author rows, the reset action) keep their own layout. */
+  nav button {
+    min-width: 0;
+  }
+
+  /* Tables cannot fit a phone; let them scroll rather than squash. */
+  table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
 }
