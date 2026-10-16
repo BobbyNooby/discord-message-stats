@@ -213,7 +213,8 @@ def test_meta_reports_the_rollup_timezone_and_freshness(client, conn):
     assert meta["timezone"] == "UTC"     # the zone the numbers were built in
     assert meta["stale"] is False
 
-    seed_messages(conn, [("later", "u1", "u1handle", "new news", "2026-03-01T10:00:00+00:00",
+    # "z9" sorts after the fixture's "m7", like a real snowflake would
+    seed_messages(conn, [("z9", "u1", "u1handle", "new news", "2026-03-01T10:00:00+00:00",
                           None, None, 0, 0, author_raw("u1", "u1handle"))])
     assert client.get("/api/bootstrap").json()["meta"]["stale"] is True
 
