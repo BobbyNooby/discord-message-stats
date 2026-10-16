@@ -37,7 +37,7 @@ const lastOption = () => mocks.instance.setOption.mock.calls.at(-1)?.[0] as unkn
 const meta: Payload["meta"] = {
   total: 400,
   source_count: 400,
-  stale: false,
+  stale: false, can_admin: false,
   timezone: "Asia/Kuala_Lumpur",
   computed_at: "2026-10-15T20:00:00Z",
   authors: 2,

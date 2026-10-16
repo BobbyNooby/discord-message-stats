@@ -20,6 +20,7 @@ export type Payload = {
     total: number;
     source_count: number;
     stale: boolean;
+    can_admin: boolean;
     timezone: string;
     computed_at: string | null;
     authors: number;
