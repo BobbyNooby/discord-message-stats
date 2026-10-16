@@ -1,0 +1,103 @@
+"""The admin board's write paths: identity merges, who shows, sessions, cron.
+
+All four are "change an aggregate" operations, so each one has to leave the
+cache visibly stale — a config change that silently leaves the numbers wrong is
+the failure mode §11.6 exists to prevent.
+"""
+
+import sqlite3
+
+from discord_scraper.rollups.build import rebuild_all, config_digest
+from discord_scraper.rollups.schema import is_stale
+from tests.conftest import cfg_fixture
+
+
+def test_a_merge_is_written_and_a_rebuild_folds_the_accounts(admin_client, conn, tmp_path):
+    response = admin_client.put(
+        "/api/admin/identity", json={"merges": [{"canonical": "u1", "accounts": ["u2"]}]}
+    )
+    assert response.status_code == 200
+    assert response.json()["merges"] == [{"canonical": "u1", "accounts": ["u1", "u2"]}]
+    assert response.json()["cache_stale"] is True
+
+    rebuild_all(conn, cfg_fixture(tmp_path))
+    authors = conn.execute(
+        "SELECT DISTINCT author_id FROM rollup_activity ORDER BY author_id"
+    ).fetchall()
+    assert [row[0] for row in authors] == ["u1"]          # u2 folded in
+    assert conn.execute("SELECT SUM(msgs) FROM rollup_activity").fetchone()[0] == 5
+
+
+def test_unmerging_is_the_same_call_without_the_account(admin_client, conn, tmp_path):
+    admin_client.put("/api/admin/identity", json={"merges": [{"canonical": "u1", "accounts": ["u2"]}]})
+    admin_client.put("/api/admin/identity", json={"merges": []})
+    rebuild_all(conn, cfg_fixture(tmp_path))
+    authors = [row[0] for row in conn.execute(
+        "SELECT DISTINCT author_id FROM rollup_activity ORDER BY author_id")]
+    assert authors == ["u1", "u2"]
+
+
+def test_a_merge_rejects_a_canonical_that_is_its_own_alt(admin_client):
+    response = admin_client.put(
+        "/api/admin/identity", json={"merges": [{"canonical": "u1", "accounts": ["u2", "u2"]}]}
+    )
+    assert response.status_code == 400
+
+
+def test_hiding_an_identity_removes_it_from_every_rollup(admin_client, conn, tmp_path):
+    assert admin_client.put("/api/admin/inclusions", json={"included": {"u2": False}}).status_code == 200
+    rebuild_all(conn, cfg_fixture(tmp_path))
+    authors = [row[0] for row in conn.execute(
+        "SELECT DISTINCT author_id FROM rollup_activity ORDER BY author_id")]
+    assert authors == ["u1"]
+    # hidden, never deleted: the messages are all still there
+    assert conn.execute("SELECT COUNT(*) FROM messages").fetchone()[0] == 7
+
+
+def test_hiding_marks_the_cache_stale(admin_client):
+    body = admin_client.put("/api/admin/inclusions", json={"included": {"u2": False}}).json()
+    assert body["cache_stale"] is True
+    assert admin_client.get("/api/admin/status").json()["cache_stale"] is True
+
+
+def test_showing_again_restores_the_rollup(admin_client, conn, tmp_path):
+    admin_client.put("/api/admin/inclusions", json={"included": {"u2": False}})
+    admin_client.put("/api/admin/inclusions", json={"included": {"u2": True}})
+    rebuild_all(conn, cfg_fixture(tmp_path))
+    authors = [row[0] for row in conn.execute(
+        "SELECT DISTINCT author_id FROM rollup_activity ORDER BY author_id")]
+    assert authors == ["u1", "u2"]
+
+
+def test_status_reports_the_database_size_and_the_admin_id(admin_client, tmp_path):
+    body = admin_client.get("/api/admin/status").json()
+    assert body["database"]["size_bytes"] > 0
+    assert body["admin"]["discord_id"] == ""
+
+
+def test_revoke_all_ends_every_session_but_the_caller(admin_client, conn, client_for):
+    from discord_scraper.auth.session import Level
+
+    other = client_for(Level.VIEWER)
+    assert other.get("/api/bootstrap").status_code == 200
+    response = admin_client.post("/api/admin/sessions/revoke-all")
+    assert response.status_code == 200
+    assert response.json()["revoked"] >= 1
+    assert other.get("/api/bootstrap").status_code == 401      # signed out
+    assert admin_client.get("/api/admin/status").status_code == 200   # still in
+
+
+def test_cron_settings_are_writable_and_reach_the_worker(admin_client, conn):
+    from discord_scraper.worker.scheduler import cron_hours, schedule_enabled
+
+    response = admin_client.put("/api/admin/config", json={"cron_enabled": False, "cron_hours": 12})
+    assert response.status_code == 200
+    assert schedule_enabled(conn) is False        # the running worker sees it
+    assert cron_hours(conn) == 12
+    effective = response.json()["effective"]
+    assert effective["cron_enabled"] is False and effective["cron_hours"] == 12
+
+
+def test_an_invalid_cron_hour_is_rejected(admin_client):
+    assert admin_client.put("/api/admin/config", json={"cron_hours": 0}).status_code == 400
+    assert admin_client.put("/api/admin/config", json={"cron_hours": 99}).status_code == 400
