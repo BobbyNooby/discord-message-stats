@@ -1,0 +1,16 @@
+# Everything the image builds itself, or must never ship.
+.git
+.github
+.venv
+web/node_modules
+web/dist
+output
+docs
+.superpowers
+__pycache__
+*.pyc
+.pytest_cache
+*.egg-info
+.DS_Store
+config.toml
+.env
