@@ -58,7 +58,7 @@ def bootstrap(conn: sqlite3.Connection, cfg: Config) -> dict[str, Any]:
     # labelling them with the new zone is worse than labelling them old (§7.1).
     built_in = provenance.get("timezone") or cfg.timezone
     stale = (not provenance) or is_stale(conn, channel, "activity",
-                                         config_hash=config_digest(cfg))
+                                         config_hash=config_digest(cfg, conn))
     types = query.type_rows(conn, channel)
 
     payload: dict[str, Any] = {

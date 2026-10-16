@@ -34,7 +34,8 @@ JOB_KINDS = ("catch_up", "backfill", "probe", "rebuild_rollups")
 ALLOWLIST_POLICIES = ("posted", "explicit")
 # The control-plane `config` table holds operator overrides. A fixed key set:
 # an admin endpoint that writes arbitrary rows is a liability, not a feature.
-OVERRIDABLE = ("channel_id", "timezone", "ignore_words", "allowlist_policy")
+OVERRIDABLE = ("channel_id", "timezone", "ignore_words", "allowlist_policy",
+               "cron_enabled", "cron_hours")
 
 JOB_STATUSES = ("queued", "running", "done", "failed")
 
@@ -74,6 +75,13 @@ def effective_config(base: Config, overrides: dict[str, str]) -> Config:
             changes["ignore_words"] = json.loads(overrides["ignore_words"])
         except ValueError:
             changes["ignore_words"] = []
+    if "cron_enabled" in overrides:
+        changes["cron_enabled"] = str(overrides["cron_enabled"]).lower() in {"1", "true", "yes", "on"}
+    if "cron_hours" in overrides:
+        try:
+            changes["cron_hours"] = int(overrides["cron_hours"])
+        except ValueError:
+            pass
     return config_from_settings(replace(base.settings, **changes)) if changes else base
 
 
@@ -120,7 +128,7 @@ def status(request: Request) -> dict:
     conn = _conn(request)
     try:
         cfg = _effective_for(request, conn)
-        digest = config_digest(cfg)
+        digest = config_digest(cfg, conn)
         rollups: dict[str, Any] = {}
         stale = False
         for family in FAMILIES:
@@ -139,11 +147,19 @@ def status(request: Request) -> dict:
         active_sessions = conn.execute(
             "SELECT COUNT(*) FROM sessions WHERE revoked = 0 AND expires_at > ?", (_now(),)
         ).fetchone()[0]
+        database = Path(app_db_path(request))
         return {
             "app": cfg.app_name,
             "channel_id": cfg.channel_id,
             "timezone": cfg.timezone,
             "cache_stale": stale,
+            "database": {
+                "size_bytes": database.stat().st_size if database.exists() else 0,
+                "path": str(database),
+            },
+            # The id, never the token: §10.2 keeps the token out of the database
+            # and out of every response.
+            "admin": {"discord_id": cfg.admin_id or ""},
             "config_hash": digest,
             "rollups": rollups,
             "worker": _worker_view(conn),
@@ -170,6 +186,8 @@ def get_config(request: Request) -> dict:
                 "app_name": cfg.app_name,
                 "count_types": list(cfg.count_types),
                 "exclude_bots": cfg.exclude_bots,
+                "cron_enabled": cfg.cron_enabled,
+                "cron_hours": cfg.cron_hours,
             },
             "overridden": sorted(k for k in overrides if k in OVERRIDABLE),
         }
@@ -195,6 +213,13 @@ def put_config(request: Request, payload: dict) -> dict:
                 "ON CONFLICT (key) DO UPDATE SET value = excluded.value",
                 (key, stored),
             )
+        # The scheduler reads worker_state, not the config table, so a cron edit
+        # is mirrored where the running worker will see it immediately.
+        from discord_scraper.worker.state import set_worker_state
+
+        for key in ("cron_enabled", "cron_hours"):
+            if key in payload:
+                set_worker_state(conn, key, payload[key])
         conn.commit()
     finally:
         conn.close()
@@ -216,6 +241,13 @@ def _validate(key: str, value: Any) -> None:
         raise HTTPException(status_code=400, detail="ignore_words must be a list")
     elif key == "channel_id" and not str(value).strip():
         raise HTTPException(status_code=400, detail="channel_id cannot be empty")
+    elif key == "cron_hours":
+        try:
+            hours = int(value)
+        except (TypeError, ValueError):
+            raise HTTPException(status_code=400, detail="cron_hours must be a number") from None
+        if not 1 <= hours <= 24:
+            raise HTTPException(status_code=400, detail="cron_hours must be between 1 and 24")
 
 
 @router.get("/jobs")
@@ -410,3 +442,95 @@ def discard_upload(upload_id: str) -> None:
     staged = PENDING_UPLOADS.pop(upload_id, None)
     if staged is not None:
         staging.discard(staged)
+
+
+def app_db_path(request: Request) -> str:
+    return str(request.app.state.db_path)
+
+
+class IdentityRequest(BaseModel):
+    merges: list[dict]
+
+
+@router.put("/identity")
+def put_identity(request: Request, body: IdentityRequest) -> dict:
+    """Replace the channel's merges. Add an alt, or drop it, with the same call."""
+    conn = _conn(request)
+    try:
+        cfg = _effective_for(request, conn)
+        rows = []
+        for merge in body.merges:
+            canonical = str((merge or {}).get("canonical") or "").strip()
+            accounts = [str(a).strip() for a in (merge or {}).get("accounts") or [] if str(a).strip()]
+            if not canonical:
+                raise HTTPException(status_code=400, detail="every merge needs a canonical id")
+            if len(set(accounts)) != len(accounts):
+                raise HTTPException(status_code=400, detail=f"duplicate account in {canonical}")
+            members = sorted({canonical, *accounts})
+            rows.extend((cfg.channel_id, canonical, account, None) for account in members)
+
+        conn.execute("DELETE FROM identity WHERE channel_id = ?", (cfg.channel_id,))
+        conn.executemany(
+            "INSERT INTO identity (channel_id, canonical_id, account_id, note) VALUES (?, ?, ?, ?)",
+            rows,
+        )
+        conn.commit()
+        merges = [
+            {"canonical": canonical, "accounts": members}
+            for canonical, members in sorted(_grouped_merges(conn, cfg.channel_id).items())
+        ]
+        return {"merges": merges, "cache_stale": True}
+    finally:
+        conn.close()
+
+
+def _grouped_merges(conn: sqlite3.Connection, channel_id: str) -> dict[str, list[str]]:
+    grouped: dict[str, list[str]] = {}
+    for canonical, account in conn.execute(
+        "SELECT canonical_id, account_id FROM identity WHERE channel_id = ? ORDER BY account_id",
+        (channel_id,),
+    ):
+        grouped.setdefault(canonical, []).append(account)
+    return grouped
+
+
+class InclusionRequest(BaseModel):
+    included: dict[str, bool]
+
+
+@router.put("/inclusions")
+def put_inclusions(request: Request, body: InclusionRequest) -> dict:
+    """Who shows (§5.6). Hide, never delete: the messages stay on disk."""
+    conn = _conn(request)
+    try:
+        cfg = _effective_for(request, conn)
+        for author_id, shown in body.included.items():
+            conn.execute(
+                """
+                INSERT INTO author_names (channel_id, author_id, name, renamed, included)
+                VALUES (?, ?, ?, 0, ?)
+                ON CONFLICT (channel_id, author_id) DO UPDATE SET included = excluded.included
+                """,
+                (cfg.channel_id, str(author_id), str(author_id), 1 if shown else 0),
+            )
+        conn.commit()
+        return {"included": dict(body.included), "cache_stale": True}
+    finally:
+        conn.close()
+
+
+@router.post("/sessions/revoke-all")
+def revoke_all_sessions(request: Request) -> dict:
+    """Sign everybody else out. The caller keeps their own session."""
+    from discord_scraper.auth.session import hash_token
+
+    token = request.cookies.get("dsh_session", "")
+    conn = _conn(request)
+    try:
+        cursor = conn.execute(
+            "UPDATE sessions SET revoked = 1 WHERE revoked = 0 AND id != ?", (hash_token(token),)
+        )
+        conn.commit()
+        return {"revoked": int(cursor.rowcount or 0)}
+    finally:
+        conn.close()
