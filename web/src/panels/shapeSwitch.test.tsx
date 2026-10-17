@@ -30,7 +30,10 @@ import { initialFilters } from "../filters/reducer";
 import type { Charts } from "../filters/persist";
 import type { ChartKind } from "./registry";
 import type { PanelId } from "./registry";
+import { Attachments } from "./Attachments";
 import { MessageTypes } from "./MessageTypes";
+import { RepliesVsStandalone } from "./RepliesVsStandalone";
+import { ShareOfVoice } from "./ShareOfVoice";
 import { TextVsMedia } from "./TextVsMedia";
 import { PanelScopeProvider } from "./panelScope";
 
@@ -145,10 +148,32 @@ describe("the chart-shape switch", () => {
 
     render(
       <Shell>
-        <TextVsMedia payload={payload} filters={initialFilters(payload)} />
+        <Attachments payload={payload} filters={initialFilters(payload)} />
       </Shell>,
     );
     expect(noSwitch()).not.toBeInTheDocument();
+  });
+
+  it("offers bars on the cards whose spec declares a pie, keeping the pie as the default", async () => {
+    const payload = fixture();
+    // Each of these draws a pie today; the switch is what lets a reader ask for
+    // the bar, and the default has to stay the shape they already had.
+    const panels = [
+      { label: "Text vs media", renderPanel: () => <TextVsMedia payload={payload} filters={initialFilters(payload)} /> },
+      {
+        label: "Replies vs standalone",
+        renderPanel: () => <RepliesVsStandalone payload={payload} filters={initialFilters(payload)} />,
+      },
+      { label: "Share of voice", renderPanel: () => <ShareOfVoice payload={payload} filters={initialFilters(payload)} /> },
+    ];
+
+    for (const panel of panels) {
+      const { unmount } = render(<Shell>{panel.renderPanel()}</Shell>);
+      expect(switchShownAs(panel.label, "pie")).toBeInTheDocument();
+      await userEvent.click(switchShownAs(panel.label, "pie"));
+      expect(lastOption().series[0].type).toBe("bar");
+      unmount();
+    }
   });
 
   it("draws a pie of at most eight named slices once asked, folding the tail into Other", async () => {
