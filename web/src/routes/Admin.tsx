@@ -83,6 +83,10 @@ export function Admin() {
   });
 
   const markStale = useCallback(() => setMarkedStale(true), []);
+  // A rebuild that finished clean is the one event that can settle the local
+  // marking: /api/admin/status then reports the fresh rollups, and a config
+  // edit made after the run leaves `cache_stale` up on its own.
+  const markCurrent = useCallback(() => setMarkedStale(false), []);
 
   const saveConfig = useCallback(
     async (patch: ConfigPatch, mode: SaveMode) => {
@@ -194,6 +198,7 @@ export function Admin() {
           stale={stale}
           config={config.data ?? null}
           onDirty={markStale}
+          onRebuilt={markCurrent}
           onSave={saveConfig}
         />
       ) : null}

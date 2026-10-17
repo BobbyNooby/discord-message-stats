@@ -870,6 +870,60 @@ describe("<Admin>", () => {
 });
 
 /**
+ * The stale banner is a claim about the cache, so a rebuild has to settle it:
+ * down once the run finishes clean, still up when it failed. It used to stay
+ * up after a clean rebuild because the click-time `markedStale` flag had no
+ * way back.
+ */
+describe("<Admin> the stale banner after a rebuild", () => {
+  const running = (): Progress => ({
+    ...PROGRESS,
+    running: true,
+    started_at: "2026-10-15T20:01:00+00:00",
+    last: null,
+    families: PROGRESS.families.map((family) => ({ ...family, state: "running" as const })),
+  });
+
+  const settled = (status: "finished" | "failed"): Progress => ({
+    ...PROGRESS,
+    running: false,
+    last: { ...PROGRESS.last!, status },
+  });
+
+  async function rebuild(user: ReturnType<typeof userEvent.setup>) {
+    renderAdmin();
+    await openTask(user, "Refresh the cache");
+    await screen.findByText(/rebuild in progress/i);
+    await user.click(screen.getByRole("button", { name: /recalculate all/i }));
+    expect(await screen.findByText(/cache marked stale/i)).toBeInTheDocument();
+  }
+
+  it("clears the stale banner once a rebuild finishes", async () => {
+    handlers["GET /api/admin/progress"] = () => response(200, running());
+    const user = userEvent.setup();
+    await rebuild(user);
+
+    handlers["GET /api/admin/progress"] = () => response(200, settled("finished"));
+    await waitFor(
+      () => expect(screen.queryByText(/cache marked stale/i)).not.toBeInTheDocument(),
+      { timeout: 4000 },
+    );
+  });
+
+  it("keeps the stale banner when the rebuild fails", async () => {
+    handlers["GET /api/admin/progress"] = () => response(200, running());
+    const user = userEvent.setup();
+    await rebuild(user);
+
+    handlers["GET /api/admin/progress"] = () => response(200, settled("failed"));
+    await waitFor(() => expect(screen.getByText(/no rebuild is running/i)).toBeInTheDocument(), {
+      timeout: 4000,
+    });
+    expect(screen.getByText(/cache marked stale/i)).toBeInTheDocument();
+  });
+});
+
+/**
  * The admins subsection (§8.1): the list is rows now, not one environment
  * variable, and the board is where an admin grants it to somebody else.
  */
