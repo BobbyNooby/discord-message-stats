@@ -5,6 +5,7 @@ import { useBootstrap, useHealth, useRecent } from "./api/queries";
 import { AppShell } from "./components/AppShell";
 import { FilterSidebar } from "./components/FilterSidebar";
 import { HealthBanner } from "./components/HealthBanner";
+import { NoticeProvider, useNotice } from "./components/Notice";
 import { RecentStrip } from "./components/RecentStrip";
 import { dashboardReducer, initialDashboardState } from "./filters/reducer";
 import {
@@ -34,7 +35,13 @@ export default function App() {
   // The admin board is its own route with its own shell (§11.6), and there is no
   // router library by design. The path never changes without a reload, so this
   // stays a render-time branch and the dashboard keeps its hooks unconditional.
-  return window.location.pathname.startsWith("/admin") ? <Admin /> : <Dashboard />;
+  // The notice region is the one thing both routes share: it is how a save, a
+  // copy or a failure is acknowledged wherever it happened.
+  return (
+    <NoticeProvider>
+      {window.location.pathname.startsWith("/admin") ? <Admin /> : <Dashboard />}
+    </NoticeProvider>
+  );
 }
 
 function Dashboard() {
@@ -82,6 +89,7 @@ function DashboardBody({
     initialDashboardState,
   );
   const years = [...new Set(payload.days.map((day) => Number(day.slice(0, 4))))].sort();
+  const notify = useNotice();
   // Stable, so a card's "…" does not re-render every panel through the context.
   const openScope = useCallback(
     (panelId: PanelId) => dispatch({ type: "openScope", panelId }),
@@ -153,6 +161,7 @@ function DashboardBody({
           onResetView={() => {
             dispatch({ type: "clearScopes" });
             setCharts({});
+            notify({ tone: "success", message: "Saved view cleared — every card is back to the global filters." });
           }}
         />
       }

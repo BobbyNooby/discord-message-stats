@@ -135,6 +135,16 @@ describe("a chart shape through the dashboard", () => {
     await waitFor(() => expect(storedCharts()).toEqual({}));
   });
 
+  it("acknowledges the reset instead of clearing the saved view silently", async () => {
+    localStorage.setItem(CHARTS_KEY, JSON.stringify({ version: 1, charts: { "message-types": "pie" } }));
+    renderApp();
+
+    await userEvent.click(await screen.findByRole("button", { name: "Reset view" }));
+    await userEvent.click(screen.getByRole("button", { name: "Clear saved view" }));
+
+    expect(await screen.findByRole("status")).toHaveTextContent(/saved view cleared/i);
+  });
+
   it("redraws from the rows already in hand, without asking the server again", async () => {
     renderApp();
     const toggle = await screen.findByRole("button", { name: "Message types as bars" });
