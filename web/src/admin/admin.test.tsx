@@ -475,6 +475,68 @@ describe("<Admin>", () => {
     expect(recorded("POST", "/api/admin/recalculate")).toBe(true);
   });
 
+  it("shows the upload dry run — channel, zone, rows added, rows lost, disk — before a replace", async () => {
+    handlers["POST /api/admin/upload"] = () =>
+      response(200, {
+        upload_id: "u1",
+        rows: 12,
+        first: "2026-01-01",
+        last: "2026-02-01",
+        size_bytes: 1048576,
+        channel_id: "c9",
+        timezone: "Europe/Berlin",
+        timezone_source: "database",
+        added: 4,
+        lost: 2,
+        disk: { free_bytes: 10 * 1048576, required_bytes: 2 * 1048576 },
+        replaces: { rows: 10, first: "2025-01-01", last: "2025-12-31", size_bytes: 524288 },
+      });
+
+    const user = userEvent.setup();
+    renderAdmin();
+
+    await openTask(user, "Replace the database");
+    const input = await screen.findByLabelText("Database file");
+    await user.upload(input, new File([new Uint8Array([1, 2, 3])], "messages.db"));
+    await user.click(screen.getByRole("button", { name: /upload and dry-run/i }));
+
+    expect(await screen.findByText(/nothing has been replaced yet/i)).toBeInTheDocument();
+    expect(
+      within(screen.getByText("Channel").closest("div") as HTMLElement).getByText("c9"),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Europe\/Berlin \(from the file\)/)).toBeInTheDocument();
+    expect(
+      within(screen.getByText("Rows added").closest("div") as HTMLElement).getByText("4"),
+    ).toBeInTheDocument();
+    expect(
+      within(screen.getByText("Rows that would be lost").closest("div") as HTMLElement).getByText("2"),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/10\.0 MiB free · 2\.0 MiB needed/)).toBeInTheDocument();
+    expect(recorded("POST", "/api/admin/upload")).toBe(true);
+  });
+
+  it("surfaces a refused upload with the server's reason and offers nothing to confirm", async () => {
+    handlers["POST /api/admin/upload"] = () =>
+      response(400, {
+        detail:
+          "not enough free disk space: 2097152 bytes are needed for the swap and its backup, and 1024 are free",
+      });
+
+    const user = userEvent.setup();
+    renderAdmin();
+
+    await openTask(user, "Replace the database");
+    const input = await screen.findByLabelText("Database file");
+    await user.upload(input, new File([new Uint8Array([1, 2, 3])], "messages.db"));
+    await user.click(screen.getByRole("button", { name: /upload and dry-run/i }));
+
+    expect(await screen.findByText(/not enough free disk space/i)).toBeInTheDocument();
+    expect(screen.queryByText(/nothing has been replaced yet/i)).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /confirm and replace/i }),
+    ).not.toBeInTheDocument();
+  });
+
   it("revokes every other session and reports how many ended", async () => {
     const user = userEvent.setup();
     renderAdmin();
