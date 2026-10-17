@@ -362,3 +362,56 @@ def test_a_whitespace_only_state_is_never_valid():
 
     for secret in (None, "a-signing-key"):
         assert state_is_valid("   ", "   ", secret) is False
+
+
+def _dead_sessions(conn, count, *, revoked=0, days_expired=30):
+    from datetime import datetime, timedelta, timezone
+
+    now = datetime.now(timezone.utc)
+    conn.executemany(
+        "INSERT INTO sessions (id, discord_id, level, created_at, expires_at, revoked) "
+        "VALUES (?, 'u1', 'viewer', ?, ?, ?)",
+        [
+            (
+                f"dead{revoked}{index}",
+                (now - timedelta(days=days_expired + 30)).isoformat(timespec="seconds"),
+                (now - timedelta(days=days_expired)).isoformat(timespec="seconds"),
+                revoked,
+            )
+            for index in range(count)
+        ],
+    )
+    conn.commit()
+
+
+def test_expired_sessions_are_purged_before_the_live_cap(conn):
+    """Twenty dead rows used to fill the cap; the one login that mattered was
+    evicted the moment it arrived, because the cap counted the dead."""
+    _dead_sessions(conn, 25, revoked=0)
+    token = establish_session(conn, "u1", Level.VIEWER)
+
+    assert session_level(conn, token) is Level.VIEWER
+    assert conn.execute(
+        "SELECT COUNT(*) FROM sessions WHERE discord_id = 'u1'"
+    ).fetchone()[0] == 1
+
+
+def test_revoked_sessions_are_purged_before_the_live_cap(conn):
+    """A revoked row is dead too: ninety-nine of them must not push out a live
+    token when the next one signs in."""
+    _dead_sessions(conn, 25, revoked=1)
+    token = establish_session(conn, "u1", Level.VIEWER)
+
+    assert session_level(conn, token) is Level.VIEWER
+    assert conn.execute(
+        "SELECT COUNT(*) FROM sessions WHERE discord_id = 'u1'"
+    ).fetchone()[0] == 1
+
+
+def test_purging_dead_rows_leaves_another_identity_alone(conn):
+    _dead_sessions(conn, 25, revoked=0)
+    other = establish_session(conn, "u2", Level.VIEWER)
+    assert session_level(conn, other) is Level.VIEWER
+    assert conn.execute(
+        "SELECT COUNT(*) FROM sessions WHERE discord_id = 'u2'"
+    ).fetchone()[0] == 1
