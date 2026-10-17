@@ -177,6 +177,60 @@ export type TimezoneList = {
   auto_zone: string;
 };
 
+/** One line of the rebuild log: a run or family event, already human-readable. */
+export type ProgressLogEntry = {
+  id: number;
+  at: string | null;
+  kind: string;
+  family: string | null;
+  phase: string | null;
+  message: string | null;
+};
+
+/** `running` is a family whose write has begun and not yet finished. */
+export type ProgressFamilyState = "pending" | "running" | "done" | "failed";
+
+export type ProgressFamily = {
+  family: string;
+  state: ProgressFamilyState;
+  rows: number | null;
+  seconds: number | null;
+  computed_at: string | null;
+  added_since: number | null;
+  stale: boolean;
+};
+
+export type ProgressLast = {
+  status: string;
+  finished_at: string | null;
+  seconds: number | null;
+  rows: number | null;
+  message: string | null;
+};
+
+/**
+ * One poll's answer (`src/discord_scraper/api/progress.py`): the run state,
+ * every family, and the events newer than the `since` that was asked for. The
+ * run state, the totals and the freshness facts all arrive in this one body.
+ */
+export type Progress = {
+  running: boolean;
+  started_at: string | null;
+  phase: string | null;
+  families: ProgressFamily[];
+  /** Newest first, only entries with an id greater than the requested `since`. */
+  log: ProgressLogEntry[];
+  totals: { families: number; rows: number; seconds: number | null };
+  latest_id: number;
+  last: ProgressLast | null;
+  freshness: {
+    built_at: string | null;
+    current: boolean;
+    added_since: number | null;
+    newest_message_id: string | null;
+  };
+};
+
 export type SearchResults = {
   total: number;
   limit: number;
@@ -303,6 +357,14 @@ export const recalculate = () =>
     "/api/admin/recalculate",
     { method: "POST" },
   );
+
+/**
+ * The live rebuild feed. `since` is the previous response's `latest_id`, so a
+ * poll during a quiet stretch re-reads nothing: it answers with an empty `log`
+ * and the same `latest_id`.
+ */
+export const getProgress = (since = 0) =>
+  request<Progress>(`/api/admin/progress?since=${since}`);
 
 export const searchMessages = (q: string, limit = 50) =>
   request<SearchResults>(
