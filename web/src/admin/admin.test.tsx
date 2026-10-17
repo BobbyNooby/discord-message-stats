@@ -438,6 +438,43 @@ describe("<Admin>", () => {
     expect(scores[1].closest("li")).toHaveTextContent(/angelina.*angelica/i);
   });
 
+  it("offers the real zones, an automatic option, and names the effective zone", async () => {
+    const user = userEvent.setup();
+    renderAdmin();
+
+    await openTask(user, "Replace the database");
+    const select = await screen.findByLabelText("Timezone");
+    const values = within(select)
+      .getAllByRole("option")
+      .map((option) => (option as HTMLOptionElement).value);
+    expect(values).toContain("auto");
+    expect(values).toContain("Europe/London");
+    expect(values).not.toContain("GMT+8"); // the free-text mistake this replaces
+    expect(screen.queryByRole("textbox", { name: /timezone/i })).not.toBeInTheDocument();
+    expect(await screen.findByText(/effective zone now/i)).toHaveTextContent("Asia/Kuala_Lumpur");
+  });
+
+  it("states the rebuild consequence when the zone changes, before anything is saved", async () => {
+    const user = userEvent.setup();
+    renderAdmin();
+
+    await openTask(user, "Replace the database");
+    const select = await screen.findByLabelText("Timezone");
+    expect(screen.queryByText(/you changed the timezone/i)).not.toBeInTheDocument();
+
+    await user.selectOptions(select, "Europe/London");
+    expect(await screen.findByText(/you changed the timezone/i)).toBeInTheDocument();
+    expect(screen.getByText(/a rebuild is required to apply it/i)).toBeInTheDocument();
+    expect(recorded("PUT", "/api/admin/config")).toBe(false); // not committed yet
+
+    await user.click(screen.getByRole("button", { name: /save & recalculate/i }));
+    await waitFor(() => expect(recorded("PUT", "/api/admin/config")).toBe(true));
+    expect(recordedCall("PUT", "/api/admin/config")?.body).toMatchObject({
+      timezone: "Europe/London",
+    });
+    expect(recorded("POST", "/api/admin/recalculate")).toBe(true);
+  });
+
   it("revokes every other session and reports how many ended", async () => {
     const user = userEvent.setup();
     renderAdmin();

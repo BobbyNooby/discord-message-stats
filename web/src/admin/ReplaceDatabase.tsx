@@ -34,6 +34,7 @@ import {
   formatStamp,
   type SaveMode,
 } from "./shared";
+import { TimezonePicker } from "./TimezonePicker";
 
 export function ReplaceDatabase({
   status,
@@ -284,15 +285,7 @@ export function ReplaceDatabase({
             />
           </div>
           <div>
-            <label htmlFor="admin-timezone" className="block text-xs font-medium">
-              Timezone (IANA name)
-            </label>
-            <input
-              id="admin-timezone"
-              value={timezone}
-              onChange={(event) => setTimezone(event.target.value)}
-              className="mt-1 w-full rounded border border-[var(--color-line)] bg-[var(--color-ink)] px-2 py-1.5 text-xs"
-            />
+            <TimezonePicker value={timezone} onChange={setTimezone} />
           </div>
         </div>
         <p className="text-[11px] text-[var(--color-muted)]">
