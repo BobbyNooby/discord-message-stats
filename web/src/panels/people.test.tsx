@@ -157,6 +157,32 @@ describe("global-only panels (§11.2)", () => {
     expect(screen.getByText("global only")).toBeInTheDocument();
   });
 
+  it("exports the per-author ranking, not the trend line drawn under it", async () => {
+    // Two charts share one card and one card offers one export. The rows the
+    // reader is looking at are the bars, so those are the ones under the title.
+    const blobs: Blob[] = [];
+    vi.stubGlobal("URL", {
+      ...URL,
+      createObjectURL: (blob: Blob) => {
+        blobs.push(blob);
+        return "blob:x";
+      },
+      revokeObjectURL: () => {},
+    });
+    const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+    render(<EditRate payload={payload} filters={withFilters()} />);
+
+    await userEvent.click(screen.getByRole("button", { name: "Export Who proofreads as CSV" }));
+
+    const written = await blobs[0].text();
+    expect(written.split("\r\n")[0]).toBe("author,edited %,edits");
+    expect(written).toContain("Alice");
+    expect(written).toContain("Bob");
+    expect(written).not.toContain("2024-01");
+    click.mockRestore();
+    vi.unstubAllGlobals();
+  });
+
   it("drops the matrix to 121 cells when the twelfth author is switched off", () => {
     const twelve = {
       ...payload,
