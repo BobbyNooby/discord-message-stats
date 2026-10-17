@@ -1,18 +1,25 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
+import { Dialog } from "../components/ui";
 import { OPEN_FILTERS_EVENT, WORD_SEARCH_ID, useKeyboardShortcuts } from "./shortcuts";
 
 /**
  * `/` and `f` must not fight the reader: they do nothing while a field has
- * focus, and nothing when a browser or OS modifier is held.
+ * focus, nothing when a browser or OS modifier is held, and nothing while a
+ * modal is open.
  */
-function Harness() {
+function Harness({ modal = false }: { modal?: boolean }) {
   useKeyboardShortcuts();
   return (
     <>
       <input id={WORD_SEARCH_ID} aria-label="Search words" defaultValue="cat" />
       <input aria-label="Some other field" />
+      {modal ? (
+        <Dialog open onOpenChange={() => {}} title="Show top 50">
+          <p>media</p>
+        </Dialog>
+      ) : null}
     </>
   );
 }
@@ -67,6 +74,22 @@ describe("keyboard shortcuts", () => {
     fireEvent.keyDown(document.body, { key: "f", ctrlKey: true });
 
     expect(listener).not.toHaveBeenCalled();
+    stop();
+  });
+
+  it("does not reach past an open modal", () => {
+    // "Show top 50" is a Radix dialog on a phone and a dialog on the desktop.
+    // `f` there opened the filter sheet behind it, and on a wide screen moved
+    // the caret into the sidebar behind the scrim.
+    const { listener, stop } = watchFilters();
+    render(<Harness modal />);
+    const dialog = screen.getByRole("dialog");
+
+    fireEvent.keyDown(dialog, { key: "f" });
+    fireEvent.keyDown(dialog, { key: "/" });
+
+    expect(listener).not.toHaveBeenCalled();
+    expect(screen.getByLabelText("Search words")).not.toHaveFocus();
     stop();
   });
 });
