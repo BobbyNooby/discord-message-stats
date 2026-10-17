@@ -7,6 +7,7 @@ import type { Payload } from "../api/types";
 import { dashboardReducer, initialDashboardState } from "../filters/reducer";
 import { effective } from "../filters/selectors";
 import type { PanelId } from "../panels/registry";
+import { PANELS, panelsHonouring } from "../panels/registry";
 import { FilterSidebar } from "./FilterSidebar";
 import { PanelScopeProvider } from "../panels/panelScope";
 import { Panel } from "./Panel";
@@ -67,16 +68,35 @@ function Harness() {
 const openScope = (label: string) => userEvent.click(screen.getByRole("button", { name: `Filter ${label}` }));
 
 describe("<FilterSidebar> in a card's scope", () => {
+  it("states each control's reach from the registry, so the number cannot drift", () => {
+    render(<Harness />);
+    const total = Object.keys(PANELS).length;
+    expect(
+      screen.getByText(`Time range · ${panelsHonouring("time").length} of ${total} cards`),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(new RegExp(`Authors \\(2/2\\) · ${panelsHonouring("author").length} of ${total} cards`)),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(`Bucket · ${panelsHonouring("time").length} of ${total} cards`),
+    ).toBeInTheDocument();
+    // A dimension no card honours gets no control. Each of these has at least
+    // one, so all of them are on offer.
+    for (const dimension of ["time", "author", "word", "provider", "kind"] as const) {
+      expect(panelsHonouring(dimension).length).toBeGreaterThan(0);
+    }
+  });
+
   it("swaps the sidebar to the card's own scope and names the card", async () => {
     render(<Harness />);
-    expect(screen.getByText("Bucket")).toBeInTheDocument();
+    expect(screen.getByText(/Bucket ·/)).toBeInTheDocument();
 
     await openScope("Who talks the most");
 
     expect(screen.getByRole("status")).toHaveTextContent("Filter for Who talks the most");
-    expect(screen.getByText("Authors (2/2)")).toBeInTheDocument();
+    expect(screen.getByText(/Authors \(2\/2\)/)).toBeInTheDocument();
     // The global-only controls are not part of a card's scope.
-    expect(screen.queryByText("Bucket")).toBeNull();
+    expect(screen.queryByText(/Bucket ·/)).toBeNull();
     // No global metric switch exists any more: messages and characters are
     // separate cards, each saying what it ranks.
     expect(screen.queryByText("Rank by")).toBeNull();
@@ -87,7 +107,7 @@ describe("<FilterSidebar> in a card's scope", () => {
     await openScope("Who says it");
 
     expect(screen.getByRole("textbox", { name: "Word" })).toBeInTheDocument();
-    expect(screen.getByText("Authors (2/2)")).toBeInTheDocument();
+    expect(screen.getByText(/Authors \(2\/2\)/)).toBeInTheDocument();
     expect(screen.queryByText("Time range")).toBeNull();
   });
 
@@ -115,7 +135,7 @@ describe("<FilterSidebar> in a card's scope", () => {
     await userEvent.click(screen.getByRole("button", { name: "Back to global" }));
 
     expect(screen.queryByRole("status")).toBeNull();
-    expect(screen.getByText("Bucket")).toBeInTheDocument();
+    expect(screen.getByText(/Bucket ·/)).toBeInTheDocument();
     expect(screen.getByTestId("authors")).toHaveTextContent("2");
     // The draft is gone, not merely hidden: reopening starts from what applies.
     await openScope("Who talks the most");
