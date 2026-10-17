@@ -37,6 +37,7 @@ export function MessageSearch() {
           </label>
           <input
             id="admin-search-term"
+            type="search"
             value={term}
             onChange={(event) => setTerm(event.target.value)}
             className="mt-1 w-full rounded border border-[var(--color-line)] bg-[var(--color-ink)] px-2 py-1.5 text-xs"

@@ -29,16 +29,31 @@ body,
    calendar's +/- were 16-23px tall, which is a miss-tap waiting to happen.
    Scoped to the narrow layout so the desktop stays compact. */
 @media (max-width: 860px) {
+  /* Any control, whatever the element. The old list named only button/select
+     and a few input types, so number, checkbox, radio and type-less fields
+     escaped it; `:not([type="hidden"])` catches a field with no type at all.
+     Anchors are included only where they act as chrome — a nav or header
+     control — because an inline link in prose must stay on its text baseline
+     rather than become a 40px block. */
   button,
-  input[type="range"],
-  input[type="text"],
-  input[type="search"],
-  select {
+  select,
+  textarea,
+  input:not([type="hidden"]),
+  nav a,
+  header a,
+  [role="toolbar"] a {
     min-height: 40px;
   }
 
-  button {
+  /* A checkbox is square: a 40px-tall sliver is no easier to hit than a
+     16px box, so it gets a 40px side too. Buttons already do. */
+  button,
+  input[type="checkbox"],
+  input[type="radio"] {
     min-width: 40px;
+  }
+
+  button {
     padding-left: 0.5rem;
     padding-right: 0.5rem;
   }
