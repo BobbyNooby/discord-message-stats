@@ -78,6 +78,31 @@ describe("<FilterSidebar>", () => {
     await userEvent.click(screen.getByRole("button", { name: "Reset all filters" }));
     expect(dispatch).toHaveBeenCalledWith({ type: "reset" });
   });
+
+  it("states what is stored in the footer, and clears all of it on request", async () => {
+    const onResetView = vi.fn();
+    render(
+      <FilterSidebar
+        {...sidebarProps}
+        scopes={{
+          "who-talks-the-most": { active: [false, true] },
+          "word-cloud": { word: "cat" },
+        }}
+        charts={{ "embed-providers": "pie" }}
+        onResetView={onResetView}
+      />,
+    );
+
+    // Both scopes and the shape count are stated before anything is cleared.
+    expect(screen.getByText(/2 cards have their own filters/)).toBeInTheDocument();
+    expect(screen.getByText(/1 chart shape/)).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Reset view" }));
+    expect(onResetView).not.toHaveBeenCalled();
+    await userEvent.click(screen.getByRole("button", { name: "Clear saved view" }));
+    // One call: the caller clears scopes and chart shapes together.
+    expect(onResetView).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe("<AppShell>", () => {
