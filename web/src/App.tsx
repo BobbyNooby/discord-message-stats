@@ -10,6 +10,7 @@ import { useBootstrap, useHealth, useRecent } from "./api/queries";
 import { AppShell } from "./components/AppShell";
 import { FilterSidebar } from "./components/FilterSidebar";
 import { HealthBanner } from "./components/HealthBanner";
+import { JumpNav } from "./components/JumpNav";
 import { NoticeProvider, useNotice } from "./components/Notice";
 import { RecentStrip } from "./components/RecentStrip";
 import {
@@ -196,6 +197,7 @@ function DashboardBody({
       }
     >
       <HealthBanner banner={banner} stale={payload.meta.stale} staleAt={payload.meta.computed_at} />
+      <JumpNav />
       <RecentStrip messages={recent?.messages ?? []} truncated={recent?.truncated} />
       {/* Six sections in the spec's order; the calendar sits inside Time &
           rhythm where §11.1 puts it. Every card inside can hand its id to the
