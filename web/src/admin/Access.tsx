@@ -128,11 +128,27 @@ export function Access({
 
         <div className="rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] p-4">
           <h3 className="text-sm font-semibold">Sessions and identity</h3>
+          {status.admin.known === false ? (
+            <div className="mt-2">
+              <Notice tone="warn">
+                No message in this channel was posted by <code>{status.admin.discord_id}</code>. A
+                typo&rsquo;d id means nobody is admin, so check <code>ADMIN_DISCORD_ID</code> in the
+                worker&rsquo;s environment and restart it.
+              </Notice>
+            </div>
+          ) : null}
           <div className="mt-3">
             <DefList>
               <Def label="Active sessions">{status.sessions.active}</Def>
               <Def label="Admin Discord ID">
                 {status.admin.discord_id ? status.admin.discord_id : "not configured"}
+              </Def>
+              <Def label="Admin ID seen posting">
+                {status.admin.known === null
+                  ? "not configured"
+                  : status.admin.known
+                    ? "yes"
+                    : "no"}
               </Def>
               <Def label="Overridden settings">
                 {config && config.overridden.length > 0 ? config.overridden.join(", ") : "none"}
