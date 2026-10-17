@@ -1,4 +1,4 @@
-import { act, cleanup, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -83,6 +83,39 @@ describe("<MediaTile> reduced motion", () => {
 
     expect(container.querySelector("video")).toBeNull();
     expect(screen.getByRole("button", { name: /play/i })).toBeInTheDocument();
+  });
+});
+
+describe("<MediaTile> preview fit", () => {
+  it("fits the asset whole in a fixed box rather than cropping it", () => {
+    const { container } = render(<MediaTile row={cat} mode="proxy" />);
+
+    const video = container.querySelector("video")!;
+    expect(video.className).toContain("object-contain");
+    expect(video.className).not.toContain("object-cover");
+    expect(video.parentElement?.className).toContain("h-24");
+  });
+
+  it("keeps a failed thumbnail in the same fixed box, so nothing shifts", () => {
+    const broken: MediaRow = [
+      "https://tenor.com/view/gone",
+      "Tenor",
+      "gifv",
+      "",
+      "https://media.tenor.com/gone.png",
+      "",
+      2,
+    ];
+    const { container } = render(<MediaTile row={broken} mode="proxy" />);
+
+    const image = container.querySelector("img")!;
+    expect(image.className).toContain("object-contain");
+    fireEvent.error(image);
+
+    expect(container.querySelector("img")).toBeNull();
+    const frame = container.querySelector("a > div")!;
+    expect(frame.className).toContain("h-24");
+    expect(frame.textContent).toContain("Tenor");
   });
 });
 
