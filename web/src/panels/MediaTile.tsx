@@ -61,6 +61,18 @@ function usePauseOffscreen(video: RefObject<HTMLVideoElement | null>, enabled: b
   }, [video, enabled]);
 }
 
+/**
+ * One preview box for every tile. A GIF is never cropped: the asset keeps its
+ * own aspect ratio and fits inside the box whole, so a tall portrait GIF and a
+ * wide landscape one occupy the same space and the ranking does not look ragged.
+ * The letterboxing sits on the surface colour, so it reads as the frame rather
+ * than as a gap.
+ */
+const FRAME = "flex h-24 w-full items-center justify-center overflow-hidden bg-[var(--color-surface)]";
+/** The media itself is bounded, not the box: a huge GIF scales down instead of
+ *  stretching the tile or pushing the caption row off. */
+const MEDIA = "mx-auto max-h-full max-w-full object-contain";
+
 function Thumbnail({
   src,
   animated,
@@ -81,46 +93,46 @@ function Thumbnail({
   const playable = Boolean(animated && isPlayable(animated) && !failed);
   usePauseOffscreen(video, playable && !reduced);
 
-  if (playable && (!reduced || activated)) {
-    // A gifv's playable asset is an mp4: it animates (the thumbnail is often a
-    // static poster) and it is usually much smaller than the GIF.
-    return (
-      <video
-        ref={video}
-        src={animated as string}
-        poster={src ?? undefined}
-        autoPlay
-        muted
-        loop
-        playsInline
-        onError={() => setFailed(true)}
-        className="h-24 w-full bg-[var(--color-surface)] object-cover"
-      />
-    );
-  }
+  const playing = playable && (!reduced || activated);
+  // Every branch draws inside the same box, so a loaded tile, a failed one and
+  // an animated one all take identical space.
+  const frame = (
+    <div className={FRAME}>
+      {playing ? (
+        // A gifv's playable asset is an mp4: it animates (the thumbnail is often
+        // a static poster) and it is usually much smaller than the GIF.
+        <video
+          ref={video}
+          src={animated as string}
+          poster={src ?? undefined}
+          autoPlay
+          muted
+          loop
+          playsInline
+          onError={() => setFailed(true)}
+          className={MEDIA}
+        />
+      ) : src && !failed ? (
+        <img
+          src={src}
+          alt=""
+          loading="lazy"
+          onError={() => setFailed(true)}
+          className={MEDIA}
+        />
+      ) : (
+        <span className="px-2 text-center text-xs text-[var(--color-muted)]">{provider}</span>
+      )}
+    </div>
+  );
 
-  const poster =
-    src && !failed ? (
-      <img
-        src={src}
-        alt=""
-        loading="lazy"
-        onError={() => setFailed(true)}
-        className="h-24 w-full bg-[var(--color-surface)] object-cover"
-      />
-    ) : (
-      <div className="flex h-24 w-full items-center justify-center bg-[var(--color-surface)] text-xs text-[var(--color-muted)]">
-        {provider}
-      </div>
-    );
-
-  if (playable && reduced) {
+  if (playable && reduced && !playing) {
     // The button is a sibling of the link, not a child: a control inside an
     // anchor is invalid HTML and clicking it would follow the link.
     return (
       <div className="relative">
         <a href={url} target="_blank" rel="noreferrer noopener" className="block">
-          {poster}
+          {frame}
         </a>
         <button
           type="button"
@@ -138,7 +150,7 @@ function Thumbnail({
 
   return (
     <a href={url} target="_blank" rel="noreferrer noopener" className="block">
-      {poster}
+      {frame}
     </a>
   );
 }
