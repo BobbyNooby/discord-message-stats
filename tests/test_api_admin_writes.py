@@ -179,3 +179,43 @@ def test_status_confirms_an_admin_id_that_has_posted(admin_client):
 def test_status_leaves_known_unset_when_no_admin_id_is_configured(admin_client):
     body = admin_client.get("/api/admin/status").json()
     assert body["admin"] == {"discord_id": "", "known": None}
+
+
+def test_a_merge_can_pin_the_display_name_that_wins(admin_client, conn):
+    """The operator chose a name, so it is `renamed = 1`: Discord's next rename
+    must not quietly undo the choice (§5.5 keeps a rename cosmetic)."""
+    response = admin_client.put(
+        "/api/admin/identity",
+        json={"merges": [{"canonical": "u1", "accounts": ["u1", "u2"], "name": "Alice"}]},
+    )
+    assert response.status_code == 200
+    row = conn.execute(
+        "SELECT name, renamed FROM author_names WHERE channel_id = 'c1' AND author_id = 'u1'"
+    ).fetchone()
+    assert (row["name"], row["renamed"]) == ("Alice", 1)
+
+
+def test_a_pinned_name_survives_a_rebuild(admin_client, conn, tmp_path):
+    admin_client.put(
+        "/api/admin/identity",
+        json={"merges": [{"canonical": "u1", "accounts": ["u1", "u2"], "name": "Alice"}]},
+    )
+    rebuild_all(conn, cfg_fixture(tmp_path))
+    assert conn.execute(
+        "SELECT name FROM author_names WHERE channel_id = 'c1' AND author_id = 'u1'"
+    ).fetchone()[0] == "Alice"
+
+
+def test_a_merge_reports_the_state_it_replaced_so_it_can_be_undone(admin_client):
+    admin_client.put(
+        "/api/admin/identity", json={"merges": [{"canonical": "u1", "accounts": ["u2"]}]}
+    )
+    undone = admin_client.put("/api/admin/identity", json={"merges": []}).json()
+    assert undone["merges"] == []
+    assert undone["previous"] == [{"canonical": "u1", "accounts": ["u1", "u2"]}]
+
+    restored = admin_client.put(
+        "/api/admin/identity", json={"merges": undone["previous"]}
+    ).json()
+    assert restored["merges"] == [{"canonical": "u1", "accounts": ["u1", "u2"]}]
+    assert restored["previous"] == []

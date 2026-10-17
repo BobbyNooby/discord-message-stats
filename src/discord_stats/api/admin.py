@@ -498,11 +498,22 @@ class IdentityRequest(BaseModel):
 
 @router.put("/identity")
 def put_identity(request: Request, body: IdentityRequest) -> dict:
-    """Replace the channel's merges. Add an alt, or drop it, with the same call."""
+    """Replace the channel's merges. Add an alt, or drop it, with the same call.
+
+    A merge may carry ``name``: the display name the operator chose to win. It is
+    written to ``author_names`` with ``renamed = 1`` so a rebuild keeps it. The
+    response carries the state the call replaced, which is what the undo button
+    writes back — the endpoint replaces, so undo is just another PUT.
+    """
     conn = _conn(request)
     try:
         cfg = _effective_for(request, conn)
+        previous = [
+            {"canonical": canonical, "accounts": members}
+            for canonical, members in sorted(_grouped_merges(conn, cfg.channel_id).items())
+        ]
         rows = []
+        pinned: list[tuple[str, str]] = []
         for merge in body.merges:
             canonical = str((merge or {}).get("canonical") or "").strip()
             accounts = [str(a).strip() for a in (merge or {}).get("accounts") or [] if str(a).strip()]
@@ -510,6 +521,9 @@ def put_identity(request: Request, body: IdentityRequest) -> dict:
                 raise HTTPException(status_code=400, detail="every merge needs a canonical id")
             if len(set(accounts)) != len(accounts):
                 raise HTTPException(status_code=400, detail=f"duplicate account in {canonical}")
+            name = str((merge or {}).get("name") or "").strip()
+            if name:
+                pinned.append((canonical, name))
             members = sorted({canonical, *accounts})
             rows.extend((cfg.channel_id, canonical, account, None) for account in members)
 
@@ -518,12 +532,22 @@ def put_identity(request: Request, body: IdentityRequest) -> dict:
             "INSERT INTO identity (channel_id, canonical_id, account_id, note) VALUES (?, ?, ?, ?)",
             rows,
         )
+        for canonical, name in pinned:
+            conn.execute(
+                """
+                INSERT INTO author_names (channel_id, author_id, name, renamed, included)
+                VALUES (?, ?, ?, 1, 1)
+                ON CONFLICT (channel_id, author_id) DO UPDATE
+                    SET name = excluded.name, renamed = 1
+                """,
+                (cfg.channel_id, canonical, name),
+            )
         conn.commit()
         merges = [
             {"canonical": canonical, "accounts": members}
             for canonical, members in sorted(_grouped_merges(conn, cfg.channel_id).items())
         ]
-        return {"merges": merges, "cache_stale": True}
+        return {"merges": merges, "cache_stale": True, "previous": previous}
     finally:
         conn.close()
 
