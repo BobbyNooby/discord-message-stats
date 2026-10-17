@@ -69,14 +69,34 @@ function longestSharedSubstring(a: string, b: string): number {
 }
 
 /** Spec §5.5: containment (min 4 chars) or a shared run of ≥5 covering ≥55%. */
-export function suggestsSamePerson(a: string, b: string): boolean {
+export const SUGGESTION_THRESHOLD = 0.55;
+
+/**
+ * How strong the case is that two handles are one person, from 0 to 1.
+ *
+ * Containment is the strongest evidence and scales with how much of the longer
+ * name the shorter one covers; a shared run is weaker and scales with the share
+ * of the shorter name it covers. Zero means "no evidence", which is what a
+ * handle under four characters always is — "vei" appears inside "alice", and a
+ * boolean would have called that a match.
+ */
+export function mergeScore(a: string, b: string): number {
   const left = normalise(a);
   const right = normalise(b);
-  if (left.length < 4 || right.length < 4) return false;
-  if (left.includes(right) || right.includes(left)) return true;
+  if (left.length < 4 || right.length < 4) return 0;
   const shorter = left.length <= right.length ? left : right;
+  const longer = left.length <= right.length ? right : left;
+  if (left.includes(right) || right.includes(left)) {
+    return 0.75 + 0.25 * (shorter.length / longer.length);
+  }
   const shared = longestSharedSubstring(left, right);
-  return shared >= 5 && shared / shorter.length >= 0.55;
+  if (shared < 5) return 0;
+  return shared / shorter.length;
+}
+
+/** The §5.5 rule as a predicate, derived from the score. */
+export function suggestsSamePerson(a: string, b: string): boolean {
+  return mergeScore(a, b) >= SUGGESTION_THRESHOLD;
 }
 
 export function IdentityMerge({
@@ -134,16 +154,18 @@ export function IdentityMerge({
     identities.find((author) => author.id === canonical)?.msgs ?? 0;
 
   const suggestions = useMemo(() => {
-    const found: { a: Author; b: Author }[] = [];
+    const found: { a: Author; b: Author; score: number }[] = [];
     for (let i = 0; i < identities.length; i += 1) {
       for (let j = i + 1; j < identities.length; j += 1) {
         const a = identities[i];
         const b = identities[j];
         if (mergedInto.get(a.id) === mergedInto.get(b.id) && mergedInto.has(a.id)) continue;
-        if (suggestsSamePerson(a.name, b.name)) found.push({ a, b });
+        const score = mergeScore(a.name, b.name);
+        if (score >= SUGGESTION_THRESHOLD) found.push({ a, b, score });
       }
     }
-    return found.slice(0, 6);
+    // Strongest first: the operator reads down until the case stops being good.
+    return found.sort((left, right) => right.score - left.score).slice(0, 8);
   }, [identities, mergedInto]);
 
   const everyAccount = useMemo(() => {
@@ -526,13 +548,14 @@ export function IdentityMerge({
         </h4>
         <p className="mt-1 text-xs text-[var(--color-muted)]">
           Name containment (4+ characters) or a shared run of 5+ covering most of the shorter name
-          (§5.5). Never merged automatically — short and common handles produce false positives.
+          (§5.5), scored and sorted strongest first. Never merged automatically — short and common
+          handles produce false positives, which is why the score is shown rather than a verdict.
         </p>
         <ul className="mt-3 space-y-2">
           {suggestions.length === 0 ? (
             <li className="text-xs text-[var(--color-muted)]">No suggestions left.</li>
           ) : null}
-          {suggestions.map(({ a, b }) => {
+          {suggestions.map(({ a, b, score }) => {
             const keep = a.msgs >= b.msgs ? a : b;
             const fold = keep === a ? b : a;
             return (
@@ -541,7 +564,10 @@ export function IdentityMerge({
                 className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--color-line)]/50 pb-2 text-xs"
               >
                 <span>
-                  {a.name} <span className="text-[var(--color-muted)]">↔</span> {b.name}
+                  {a.name} <span className="text-[var(--color-muted)]">↔</span> {b.name}{" "}
+                  <span className="text-[var(--color-muted)]">
+                    match {Math.round(score * 100)}%
+                  </span>
                 </span>
                 <button
                   type="button"

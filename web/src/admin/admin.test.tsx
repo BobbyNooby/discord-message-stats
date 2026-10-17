@@ -99,6 +99,10 @@ const PAYLOAD = {
       accounts: ["1", "2"],
     },
     { id: "3", name: "vei", msgs: 120, accounts: ["3"] },
+    { id: "4", name: "Kenon", msgs: 50, accounts: ["4"] },
+    { id: "5", name: "Jetkenon", msgs: 10, accounts: ["5"] },
+    { id: "6", name: "angelina", msgs: 40, accounts: ["6"] },
+    { id: "7", name: "angelica", msgs: 30, accounts: ["7"] },
   ],
   identities: [{ canonical: "1", members: ["1", "2"] }],
 } as unknown as Payload;
@@ -420,6 +424,18 @@ describe("<Admin>", () => {
     const card = prompt.closest("div") as HTMLElement;
     await user.click(within(card).getByRole("button", { name: /recalculate all/i }));
     await waitFor(() => expect(recorded("POST", "/api/admin/recalculate")).toBe(true));
+  });
+
+  it("scores the name suggestions and sorts them strongest first", async () => {
+    const user = userEvent.setup();
+    renderAdmin();
+
+    await openTask(user, "Fix the data");
+
+    const scores = await screen.findAllByText(/match \d+%/);
+    expect(scores.map((node) => node.textContent)).toEqual(["match 91%", "match 75%"]);
+    expect(scores[0].closest("li")).toHaveTextContent(/Jetkenon.*Kenon/i);
+    expect(scores[1].closest("li")).toHaveTextContent(/angelina.*angelica/i);
   });
 
   it("revokes every other session and reports how many ended", async () => {
