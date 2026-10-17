@@ -24,6 +24,10 @@ export type Payload = {
     stale: boolean;
     can_admin: boolean;
     timezone: string;
+    /** The calendar's first day, from `ui.week_start`. */
+    week_start: "monday" | "sunday";
+    /** How clocks are written, from `ui.time_format`. */
+    time_format: "24h" | "12h";
     computed_at: string | null;
     authors: number;
     cells: number;

@@ -24,7 +24,17 @@ describe("<HealthBanner>", () => {
 
   it("marks pre-edit numbers as stale rather than current", () => {
     render(<HealthBanner banner={null} stale staleAt="2026-10-15T20:00:00Z" />);
-    expect(screen.getByRole("status")).toHaveTextContent(/as of 2026-10-15T20:00:00Z/);
+    expect(screen.getByRole("status")).toHaveTextContent(/as of 2026-10-15 20:00/);
+  });
+
+  it("writes the stale stamp on the clock the operator asked for", () => {
+    render(<HealthBanner banner={null} stale staleAt="2026-10-15T20:00:00Z" timeFormat="12h" />);
+    expect(screen.getByRole("status")).toHaveTextContent(/as of 2026-10-15 8:00 pm/);
+  });
+
+  it("still says something when there is no stamp to print", () => {
+    render(<HealthBanner banner={null} stale staleAt={null} />);
+    expect(screen.getByRole("status")).toHaveTextContent(/as of the last rebuild/);
   });
 
   it("a dead token outranks stale data", () => {

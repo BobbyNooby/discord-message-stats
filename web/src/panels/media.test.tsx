@@ -39,6 +39,8 @@ function fixture(overrides: Partial<Payload> = {}): Payload {
       source_count: 0,
       stale: false, can_admin: false,
       timezone: "UTC",
+      week_start: "monday",
+      time_format: "24h",
       computed_at: null,
       authors: 2,
       cells: 5,

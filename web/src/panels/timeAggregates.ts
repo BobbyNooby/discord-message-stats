@@ -148,10 +148,6 @@ export function byHour(grid: Float64Array): number[] {
   return hours;
 }
 
-export function clock(hour: number): string {
-  return `${String(hour).padStart(2, "0")}:00`;
-}
-
 /* Chart chrome, ported from the mockup so every panel looks like its neighbour. */
 export const AXIS = {
   axisLine: { lineStyle: { color: "#2b3244" } },

@@ -20,6 +20,8 @@ function makePayload(over: Partial<Payload> = {}): Payload {
       source_count: 4,
       stale: false, can_admin: false,
       timezone: "Asia/Kuala_Lumpur",
+      week_start: "monday",
+      time_format: "24h",
       computed_at: "2024-01-02T00:00:00Z",
       authors: 2,
       cells: 4,

@@ -7,10 +7,11 @@ import { EChart } from "../lib/echart";
 import {
   DEFAULT_WEEKS,
   MIN_WEEKS,
-  WEEKDAY_LABELS,
   buildWeeks,
   calendarGeometry,
   clampStart,
+  weekdayLabels,
+  type WeekStart,
 } from "./calendarWeeks";
 import { usePanelFilters } from "./panelScope";
 
@@ -33,7 +34,14 @@ export function Calendar({ payload, filters: fallbackFilters }: { panelId?: stri
   const [width, setWidth] = useState(0);
   const [calStart, setCalStart] = useState(0);
   const container = useRef<HTMLDivElement>(null);
-  const weeks = useMemo(() => buildWeeks(payload, filters), [payload, filters]);
+  // `ui.week_start` decides which weekday is the top row, and the aggregation
+  // below uses the same offset, so a value can never sit under the wrong label.
+  const weekStart: WeekStart = payload.meta?.week_start === "sunday" ? "sunday" : "monday";
+  const labels = useMemo(() => weekdayLabels(weekStart), [weekStart]);
+  const weeks = useMemo(
+    () => buildWeeks(payload, filters, weekStart),
+    [payload, filters, weekStart],
+  );
 
   useEffect(() => {
     const element = container.current;
@@ -53,12 +61,12 @@ export function Calendar({ payload, filters: fallbackFilters }: { panelId?: stri
   const data = useMemo(() => {
     const points: [number, number, number][] = [];
     visible.forEach((week, column) => {
-      WEEKDAY_LABELS.forEach((_label, dow) => {
+      labels.forEach((_label, dow) => {
         points.push([column, dow, weeks.values.get(`${week}|${dow}`) ?? 0]);
       });
     });
     return points;
-  }, [visible, weeks]);
+  }, [visible, weeks, labels]);
 
   if (!weeks.weeks.length) {
     return (
@@ -82,7 +90,7 @@ export function Calendar({ payload, filters: fallbackFilters }: { panelId?: stri
     xAxis: { type: "category" as const, data: visible },
     yAxis: {
       type: "category" as const,
-      data: WEEKDAY_LABELS,
+      data: labels,
       // All seven labels, at a size that fits the row height: a narrow window
       // makes the cells small, and 12px text in a 7px row is illegible.
       axisLabel: {

@@ -219,6 +219,34 @@ def test_meta_reports_the_rollup_timezone_and_freshness(client, conn):
     assert client.get("/api/bootstrap").json()["meta"]["stale"] is True
 
 
+def test_meta_carries_the_ui_display_settings(db_cfg, tmp_path, conn, client):
+    """`ui.week_start` and `ui.time_format` reach the browser through `meta`.
+
+    They are display settings — the calendar's first column and how a clock is
+    written — and `meta` is the only path to the frontend, so a setting that is
+    not here is a setting that does nothing.
+    """
+    from fastapi.testclient import TestClient
+
+    from discord_scraper.api.app import create_app
+    from discord_scraper.auth.session import SESSION_COOKIE, Level, establish_session
+    from tests.conftest import cfg_fixture
+
+    # The documented defaults, from a config that sets neither.
+    defaults = client.get("/api/bootstrap").json()["meta"]
+    assert defaults["week_start"] == "monday"
+    assert defaults["time_format"] == "24h"
+
+    _cfg, path = db_cfg
+    configured = cfg_fixture(tmp_path, ui={"week_start": "sunday", "time_format": "12h"})
+    other = TestClient(create_app(configured, path))
+    other.cookies.set(SESSION_COOKIE, establish_session(conn, "u1", Level.VIEWER))
+
+    meta = other.get("/api/bootstrap").json()["meta"]
+    assert meta["week_start"] == "sunday"
+    assert meta["time_format"] == "12h"
+
+
 def test_a_timezone_change_is_refused_not_mislabelled(db_cfg, tmp_path, conn):
     """Spec §7.1: refuse rollups whose recorded timezone differs from config."""
     from fastapi.testclient import TestClient

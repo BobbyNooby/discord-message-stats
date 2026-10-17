@@ -2,7 +2,8 @@ import type { EChartsOption } from "echarts";
 
 import { EmptyState, Panel } from "../components/Panel";
 import { EChart } from "../lib/echart";
-import { DOW, TOOLTIP, clock, emptyLabel, fmt, heatGrid, type PanelProps } from "./timeAggregates";
+import { hourLabel, timeFormatOf } from "../lib/timeFormat";
+import { DOW, TOOLTIP, emptyLabel, fmt, heatGrid, type PanelProps } from "./timeAggregates";
 import type { WithPanelId } from "./panelScope";
 import { usePanelFilters } from "./panelScope";
 
@@ -18,9 +19,12 @@ const HOURS = Array.from({ length: 24 }, (_, hour) => hour);
 export function Heat({ payload, filters: fallbackFilters }: PanelProps & WithPanelId) {
   const filters = usePanelFilters("when-the-chat-comes-alive", fallbackFilters);
   const heat = heatGrid(payload, filters);
+  // `ui.time_format`: the hour labels on the axis, the peak in the subtitle and
+  // every tooltip are the same clock, written the way the operator asked.
+  const timeFormat = timeFormatOf(payload.meta);
   const subtitle = `${fmt(heat.total)} messages · ${payload.tz.label} · busiest ${
     DOW[heat.peakDow]
-  } ${clock(heat.peakHour)}`;
+  } ${hourLabel(heat.peakHour, timeFormat)}`;
 
   if (!heat.total) {
     return (
@@ -39,7 +43,7 @@ export function Heat({ payload, filters: fallbackFilters }: PanelProps & WithPan
     tooltip: {
       ...TOOLTIP,
       formatter: (p: any) =>
-        `${DOW[p.value[1]]} ${clock(p.value[0])} — <b>${fmt(p.value[2])}</b> msgs`,
+        `${DOW[p.value[1]]} ${hourLabel(p.value[0], timeFormat)} — <b>${fmt(p.value[2])}</b> msgs`,
     },
     grid: { left: 40, right: 10, top: 8, bottom: 52 },
     xAxis: {

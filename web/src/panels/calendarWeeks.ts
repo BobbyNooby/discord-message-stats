@@ -9,6 +9,20 @@ export const MAX_CELL_PX = 26;
 
 export const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
+/** `ui.week_start`, defaulting to the config's own default. */
+export type WeekStart = "monday" | "sunday";
+
+/** 0 for Sunday, 1 for Monday — the index of the configured first day. */
+export function weekStartIndex(weekStart: WeekStart = "monday"): number {
+  return weekStart === "sunday" ? 0 : 1;
+}
+
+/** The weekday labels rotated so the configured first day is the top row. */
+export function weekdayLabels(weekStart: WeekStart = "monday"): string[] {
+  const first = weekStartIndex(weekStart);
+  return [...WEEKDAY_LABELS.slice(first), ...WEEKDAY_LABELS.slice(0, first)];
+}
+
 export type Geometry = { cell: number; grid: { width: number; height: number }; height: number };
 
 /**
@@ -25,28 +39,37 @@ export function calendarGeometry(availableWidth: number, calSize: number): Geome
   return { cell, grid, height: grid.height + 56 };
 }
 
-/** The Sunday that starts the week containing `day`. */
-export function weekStartOf(day: string): number {
+/** The date that starts the week containing `day`, under the configured first day. */
+export function weekStartOf(day: string, weekStart: WeekStart = "monday"): number {
   const date = new Date(`${day}T00:00:00Z`);
-  date.setUTCDate(date.getUTCDate() - date.getUTCDay());
+  const offset = (date.getUTCDay() - weekStartIndex(weekStart) + 7) % 7;
+  date.setUTCDate(date.getUTCDate() - offset);
   return date.getTime();
 }
 
 export type WeekGrid = {
   weeks: string[];              // week-start ISO dates, ascending
-  values: Map<string, number>;  // `${week}|${dow}` -> messages
+  values: Map<string, number>;  // `${week}|${row}` -> messages, row 0 = the first day
   total: number;
 };
 
 /** Filtered messages per (week, weekday) — the only aggregation the calendar does. */
-export function buildWeeks(payload: Payload, filters: Filters): WeekGrid {
+export function buildWeeks(
+  payload: Payload,
+  filters: Filters,
+  weekStart: WeekStart = "monday",
+): WeekGrid {
+  const first = weekStartIndex(weekStart);
   const values = new Map<string, number>();
   let total = 0;
   for (const cell of selectVisibleCells(payload, filters)) {
     const day = payload.days[cell[C_DAY]];
     if (!day) continue;
-    const week = new Date(weekStartOf(day)).toISOString().slice(0, 10);
-    const key = `${week}|${new Date(`${day}T00:00:00Z`).getUTCDay()}`;
+    const week = new Date(weekStartOf(day, weekStart)).toISOString().slice(0, 10);
+    // The row is the day's position from the configured first day, so the grid
+    // is drawn Mon-first (or Sun-first) and the values move with their labels.
+    const row = (new Date(`${day}T00:00:00Z`).getUTCDay() - first + 7) % 7;
+    const key = `${week}|${row}`;
     values.set(key, (values.get(key) ?? 0) + cell[C_MSGS]);
     total += cell[C_MSGS];
   }

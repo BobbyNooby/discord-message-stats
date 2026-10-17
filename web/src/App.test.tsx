@@ -204,3 +204,21 @@ describe("the states a failed load can leave the reader in", () => {
     expect(screen.getByText("rollups are not built")).toBeInTheDocument();
   });
 });
+
+describe("ui.time_format through the dashboard", () => {
+  it("writes the header's 'as of' line on the configured clock", async () => {
+    server.bootstrap.mockReset().mockResolvedValue({
+      ...payload,
+      meta: { ...payload.meta, time_format: "12h" },
+    });
+    renderApp();
+
+    expect(await screen.findByText(/as of 2026-10-17 12:00 am/)).toBeInTheDocument();
+  });
+
+  it("keeps the 24-hour clock the panels drew before by default", async () => {
+    renderApp();
+
+    expect(await screen.findByText(/as of 2026-10-17 00:00/)).toBeInTheDocument();
+  });
+});
