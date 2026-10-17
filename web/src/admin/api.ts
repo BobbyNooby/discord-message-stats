@@ -89,14 +89,23 @@ export type AdminStatus = {
 };
 
 /** One merge as the API stores it: the canonical account is inside `accounts`. */
-export type MergeEntry = { canonical: string; accounts: string[]; name?: string };
+export type MergeEntry = { canonical: string; accounts: string[]; name?: string | null };
+
+/** An admin whose id a merge absorbed, and the canonical that inherited it. */
+export type AdminMove = { from: string; to: string; configured: boolean };
 
 /**
  * Every write answers with the same two things (§11.6), and the identity write
  * additionally answers with the state it replaced — that is what Undo writes
- * back, since the endpoint replaces rather than patches.
+ * back, since the endpoint replaces rather than patches. `admins_moved` names
+ * any admin whose rights followed a person into a merge.
  */
-export type MergeWrite = { merges: MergeEntry[]; cache_stale: boolean; previous: MergeEntry[] };
+export type MergeWrite = {
+  merges: MergeEntry[];
+  cache_stale: boolean;
+  previous: MergeEntry[];
+  admins_moved?: AdminMove[];
+};
 
 export type InclusionWrite = { included: Record<string, boolean>; cache_stale: boolean };
 
@@ -245,9 +254,15 @@ export const putConfig = (patch: ConfigPatch) =>
  * the same call, and `{ merges: [] }` unmerges everything. A duplicate account
  * inside one merge is a 400 from the server. A merge's `name` pins the display
  * name that wins; the response's `previous` is what Undo writes back.
+ *
+ * `clearNames` drops a pin the undone merge introduced — an id that had no
+ * merge of its own before, so `previous` has no entry to carry the name back.
  */
-export const putIdentity = (merges: MergeEntry[]) =>
-  request<MergeWrite>("/api/admin/identity", json("PUT", { merges }));
+export const putIdentity = (merges: MergeEntry[], clearNames: string[] = []) =>
+  request<MergeWrite>(
+    "/api/admin/identity",
+    json("PUT", clearNames.length > 0 ? { merges, clear_names: clearNames } : { merges }),
+  );
 
 /** Hide an identity, never delete it: the messages stay and a rebuild folds them out. */
 export const putInclusions = (included: Record<string, boolean>) =>
