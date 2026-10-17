@@ -1,6 +1,8 @@
 import type { EChartsOption } from "echarts";
 import { useMemo } from "react";
 
+import { TERMS } from "../lib/glossary";
+
 import type { Payload } from "../api/types";
 import { EmptyState, Panel } from "../components/Panel";
 import type { Filters } from "../filters/reducer";
@@ -113,6 +115,7 @@ export function WordLift({ payload, filters: fallbackFilters }: { panelId?: stri
     <Panel
       title="Whose word is it"
       subtitle="lift = how much more this person uses a word than their share of all words · 1.0 = exactly average"
+      help={TERMS.lift}
     >
       {!payload.words.length ? (
         <EmptyState>No words in this payload.</EmptyState>

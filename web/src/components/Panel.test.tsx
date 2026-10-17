@@ -2,8 +2,9 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { NoticeProvider } from "./Notice";
-import { Panel } from "./Panel";
+import { GlobalOnlyBadge, Panel } from "./Panel";
 import { EChart } from "../lib/echart";
+import { TERMS } from "../lib/glossary";
 
 /**
  * A card exports the aggregate it is already drawing, and says what it wrote.
@@ -87,5 +88,41 @@ describe("<Panel> csv export", () => {
     expect(
       await screen.findByRole("button", { name: "Export Cumulative growth as CSV" }),
     ).toBeInTheDocument();
+  });
+});
+
+describe("<Panel> definitions", () => {
+  it("says what the card shows, from the one glossary", () => {
+    render(
+      <Panel title="Cumulative growth">
+        <p>chart</p>
+      </Panel>,
+    );
+
+    expect(screen.getByText(/every author's running total/i)).toBeInTheDocument();
+  });
+
+  it("carries a term's definition beside the title, without renaming the heading", () => {
+    render(
+      <Panel title="Whose word is it" help={TERMS.lift}>
+        <p>chart</p>
+      </Panel>,
+    );
+
+    expect(screen.getByRole("heading", { name: "Whose word is it" })).toBeInTheDocument();
+    expect(screen.getByRole("note", { name: TERMS.lift })).toBeInTheDocument();
+  });
+
+  it("says why a card cannot honour the time filter", () => {
+    render(
+      <Panel title="Message types" badge={<GlobalOnlyBadge what="Message types" />}>
+        <p>chart</p>
+      </Panel>,
+    );
+
+    expect(screen.getByText("global only")).toHaveAttribute(
+      "title",
+      expect.stringContaining("no date column"),
+    );
   });
 });

@@ -2,6 +2,7 @@ import { ChartColumn, ChartPie, Download, Ellipsis } from "lucide-react";
 import { useCallback, useState, type ReactNode } from "react";
 
 import { csvFilename, downloadCsv, type CsvRow } from "../lib/csv";
+import { TERMS, panelAbout } from "../lib/glossary";
 import { useChartShape, usePanelScopeTarget, useShapeChange } from "../panels/panelScope";
 import { specFor, specForLabel, type PanelId } from "../panels/registry";
 import { useNotice } from "./Notice";
@@ -26,6 +27,7 @@ export function Panel({
   className,
   panelId,
   csv,
+  help,
 }: {
   title: string;
   subtitle?: ReactNode;
@@ -40,6 +42,8 @@ export function Panel({
    * rather than an empty file.
    */
   csv?: { name: string; rows: CsvRow[] };
+  /** One line of jargon this card leans on, shown on a "?" beside the title. */
+  help?: string;
 }) {
   const onOpenScope = usePanelScopeTarget();
   const notify = useNotice();
@@ -62,6 +66,9 @@ export function Panel({
     setDrawn((current) => (sameRows(current, rows) ? current : rows));
   }, []);
   const exported = csv ?? (drawn.length > 0 ? { name: title, rows: drawn } : null);
+  // "What this shows", from the one glossary: a card that is in the registry
+  // cannot be silent about its own meaning.
+  const about = panelAbout(spec?.id);
 
   return (
     <PanelCsvContext.Provider value={register}>
@@ -69,9 +76,24 @@ export function Panel({
         className={`mb-4 break-inside-avoid rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] p-4 ${className ?? ""}`}
       >
         <header className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-          <h2 className="min-w-0 text-sm font-semibold tracking-wide text-[var(--color-text)]">
-            {title}
-          </h2>
+          <div className="flex min-w-0 items-baseline gap-1">
+            <h2 className="min-w-0 text-sm font-semibold tracking-wide text-[var(--color-text)]">
+              {title}
+            </h2>
+            {/* Beside the heading, not inside it: a "?" in the heading would
+                change the accessible name every test and screen reader uses. */}
+            {help ? (
+              <span
+                role="note"
+                tabIndex={0}
+                aria-label={help}
+                title={help}
+                className="cursor-help rounded-full border border-[var(--color-line)] px-1 text-[10px] text-[var(--color-muted)]"
+              >
+                ?
+              </span>
+            ) : null}
+          </div>
           {/* The actions wrap too: "Most reposted" is a tab strip plus a badge plus
               the "…" trigger, which is wider than a 390px card on its own. */}
           <span className="flex min-w-0 flex-wrap items-center justify-end gap-1">
@@ -105,6 +127,9 @@ export function Panel({
             ) : null}
           </span>
         </header>
+        {about ? (
+          <p className="mb-1 text-[11px] leading-snug text-[var(--color-muted)]">{about}</p>
+        ) : null}
         {subtitle ? (
           <p className="mb-3 text-xs text-[var(--color-muted)]">{subtitle}</p>
         ) : null}
@@ -146,7 +171,7 @@ export function GlobalOnlyBadge({ what }: { what: string }) {
   return (
     <span
       className="rounded border border-[var(--color-line)] px-2 py-0.5 text-[10px] uppercase tracking-wider text-[var(--color-muted)]"
-      title={`${what} has no date dimension, so the time filter does not apply`}
+      title={`${what}: ${TERMS.globalOnly}`}
     >
       global only
     </span>

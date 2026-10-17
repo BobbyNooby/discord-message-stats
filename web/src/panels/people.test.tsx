@@ -8,6 +8,7 @@ import { EditRate } from "./EditRate";
 import { Leaderboard } from "./Leaderboard";
 import { PeopleSection } from "./PeopleSection";
 import { ReplyMatrix } from "./ReplyMatrix";
+import { ResponseTime } from "./ResponseTime";
 import { matrixData } from "./people";
 
 /**
@@ -232,5 +233,11 @@ describe("empty and degenerate payloads", () => {
     expect(document.body.textContent).not.toContain("NaN");
     expect(options.length).toBeGreaterThan(0);
     expect(options.flatMap((option) => nonFinite(option))).toEqual([]);
+  });
+
+  it("explains what an average wait is, where the number is shown", () => {
+    render(<ResponseTime payload={payload} filters={initialFilters(payload)} />);
+
+    expect(screen.getByRole("note", { name: /average wait = the mean time/i })).toBeInTheDocument();
   });
 });
