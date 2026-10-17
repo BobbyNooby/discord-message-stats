@@ -164,30 +164,39 @@ export function Admin() {
         </Notice>
       ) : null}
 
-      <nav
-        aria-label="Admin tasks"
-        className="sticky top-0 z-10 -mx-4 flex flex-wrap gap-1 border-b border-[var(--color-line)] bg-[var(--color-ink)]/95 px-4 py-2 backdrop-blur"
+      {/* The same treatment as the dashboard jump-nav: the wrapper is what is
+          sticky, its padding is the 12px offset, and its page-coloured
+          background is the gap — so the bar never sits flush to the viewport
+          top and content cannot show above it. */}
+      <div
+        className="sticky top-0 z-10 -mx-4 bg-[var(--color-ink)]"
+        style={{ paddingTop: "max(0.75rem, env(safe-area-inset-top))" }}
       >
-        {TASKS.map((task) => (
-          <button
-            key={task.id}
-            type="button"
-            title={task.hint}
-            aria-current={active === task.id ? "true" : undefined}
-            onClick={() => {
-              setActive(task.id);
-              window.history.replaceState(null, "", `#${task.id}`);
-            }}
-            className={`min-h-9 rounded px-3 py-2 text-xs ${
-              active === task.id
-                ? "bg-[var(--color-accent)]/20 font-medium text-[var(--color-text)]"
-                : "text-[var(--color-muted)]"
-            }`}
-          >
-            {task.label}
-          </button>
-        ))}
-      </nav>
+        <nav
+          aria-label="Admin tasks"
+          className="flex flex-wrap gap-1 border-b border-[var(--color-line)] bg-[var(--color-ink)]/95 px-4 py-2 backdrop-blur"
+        >
+          {TASKS.map((task) => (
+            <button
+              key={task.id}
+              type="button"
+              title={task.hint}
+              aria-current={active === task.id ? "true" : undefined}
+              onClick={() => {
+                setActive(task.id);
+                window.history.replaceState(null, "", `#${task.id}`);
+              }}
+              className={`min-h-9 rounded px-3 py-2 text-xs ${
+                active === task.id
+                  ? "bg-[var(--color-accent)]/20 font-medium text-[var(--color-text)]"
+                  : "text-[var(--color-muted)]"
+              }`}
+            >
+              {task.label}
+            </button>
+          ))}
+        </nav>
+      </div>
 
       {active === "fix-data" ? (
         <FixData payload={bootstrap.data ?? null} onDirty={markStale} />

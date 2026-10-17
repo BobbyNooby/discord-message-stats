@@ -293,6 +293,19 @@ describe("<Admin>", () => {
     expect(await screen.findByRole("heading", { name: "Access" })).toBeInTheDocument();
   });
 
+  it("floats the task nav clear of the viewport top, over page surface", async () => {
+    renderAdmin();
+
+    const nav = await screen.findByRole("navigation", { name: /admin tasks/i });
+    const wrapper = nav.parentElement!;
+    // The wrapper is sticky and its padding is the offset, so the bar itself
+    // never touches the top; its page-coloured background is the gap.
+    expect(wrapper.className).toContain("sticky");
+    expect(wrapper.className).toContain("bg-[var(--color-ink)]");
+    expect(wrapper.style.paddingTop).toContain("max(0.75rem, env(safe-area-inset-top))");
+    expect(nav.className).not.toContain("sticky");
+  });
+
   it("Save only writes the config without enqueueing a rebuild, and still marks the cache stale", async () => {
     const user = userEvent.setup();
     renderAdmin();
