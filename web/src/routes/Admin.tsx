@@ -1,8 +1,9 @@
 /**
- * The admin route (§11.6). Its own shell, its own six sections, and its own
- * sticky sub-nav — `/admin` is not a section of the stats page.
+ * The admin route (§11.6). Its own shell, its own **four tasks** — not six tabs
+ * of fields — and its own sticky sub-nav. `/admin` is not a section of the stats
+ * page.
  *
- * Two rules from the spec are enforced here rather than in a section:
+ * Two rules from the spec are enforced here rather than in a task:
  *
  * - saving always marks the cache stale, even when it does not rebuild, so the
  *   operator sees the consequence of the edit before pressing Recalculate;
@@ -15,34 +16,43 @@ import { useCallback, useState } from "react";
 
 import { Unauthorized, getBootstrap } from "../api/client";
 import { Access } from "../admin/Access";
-import { DataSource } from "../admin/DataSource";
-import { IdentityMerge } from "../admin/IdentityMerge";
-import { Ingest } from "../admin/Ingest";
-import { RollupCache } from "../admin/RollupCache";
-import { WhoShows } from "../admin/WhoShows";
+import { FixData } from "../admin/FixData";
+import { RefreshCache } from "../admin/RefreshCache";
+import { ReplaceDatabase } from "../admin/ReplaceDatabase";
 import { getConfig, getStatus, putConfig, recalculate, type ConfigPatch } from "../admin/api";
 import { Notice, type SaveMode } from "../admin/shared";
 import { Login } from "./Login";
 
-const SECTIONS = [
-  { id: "data-source", label: "Data source" },
-  { id: "who-shows", label: "Who shows" },
-  { id: "identity-merge", label: "Identity merge" },
-  { id: "ingest", label: "Ingest" },
-  { id: "rollup-cache", label: "Rollup cache" },
-  { id: "access", label: "Access" },
+/** The workflow, in the order an operator moves through it (§11.6). */
+const TASKS = [
+  {
+    id: "fix-data",
+    label: "Fix the data",
+    hint: "Merge accounts, hide people, search messages",
+  },
+  {
+    id: "refresh-cache",
+    label: "Refresh the cache",
+    hint: "What was built, what changed, recalculate",
+  },
+  {
+    id: "replace-database",
+    label: "Replace the database",
+    hint: "Upload, validate, back up, commit",
+  },
+  { id: "access", label: "Access", hint: "Admin id, allowlist, sessions" },
 ] as const;
 
-type SectionId = (typeof SECTIONS)[number]["id"];
+type TaskId = (typeof TASKS)[number]["id"];
 
-function initialSection(): SectionId {
+function initialTask(): TaskId {
   const wanted = window.location.hash.replace(/^#/, "");
-  return SECTIONS.some((section) => section.id === wanted) ? (wanted as SectionId) : "data-source";
+  return TASKS.some((task) => task.id === wanted) ? (wanted as TaskId) : "fix-data";
 }
 
 export function Admin() {
   const queryClient = useQueryClient();
-  const [active, setActive] = useState<SectionId>(initialSection);
+  const [active, setActive] = useState<TaskId>(initialTask);
   const [markedStale, setMarkedStale] = useState(false);
 
   const status = useQuery({ queryKey: ["admin", "status"], queryFn: getStatus });
@@ -133,54 +143,50 @@ export function Admin() {
       ) : null}
 
       <nav
-        aria-label="Admin sections"
+        aria-label="Admin tasks"
         className="sticky top-0 z-10 -mx-4 flex flex-wrap gap-1 border-b border-[var(--color-line)] bg-[var(--color-ink)]/95 px-4 py-2 backdrop-blur"
       >
-        {SECTIONS.map((section) => (
+        {TASKS.map((task) => (
           <button
-            key={section.id}
+            key={task.id}
             type="button"
-            aria-current={active === section.id ? "true" : undefined}
+            title={task.hint}
+            aria-current={active === task.id ? "true" : undefined}
             onClick={() => {
-              setActive(section.id);
-              window.history.replaceState(null, "", `#${section.id}`);
+              setActive(task.id);
+              window.history.replaceState(null, "", `#${task.id}`);
             }}
             className={`rounded px-2 py-1 text-xs ${
-              active === section.id
+              active === task.id
                 ? "bg-[var(--color-accent)]/20 font-medium text-[var(--color-text)]"
                 : "text-[var(--color-muted)]"
             }`}
           >
-            {section.label}
+            {task.label}
           </button>
         ))}
       </nav>
 
-      {active === "data-source" ? (
-        <DataSource
+      {active === "fix-data" ? (
+        <FixData payload={bootstrap.data ?? null} onDirty={markStale} />
+      ) : null}
+      {active === "refresh-cache" ? (
+        <RefreshCache
+          status={data}
+          stale={stale}
+          config={config.data ?? null}
+          onDirty={markStale}
+          onSave={saveConfig}
+        />
+      ) : null}
+      {active === "replace-database" ? (
+        <ReplaceDatabase
           status={data}
           config={config.data ?? null}
           payload={bootstrap.data ?? null}
           onSave={saveConfig}
           onDirty={markStale}
         />
-      ) : null}
-      {active === "who-shows" ? (
-        <WhoShows payload={bootstrap.data ?? null} onDirty={markStale} />
-      ) : null}
-      {active === "identity-merge" ? (
-        <IdentityMerge payload={bootstrap.data ?? null} onDirty={markStale} />
-      ) : null}
-      {active === "ingest" ? (
-        <Ingest
-          status={data}
-          config={config.data ?? null}
-          onDirty={markStale}
-          onSave={saveConfig}
-        />
-      ) : null}
-      {active === "rollup-cache" ? (
-        <RollupCache status={data} stale={stale} onDirty={markStale} />
       ) : null}
       {active === "access" ? (
         <Access status={data} config={config.data ?? null} onSave={saveConfig} />

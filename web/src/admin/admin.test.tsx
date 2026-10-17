@@ -1,11 +1,12 @@
 /**
  * The behaviours §11.6 turns on, driven through the real route:
  *
- * 1. "Save only" and "Save & recalculate" are different actions — the fake
+ * 1. the board is four tasks, not six tabs, and each one is reachable;
+ * 2. "Save only" and "Save & recalculate" are different actions — the fake
  *    fetch records which endpoint each one hits;
- * 2. a 409 from the upload is "wait for the running job", not a failure;
- * 3. a rollup family that is stale is shown as stale;
- * 4. every write an admin makes — an include toggle, a merge, revoke-all, the
+ * 3. a 409 from the upload is "wait for the running job", not a failure;
+ * 4. a rollup family that is stale is shown as stale, with what changed since;
+ * 5. every write an admin makes — an include toggle, a merge, revoke-all, the
  *    cron switch — really goes to the API and marks the cache stale.
  *
  * The fetch stub returns the exact shapes from `src/discord_scraper/api/admin.py`.
@@ -26,11 +27,29 @@ const STATUS: AdminStatus = {
   timezone: "Asia/Kuala_Lumpur",
   cache_stale: false,
   database: { size_bytes: 5242880, path: "/data/messages.db" },
-  admin: { discord_id: "4242" },
+  admin: { discord_id: "4242", known: true },
   config_hash: "abc123def4567890",
   rollups: {
-    activity: { rows: 120, stale: true, computed_at: "2026-10-14T20:00:00+00:00" },
-    heat: { rows: 30, stale: false, computed_at: "2026-10-15T20:00:00+00:00" },
+    activity: {
+      rows: 120,
+      stale: true,
+      computed_at: "2026-10-14T20:00:00+00:00",
+      built_from_rows: 480,
+      built_from_newest: "900",
+      built_in_timezone: "Asia/Kuala_Lumpur",
+      added_since: 3,
+      config_changed: false,
+    },
+    heat: {
+      rows: 30,
+      stale: false,
+      computed_at: "2026-10-15T20:00:00+00:00",
+      built_from_rows: 483,
+      built_from_newest: "903",
+      built_in_timezone: "Asia/Kuala_Lumpur",
+      added_since: 0,
+      config_changed: false,
+    },
   },
   worker: {
     token_status: "ok",
@@ -61,6 +80,13 @@ const CONFIG: AdminConfig = {
     cron_hours: 6,
   },
   overridden: ["timezone"],
+};
+
+const TIMEZONES = {
+  zones: ["UTC", "Asia/Kuala_Lumpur", "Europe/London", "America/New_York"],
+  configured: "Asia/Kuala_Lumpur",
+  effective: "Asia/Kuala_Lumpur",
+  auto_zone: "Asia/Kuala_Lumpur",
 };
 
 const PAYLOAD = {
@@ -105,12 +131,17 @@ beforeEach(() => {
   handlers = {
     "GET /api/admin/status": () => response(200, STATUS),
     "GET /api/admin/config": () => response(200, CONFIG),
+    "GET /api/admin/timezones": () => response(200, TIMEZONES),
     "GET /api/bootstrap": () => response(200, PAYLOAD),
     "PUT /api/admin/config": () => response(200, CONFIG),
     "PUT /api/admin/inclusions": (init) =>
       response(200, { included: bodyOf(init)?.included ?? {}, cache_stale: true }),
-    "PUT /api/admin/identity": () =>
-      response(200, { merges: [{ canonical: "1", accounts: ["1", "2", "3"] }], cache_stale: true }),
+    "PUT /api/admin/identity": (init) =>
+      response(200, {
+        merges: [{ canonical: "1", accounts: ["1", "2", "3"] }],
+        cache_stale: true,
+        previous: bodyOf(init)?.merges ?? [],
+      }),
     "POST /api/admin/sessions/revoke-all": () => response(200, { revoked: 3 }),
     "POST /api/admin/recalculate": () =>
       response(202, { id: 7, channel_id: "c1", kind: "rebuild_rollups", status: "queued" }),
@@ -150,11 +181,45 @@ const recorded = (method: string, url: string) =>
 const recordedCall = (method: string, url: string) =>
   calls.find((call) => call.method === method && call.url === url);
 
+/** The nav is the four tasks; open one before touching its controls. */
+async function openTask(user: ReturnType<typeof userEvent.setup>, label: string) {
+  await user.click(await screen.findByRole("button", { name: label }));
+}
+
 describe("<Admin>", () => {
+  it("offers the four tasks and opens each one", async () => {
+    const user = userEvent.setup();
+    renderAdmin();
+
+    const nav = await screen.findByRole("navigation", { name: /admin tasks/i });
+    for (const label of [
+      "Fix the data",
+      "Refresh the cache",
+      "Replace the database",
+      "Access",
+    ]) {
+      expect(within(nav).getByRole("button", { name: label })).toBeInTheDocument();
+    }
+
+    await openTask(user, "Fix the data");
+    expect(await screen.findByRole("heading", { name: "Fix the data" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /merge accounts/i })).toBeInTheDocument();
+
+    await openTask(user, "Refresh the cache");
+    expect(await screen.findByRole("heading", { name: "Refresh the cache" })).toBeInTheDocument();
+
+    await openTask(user, "Replace the database");
+    expect(await screen.findByRole("heading", { name: "Replace the database" })).toBeInTheDocument();
+
+    await openTask(user, "Access");
+    expect(await screen.findByRole("heading", { name: "Access" })).toBeInTheDocument();
+  });
+
   it("Save only writes the config without enqueueing a rebuild, and still marks the cache stale", async () => {
     const user = userEvent.setup();
     renderAdmin();
 
+    await openTask(user, "Replace the database");
     const saveOnly = await screen.findByRole("button", { name: "Save only" });
     await waitFor(() => expect(saveOnly).toBeEnabled());
 
@@ -169,6 +234,7 @@ describe("<Admin>", () => {
     const user = userEvent.setup();
     renderAdmin();
 
+    await openTask(user, "Replace the database");
     const saveAndRebuild = await screen.findByRole("button", { name: /save & recalculate/i });
     await waitFor(() => expect(saveAndRebuild).toBeEnabled());
 
@@ -185,25 +251,28 @@ describe("<Admin>", () => {
     const user = userEvent.setup();
     renderAdmin();
 
+    await openTask(user, "Replace the database");
     const input = await screen.findByLabelText("Database file");
     const file = new File([new Uint8Array([1, 2, 3])], "messages.db", {
       type: "application/vnd.sqlite3",
     });
     await user.upload(input, file);
-    await user.click(screen.getByRole("button", { name: /upload and preview/i }));
+    await user.click(screen.getByRole("button", { name: /upload and dry-run/i }));
 
     expect(await screen.findByText(/wait for the running job/i)).toBeInTheDocument();
     expect(screen.queryByText(/^conflict$/i)).not.toBeInTheDocument();
   });
 
-  it("marks a stale rollup family stale in the per-family table", async () => {
+  it("marks a stale rollup family stale and says what changed since it was built", async () => {
     const user = userEvent.setup();
     renderAdmin();
 
-    await user.click(await screen.findByRole("button", { name: "Rollup cache" }));
+    await openTask(user, "Refresh the cache");
 
     const staleRow = await screen.findByRole("row", { name: /activity/i });
     expect(within(staleRow).getByText("stale")).toBeInTheDocument();
+    expect(within(staleRow).getByText(/built from 480 messages/i)).toBeInTheDocument();
+    expect(within(staleRow).getByText(/3 added since/i)).toBeInTheDocument();
 
     const currentRow = screen.getByRole("row", { name: /heat/i });
     expect(within(currentRow).getByText("current")).toBeInTheDocument();
@@ -213,7 +282,7 @@ describe("<Admin>", () => {
     const user = userEvent.setup();
     renderAdmin();
 
-    await user.click(await screen.findByRole("button", { name: "Who shows" }));
+    await openTask(user, "Fix the data");
 
     expect(await screen.findByText("2 accounts")).toBeInTheDocument();
     expect(screen.getByText(/applied at build time/i)).toBeInTheDocument();
@@ -223,7 +292,7 @@ describe("<Admin>", () => {
     const user = userEvent.setup();
     renderAdmin();
 
-    await user.click(await screen.findByRole("button", { name: "Who shows" }));
+    await openTask(user, "Fix the data");
     await user.click(await screen.findByRole("checkbox", { name: /alice/ }));
 
     await waitFor(() => expect(recorded("PUT", "/api/admin/inclusions")).toBe(true));
@@ -242,7 +311,7 @@ describe("<Admin>", () => {
     const user = userEvent.setup();
     renderAdmin();
 
-    await user.click(await screen.findByRole("button", { name: "Who shows" }));
+    await openTask(user, "Fix the data");
     await user.click(await screen.findByRole("checkbox", { name: /alice/ }));
 
     const alarm = await screen.findByRole("alert");
@@ -254,7 +323,7 @@ describe("<Admin>", () => {
     const user = userEvent.setup();
     renderAdmin();
 
-    await user.click(await screen.findByRole("button", { name: "Identity merge" }));
+    await openTask(user, "Fix the data");
     await user.selectOptions(await screen.findByLabelText(/add an alt account to alice/i), "3");
     await user.click(screen.getByRole("button", { name: /add alt/i }));
 
@@ -272,7 +341,7 @@ describe("<Admin>", () => {
     const user = userEvent.setup();
     renderAdmin();
 
-    await user.click(await screen.findByRole("button", { name: "Identity merge" }));
+    await openTask(user, "Fix the data");
     await user.selectOptions(await screen.findByLabelText(/add an alt account to alice/i), "3");
     await user.click(screen.getByRole("button", { name: /add alt/i }));
 
@@ -284,7 +353,7 @@ describe("<Admin>", () => {
     const user = userEvent.setup();
     renderAdmin();
 
-    await user.click(await screen.findByRole("button", { name: "Access" }));
+    await openTask(user, "Access");
     await user.click(await screen.findByRole("button", { name: /revoke all sessions/i }));
 
     await waitFor(() => expect(recorded("POST", "/api/admin/sessions/revoke-all")).toBe(true));
@@ -296,7 +365,7 @@ describe("<Admin>", () => {
     const user = userEvent.setup();
     renderAdmin();
 
-    await user.click(await screen.findByRole("button", { name: "Ingest" }));
+    await openTask(user, "Refresh the cache");
     const hours = await screen.findByLabelText(/interval in hours/i);
     await user.clear(hours);
     await user.type(hours, "12");

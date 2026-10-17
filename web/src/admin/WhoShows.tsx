@@ -16,7 +16,7 @@ import { useMemo, useState } from "react";
 import type { Payload } from "../api/types";
 import { EmptyState } from "../components/Panel";
 import { putInclusions } from "./api";
-import { Notice, Section } from "./shared";
+import { Notice, SubSection } from "./shared";
 
 export function WhoShows({ payload, onDirty }: { payload: Payload | null; onDirty: () => void }) {
   const [excluded, setExcluded] = useState<Record<string, boolean>>({});
@@ -31,11 +31,11 @@ export function WhoShows({ payload, onDirty }: { payload: Payload | null; onDirt
 
   if (!payload) {
     return (
-      <Section id="who-shows" title="Who shows">
+      <SubSection id="who-shows" title="Who shows">
         <EmptyState>
           The identity list needs the viewer payload, which is unavailable right now.
         </EmptyState>
-      </Section>
+      </SubSection>
     );
   }
 
@@ -69,7 +69,7 @@ export function WhoShows({ payload, onDirty }: { payload: Payload | null; onDirt
   }
 
   return (
-    <Section id="who-shows" title="Who shows">
+    <SubSection id="who-shows" title="Who shows">
       {error ? (
         <Notice tone="error">
           Not saved: {error}. This toggle is staged on this page only, so a rebuild will not apply
@@ -121,6 +121,6 @@ export function WhoShows({ payload, onDirty }: { payload: Payload | null; onDirt
           );
         })}
       </ul>
-    </Section>
+    </SubSection>
   );
 }
