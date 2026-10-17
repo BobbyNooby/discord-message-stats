@@ -13,7 +13,7 @@
  * merely looked applied would be worse than no merge at all.
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import type { Author, Payload } from "../api/types";
 import { EmptyState } from "../components/Panel";
@@ -132,11 +132,19 @@ export function IdentityMerge({
   /** Pins the last write introduced, so undo can drop them (§11.6). */
   const [undoClear, setUndoClear] = useState<string[]>([]);
   const [absorbing, setAbsorbing] = useState<Absorb | null>(null);
+  const confirmRef = useRef<HTMLButtonElement>(null);
   const [rebuildWhy, setRebuildWhy] = useState<string | null>(null);
 
   useEffect(() => {
     setMerges(mergesFromPayload(payload));
   }, [payload]);
+
+  // The absorb confirmation is inline, not a modal, so without this a screen
+  // reader hears nothing when it appears. Focusing the confirm button announces
+  // it and gives the keyboard a safe next Tab.
+  useEffect(() => {
+    if (absorbing) confirmRef.current?.focus();
+  }, [absorbing]);
 
   const identities: Author[] = payload?.authors ?? [];
   const names = useMemo(
@@ -409,6 +417,7 @@ export function IdentityMerge({
           <div className="mt-2 flex flex-wrap gap-2">
             <button
               type="button"
+              ref={confirmRef}
               onClick={confirmAbsorb}
               disabled={saving}
               className="rounded border border-amber-400/60 px-3 py-1.5 disabled:opacity-50"
