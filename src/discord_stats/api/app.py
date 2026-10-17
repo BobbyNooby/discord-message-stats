@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import sqlite3
 import threading
+import time
 import urllib.parse
 from pathlib import Path
 
@@ -38,6 +39,13 @@ STATE_COOKIE = "dsh_oauth_state"
 # 400 cached thumbnails at the 25 MB fetch cap would be 10 GB of resident memory,
 # so the cache is bounded by total bytes as well as by entry count.
 THUMB_CACHE_BYTES = 256 * 1024 * 1024
+
+# A signed CDN link outlives its signature: fetching one that now 404s again on
+# every dashboard load is noise, not a retry. A refusal is remembered for a
+# short while instead. Nothing but the refusal is stored, so the count is the
+# only budget this cache needs.
+THUMB_FAILURES = 512
+THUMB_FAIL_TTL = 600
 
 
 def _now() -> str:
@@ -138,6 +146,9 @@ def create_app(
     # entry; a hit is moved to the back and eviction takes from the front.
     thumb_cache: dict[str, tuple[float, bytes, str]] = {}
     thumb_cache_bytes = 0
+    # Refusals, ordered the same way: the front is the least recently refused.
+    # The value is what to replay — (expiry, status, detail) — not a body.
+    thumb_failures: dict[str, tuple[float, int, str]] = {}
     # Without this, N parallel requests each hold their own 25 MB body, which is
     # what would turn the byte ceiling above into a per-request promise.
     thumb_fetches = threading.Semaphore(4)
@@ -156,17 +167,23 @@ def create_app(
         host = parsed.hostname.lower()
         return any(host == s or host.endswith("." + s) for s in THUMB_SUFFIXES)
 
+    def _thumb_refused(u: str, status: int, detail: str) -> None:
+        """Remember a refusal so the next request for it is answered, not fetched."""
+        with thumb_lock:
+            thumb_failures.pop(u, None)
+            while len(thumb_failures) >= THUMB_FAILURES:
+                thumb_failures.pop(next(iter(thumb_failures)))
+            thumb_failures[u] = (time.monotonic() + THUMB_FAIL_TTL, status, detail)
+
     @app.get("/api/thumb")
     def thumb(u: str = Query(..., max_length=2048),
               _level: Level = Depends(require_viewer)) -> Response:
-        import time as _time
-
         import httpx
 
         nonlocal thumb_cache_bytes
         if not _thumb_allowed(u):
             raise HTTPException(status_code=400, detail="that host is not on the thumbnail allowlist")
-        now = _time.monotonic()
+        now = time.monotonic()
         with thumb_lock:
             hit = thumb_cache.get(u)
             if hit is not None and hit[0] > now:
@@ -175,6 +192,12 @@ def create_app(
                 thumb_cache[u] = thumb_cache.pop(u)
                 return Response(hit[1], media_type=hit[2],
                                 headers={"Cache-Control": "public, max-age=86400"})
+            refused = thumb_failures.get(u)
+            if refused is not None:
+                if refused[0] > now:
+                    thumb_failures[u] = thumb_failures.pop(u)
+                    raise HTTPException(status_code=refused[1], detail=refused[2])
+                del thumb_failures[u]
         too_big = f"that image is larger than {THUMB_MAX_BYTES // 1024 // 1024} MB"
         thumb_fetches.acquire()
         try:
@@ -198,14 +221,21 @@ def create_app(
                         body += chunk
                         if len(body) > THUMB_MAX_BYTES:
                             raise HTTPException(status_code=502, detail=too_big)
-            except HTTPException:
+            except HTTPException as refusal:
+                # An expired link 404s every time it is asked, so remember the
+                # refusal — and nothing else — rather than ask again.
+                _thumb_refused(u, refusal.status_code, str(refusal.detail))
                 raise
             except Exception as exc:
-                raise HTTPException(status_code=502, detail=f"thumbnail fetch failed: {exc}") from exc
+                detail = f"thumbnail fetch failed: {exc}"
+                _thumb_refused(u, 502, detail)
+                raise HTTPException(status_code=502, detail=detail) from exc
         finally:
             thumb_fetches.release()
         body = bytes(body)
         with thumb_lock:
+            # A success supersedes a remembered refusal for the same URL.
+            thumb_failures.pop(u, None)
             # An entry for this URL that has expired is replaced, not double-counted.
             expired = thumb_cache.pop(u, None)
             if expired is not None:

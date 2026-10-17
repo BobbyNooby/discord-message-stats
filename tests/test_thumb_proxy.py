@@ -142,18 +142,23 @@ def test_a_recently_read_entry_is_evicted_last(client, monkeypatch):
     assert seen["calls"] == 4, "the least recently used entry was not the one evicted"
 
 
-def test_a_refused_oversized_image_never_takes_a_cache_slot(client, monkeypatch):
+def test_a_refused_oversized_image_never_takes_a_positive_cache_slot(client, monkeypatch):
     """The 25 MB fetch cap is what keeps one entry smaller than the cache."""
     seen = use(monkeypatch, headers={"content-type": "image/gif",
                                      "content-length": str(26 * 1024 * 1024)})
     url = "https://media.tenor.com/huge.gif"
     assert client.get("/api/thumb", params={"u": url}).status_code == 502
+    cache, total, _ = _thumb_cache(client.app)
+    assert cache.cell_contents == {}, "a refused image took a slot in the byte cache"
+    assert total.cell_contents == 0, "a refused image counted bytes it does not hold"
+
+    # The refusal is what is remembered instead, so the repeat is not a fetch.
     assert client.get("/api/thumb", params={"u": url}).status_code == 502
-    assert seen["calls"] == 2, "a refused image must not be cached"
+    assert seen["calls"] == 1, "a refused image was fetched twice"
 
 
 def _thumb_cache(app):
-    """The endpoint's live closure: its cache dict and its byte counter.
+    """The endpoint's live closure: both caches and the byte counter.
 
     Read-only introspection, so the assertion is about the real structures the
     endpoint uses and not about a stub that happens to agree with itself.
@@ -162,8 +167,162 @@ def _thumb_cache(app):
         endpoint = getattr(route, "endpoint", None)
         if getattr(endpoint, "__name__", "") == "thumb":
             cells = dict(zip(endpoint.__code__.co_freevars, endpoint.__closure__))
-            return cells["thumb_cache"], cells["thumb_cache_bytes"]
+            return cells["thumb_cache"], cells["thumb_cache_bytes"], cells["thumb_failures"]
     raise AssertionError("no /api/thumb route")
+
+
+def _thumb_failures(app) -> dict:
+    """The negative cache the endpoint actually holds."""
+    return _thumb_cache(app)[2].cell_contents
+
+
+def _clock(monkeypatch):
+    """A clock the test moves by hand, so a TTL can be spent without waiting.
+
+    Only `app.py`'s view of `time` is replaced, the way the semaphore tests
+    replace its view of `threading`.
+    """
+    import discord_scraper.api.app as app_module
+
+    class Clock:
+        def __init__(self):
+            self.now = 1000.0
+
+        def monotonic(self):
+            return self.now
+
+    clock = Clock()
+    monkeypatch.setattr(app_module, "time", clock)
+    return clock
+
+
+# --- a failure is remembered for a while, so it is not fetched again ---------
+
+def test_a_url_that_fails_is_attempted_only_once(client, monkeypatch):
+    """An expired CDN link is otherwise refetched on every dashboard load."""
+    seen = use(monkeypatch, headers={"content-type": "text/html"}, chunks=[b"<html>"])
+    url = "https://i.ytimg.com/vi/gone/hq.jpg"
+
+    first = client.get("/api/thumb", params={"u": url})
+    second = client.get("/api/thumb", params={"u": url})
+
+    assert first.status_code == second.status_code == 502
+    assert first.json()["detail"] == second.json()["detail"] == "that URL did not return an image"
+    assert seen["calls"] == 1, "the second request went back to the network"
+
+
+def test_a_transport_error_is_remembered_too(client, monkeypatch):
+    calls = {"n": 0}
+
+    def broken_stream(method, url, **opts):
+        calls["n"] += 1
+        raise httpx.ConnectError("connection refused")
+
+    monkeypatch.setattr(httpx, "stream", broken_stream)
+
+    url = "https://media.tenor.com/flaky.gif"
+    for _ in range(2):
+        response = client.get("/api/thumb", params={"u": url})
+        assert response.status_code == 502
+        assert "thumbnail fetch failed" in response.json()["detail"]
+    assert calls["n"] == 1, "a transport error was retried immediately"
+
+
+def test_a_later_success_wins_over_a_remembered_failure(client, monkeypatch):
+    """The refusal is short-lived: once its window lapses, a success takes over."""
+    import discord_scraper.api.app as app_module
+
+    clock = _clock(monkeypatch)
+    url = "https://media.tenor.com/revived.gif"
+    failed = use(monkeypatch, headers={"content-type": "text/html"}, chunks=[b"<html>"])
+    assert client.get("/api/thumb", params={"u": url}).status_code == 502
+    assert url in _thumb_failures(client.app)
+    assert failed["calls"] == 1
+
+    # The same URL starts answering with an image, so the refusal must not win.
+    clock.now += app_module.THUMB_FAIL_TTL + 1
+    succeeded = use(monkeypatch, chunks=[b"GIF89a-revived"])
+    served = client.get("/api/thumb", params={"u": url})
+
+    assert served.status_code == 200
+    assert served.content == b"GIF89a-revived"
+    assert succeeded["calls"] == 1
+    assert url not in _thumb_failures(client.app), "the stale refusal outlived the success"
+
+    # ...and it is served from the positive cache from then on.
+    assert client.get("/api/thumb", params={"u": url}).status_code == 200
+    assert succeeded["calls"] == 1
+
+
+def test_a_remembered_failure_expires_after_its_ttl(client, monkeypatch):
+    import discord_scraper.api.app as app_module
+
+    assert app_module.THUMB_FAIL_TTL == 600, "the refusal TTL is not the documented one"
+    clock = _clock(monkeypatch)
+    seen = use(monkeypatch, headers={"content-type": "text/html"}, chunks=[b"<html>"])
+    url = "https://media.tenor.com/expired.gif"
+
+    assert client.get("/api/thumb", params={"u": url}).status_code == 502
+    assert client.get("/api/thumb", params={"u": url}).status_code == 502
+    assert seen["calls"] == 1, "a live refusal was not answered from the negative cache"
+
+    clock.now += app_module.THUMB_FAIL_TTL + 1
+    assert client.get("/api/thumb", params={"u": url}).status_code == 502
+    assert seen["calls"] == 2, "the lapsed refusal was never retried"
+
+
+def test_the_negative_cache_is_bounded_to_its_newest_entries(client, monkeypatch):
+    import discord_scraper.api.app as app_module
+
+    monkeypatch.setattr(app_module, "THUMB_FAILURES", 3, raising=False)
+    seen = use(monkeypatch, headers={"content-type": "text/html"}, chunks=[b"<html>"])
+    urls = _urls(*[f"dead-{n}" for n in range(5)])
+
+    for url in urls:
+        assert client.get("/api/thumb", params={"u": url}).status_code == 502
+    assert seen["calls"] == 5
+
+    held = _thumb_failures(client.app)
+    assert len(held) == 3, "the negative cache grew past its cap"
+    assert list(held) == urls[-3:], "the newest refusals were not the ones kept"
+
+    # The kept ones are answered without a fetch; the evicted two are not.
+    for url in urls[-3:]:
+        assert client.get("/api/thumb", params={"u": url}).status_code == 502
+    assert seen["calls"] == 5, "a kept refusal was fetched again"
+    for url in urls[:2]:
+        assert client.get("/api/thumb", params={"u": url}).status_code == 502
+    assert seen["calls"] == 7, "the evicted refusals were never retried"
+
+
+def test_reading_a_remembered_failure_makes_it_the_last_evicted(client, monkeypatch):
+    import discord_scraper.api.app as app_module
+
+    monkeypatch.setattr(app_module, "THUMB_FAILURES", 2, raising=False)
+    seen = use(monkeypatch, headers={"content-type": "text/html"}, chunks=[b"<html>"])
+    first, second, third = _urls("a", "b", "c")
+
+    client.get("/api/thumb", params={"u": first})
+    client.get("/api/thumb", params={"u": second})
+    client.get("/api/thumb", params={"u": first})      # a hit: `first` is now newest
+    assert seen["calls"] == 2
+
+    client.get("/api/thumb", params={"u": third})      # evicts `second`, not `first`
+    client.get("/api/thumb", params={"u": second})
+    assert seen["calls"] == 4, "the least recently read refusal was not the one evicted"
+
+
+def test_an_off_allowlist_host_is_refused_without_being_remembered(client, monkeypatch):
+    def explode(*a, **k):        # must never be reached
+        raise AssertionError("fetched a URL that is not allowlisted")
+
+    monkeypatch.setattr(httpx, "stream", explode)
+    url = "http://127.0.0.1:8443/api/admin/status"
+    for _ in range(2):
+        response = client.get("/api/thumb", params={"u": url})
+        assert response.status_code == 400
+        assert "allowlist" in response.json()["detail"]
+    assert _thumb_failures(client.app) == {}, "the allowlist refusal was cached"
 
 
 def test_concurrent_stores_leave_the_counter_equal_to_the_bytes_held(db_cfg, conn, monkeypatch):
@@ -205,7 +364,7 @@ def test_concurrent_stores_leave_the_counter_equal_to_the_bytes_held(db_cfg, con
     # not be re-raised in a worker thread where nobody sees it.
     client = TestClient(app, raise_server_exceptions=False)
     client.cookies.set(SESSION_COOKIE, establish_session(conn, "u1", Level.VIEWER))
-    cache, total = _thumb_cache(app)
+    cache, total, _ = _thumb_cache(app)
 
     # The default 5 ms switch interval is far longer than this critical section,
     # so a test has to make preemption land inside it to see the interleaving.
@@ -289,9 +448,10 @@ def test_at_most_four_fetches_run_at_once_and_a_slot_is_always_freed(db_cfg, con
     client = TestClient(create_app(cfg, path))
     client.cookies.set(SESSION_COOKIE, establish_session(conn, "u1", Level.VIEWER))
 
-    url = "https://media.tenor.com/too-big.gif"
-    assert client.get("/api/thumb", params={"u": url}).status_code == 502
-    assert client.get("/api/thumb", params={"u": url}).status_code == 502
+    # Two distinct URLs: a repeat of either would come from the negative cache
+    # and never reach the semaphore at all.
+    for url in ("https://media.tenor.com/too-big.gif", "https://media.tenor.com/too-big-too.gif"):
+        assert client.get("/api/thumb", params={"u": url}).status_code == 502
 
     assert made, "no fetch semaphore was created"
     assert made[0].value == 4, "more than four outbound fetches may run at once"
