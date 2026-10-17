@@ -19,6 +19,8 @@ import {
 } from "./people";
 import { usePanelFilters } from "./panelScope";
 
+const TITLE = "Who proofreads";
+
 const METRICS: { key: EditMetric; label: string }[] = [
   { key: "rate", label: "edited %" },
   { key: "speed", label: "time to edit" },
@@ -62,7 +64,7 @@ export function EditRate({ payload, filters: fallbackFilters }: { panelId?: stri
 
   if (!rows.length && !trend.order.length) {
     return (
-      <Panel title="Who proofreads" badge={badge}>
+      <Panel title={TITLE} badge={badge}>
         <EmptyState>No edits match the active filters — widen the time range.</EmptyState>
       </Panel>
     );
@@ -72,21 +74,34 @@ export function EditRate({ payload, filters: fallbackFilters }: { panelId?: stri
     ? `${fmt(edits)} edits · ${dur(weightedAverage(rows))} average wait before fixing`
     : `${fmt(edits)} edits · ${trend.overall.toFixed(2)}% of messages edited`;
   const barAxis = speed ? dur : (value: number) => `${value.toFixed(1)}%`;
+  const bars = rows.length
+    ? hbarOption(rows, {
+        axis: barAxis,
+        label: (row) => barAxis(row.value),
+        tooltip: (row) =>
+          speed
+            ? `${row.name}<br>averages <b>${dur(row.value)}</b> before fixing, over ${fmt(row.n)} edits`
+            : `${row.name}<br><b>${row.value.toFixed(2)}%</b> of their messages (${fmt(row.n)}) were edited`,
+      })
+    : null;
+  // The card carries two charts but offers one export, and the chart this card
+  // is named for is the ranking — the trend line's own rows would arrive with
+  // no author names on them. Handing the ranking over explicitly is what
+  // settles which of the two the file holds.
+  const csv = rows.length
+    ? {
+        name: TITLE,
+        rows: [
+          ["author", speed ? "average seconds to edit" : "edited %", "edits"],
+          ...rows.map((row) => [row.name, Number(row.value.toFixed(2)), row.n]),
+        ],
+      }
+    : undefined;
 
   return (
-    <Panel title="Who proofreads" subtitle={subtitle} badge={badge}>
-      {rows.length ? (
-        <EChart
-          option={hbarOption(rows, {
-            axis: barAxis,
-            label: (row) => barAxis(row.value),
-            tooltip: (row) =>
-              speed
-                ? `${row.name}<br>averages <b>${dur(row.value)}</b> before fixing, over ${fmt(row.n)} edits`
-                : `${row.name}<br><b>${row.value.toFixed(2)}%</b> of their messages (${fmt(row.n)}) were edited`,
-          })}
-          height={Math.max(160, rows.length * 24)}
-        />
+    <Panel title={TITLE} subtitle={subtitle} badge={badge} csv={csv}>
+      {bars ? (
+        <EChart option={bars} height={Math.max(160, rows.length * 24)} />
       ) : (
         <EmptyState>No edits to show for this measure.</EmptyState>
       )}
