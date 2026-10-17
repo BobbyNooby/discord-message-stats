@@ -2,6 +2,7 @@ import { SlidersHorizontal } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 
 import type { SidebarMode } from "../filters/reducer";
+import { CopyViewLink } from "./CopyLink";
 import { IconButton, Sheet } from "./ui";
 
 /** The width at which the sidebar stops fitting beside the charts. */
@@ -107,6 +108,7 @@ export function AppShell({
         <header className="flex flex-wrap items-baseline justify-between gap-2 text-xs text-[var(--color-muted)]">
           <div className="flex flex-wrap items-baseline gap-3">
             {header}
+            <CopyViewLink />
             {canAdmin ? (
               <a href="/admin" className="rounded border border-[var(--color-line)] px-2 py-0.5">
                 Admin
