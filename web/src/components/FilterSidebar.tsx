@@ -1,9 +1,11 @@
 import type { Dispatch, ReactNode } from "react";
 
 import type { Payload } from "../api/types";
+import { useMediaKinds } from "../api/queries";
 import type { Charts } from "../filters/persist";
 import type { DashboardAction, FilterPatch, Filters, Scopes, SidebarMode } from "../filters/reducer";
 import { effective } from "../filters/selectors";
+import { kindLabel, providerChoices } from "../lib/mediaLabels";
 import { specFor, type Dimension, type PanelId } from "../panels/registry";
 import { AuthorFilterList } from "./AuthorFilterList";
 import { Chip, FilterGroup } from "./AppShell";
@@ -15,24 +17,48 @@ import { TimeRangePicker } from "./TimeRangePicker";
 const BUCKETS: Filters["bucket"][] = ["day", "month", "year"];
 const RANKS: Filters["rankBy"][] = ["msgs", "chars", "media", "replies"];
 
-const DIMENSION_LABELS: Record<Dimension, string> = {
-  time: "Time range",
-  author: "Authors",
-  word: "Word",
-  provider: "Provider",
-  kind: "Kind",
-  media: "Media",
-};
-
 /** The keys a dimension owns, so a chip can retire exactly those. */
 const DIMENSION_KEYS: Record<Dimension, (keyof Filters)[]> = {
   time: ["from", "to", "years"],
   author: ["active"],
   word: ["word"],
-  provider: [],
-  kind: [],
-  media: [],
+  provider: ["provider"],
+  kind: ["kind"],
 };
+
+/**
+ * The kind options come from the server (`/api/media` counts them across the
+ * whole rollup), so a kind that exists only below the page limit is still on
+ * offer. A control, not an explanation: the registry says the card honours
+ * kinds, and this is that control.
+ */
+function KindControl({
+  value,
+  onChange,
+}: {
+  value: string | null;
+  onChange: (kind: string | null) => void;
+}) {
+  const kinds = useMediaKinds(true).data ?? [];
+  return (
+    <FilterGroup label="Kind">
+      <div className="flex flex-wrap gap-1">
+        <Chip active={value === null} onClick={() => onChange(null)}>
+          Any kind
+        </Chip>
+        {kinds.map((kind) => (
+          <Chip
+            key={kind}
+            active={value === kind}
+            onClick={() => onChange(value === kind ? null : kind)}
+          >
+            {kindLabel(kind)}
+          </Chip>
+        ))}
+      </div>
+    </FilterGroup>
+  );
+}
 
 /**
  * Every filter lives here, grouped and labelled exactly as §11.0 lists them.
@@ -115,8 +141,16 @@ export function FilterSidebar({
     dispatch({ type: "replaceScope", panelId, patch: next });
   };
 
-  /** A scope offers only the dimensions the card declared it can honour. */
-  const groups: Partial<Record<Dimension, ReactNode>> = {
+  // The same options the card's chip row and the full view offer: one source,
+  // so the three cannot disagree about which providers exist.
+  const providerOptions = providerChoices(payload.providers ?? []);
+
+  /**
+   * A scope offers only the dimensions the card declared it can honour. Every
+   * dimension has a control here — the map is a complete `Record`, so a declared
+   * dimension without one is a compile error, not a card that opens a lie.
+   */
+  const groups: Record<Dimension, ReactNode> = {
     time: (
       <TimeRangePicker
         years={years}
@@ -128,6 +162,33 @@ export function FilterSidebar({
         onClearYears={() => (panelId ? patch({ years: [] }) : dispatch({ type: "clearYears" }))}
       />
     ),
+    provider: (
+      <FilterGroup label="Provider">
+        <div className="flex flex-wrap gap-1">
+          <Chip active={shown.provider === null} onClick={() => patch({ provider: null, kind: null })}>
+            Any provider
+          </Chip>
+          {providerOptions.map((choice) => (
+            <Chip
+              key={choice.value}
+              active={shown.provider === choice.value}
+              // A kind that exists for Tenor need not exist for YouTube, so
+              // changing the provider clears the kind rather than leaving an
+              // invisible filter switched on.
+              onClick={() =>
+                patch({
+                  provider: shown.provider === choice.value ? null : choice.value,
+                  kind: null,
+                })
+              }
+            >
+              {choice.label}
+            </Chip>
+          ))}
+        </div>
+      </FilterGroup>
+    ),
+    kind: <KindControl value={shown.kind} onChange={(kind) => patch({ kind })} />,
     author: (
       <FilterGroup
         label={`Authors (${shown.active.filter(Boolean).length}/${payload.authors.length})`}
@@ -167,15 +228,6 @@ export function FilterSidebar({
     ),
   };
 
-  // A declared dimension with no control yet is stated, not silently dropped.
-  const unavailable = (dimension: Dimension) => (
-    <FilterGroup label={DIMENSION_LABELS[dimension]}>
-      <p className="text-[11px] text-[var(--color-muted)]">
-        No {dimension} filter exists yet, so this card cannot be narrowed by it.
-      </p>
-    </FilterGroup>
-  );
-
   return (
     <div className="space-y-4">
       {!scoped && pruned ? <PrunedNotice pruned={pruned} onDismiss={onDismissPruned ?? (() => {})} /> : null}
@@ -194,7 +246,7 @@ export function FilterSidebar({
       {scoped && spec ? (
         <>
           {spec.honours.map((dimension) => (
-            <div key={dimension}>{groups[dimension] ?? unavailable(dimension)}</div>
+            <div key={dimension}>{groups[dimension]}</div>
           ))}
           <ScopeChips patch={applied} onRemove={removeDimension} />
           <p className="px-1 text-[11px] text-[var(--color-muted)]">

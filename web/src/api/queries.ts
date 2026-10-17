@@ -48,11 +48,25 @@ export function useWords(query: string, enabled: boolean) {
  * items in the card. Both filters are the server's, so a chip narrows the whole
  * rollup rather than the fifty rows in hand.
  */
-export function useMedia(provider: string | null, kind: string | null, enabled: boolean) {
+export function useMedia(provider: string | null, kind: string | null, enabled: boolean, limit = 50) {
   return useQuery({
-    queryKey: ["media", provider ?? "all", kind ?? "all"],
-    queryFn: () => getMedia(provider ?? undefined, kind ?? undefined, 50),
+    queryKey: ["media", provider ?? "all", kind ?? "all", limit],
+    queryFn: () => getMedia(provider ?? undefined, kind ?? undefined, limit),
     enabled,
+  });
+}
+
+/**
+ * The kinds the scoped sidebar can offer. The list is the server's, so a kind
+ * that exists only below the page limit is still a filter worth offering; it
+ * shares the unfiltered `/api/media` query with the view.
+ */
+export function useMediaKinds(enabled: boolean) {
+  return useQuery({
+    queryKey: ["media", "all", "all", 50],
+    queryFn: () => getMedia(undefined, undefined, 50),
+    enabled,
+    select: (data: { kinds: string[] }) => data.kinds,
   });
 }
 

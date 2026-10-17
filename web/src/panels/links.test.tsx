@@ -187,6 +187,19 @@ describe("Links & embeds section", () => {
     expect(screen.getByText(/15,296 embeds from every provider the payload carries/)).toBeInTheDocument();
   });
 
+  it("narrows the bar to one provider when the card is scoped to it", () => {
+    const payload = makePayload({
+      providers: [
+        ["YouTube", 6821],
+        ["Tenor", 5102],
+      ],
+    });
+    render(<Providers payload={payload} filters={{ ...allOn, provider: "YouTube" }} />);
+
+    expect(lastOption().yAxis.data).toEqual(["YouTube"]);
+    expect(screen.getByText(/6,821 embeds from only YouTube/)).toBeInTheDocument();
+  });
+
   it("says so in words when it is drawing a cut of a longer provider list", () => {
     const providers: [string, number][] = Array.from({ length: 30 }, (_, index) => [
       `provider-${index}`,

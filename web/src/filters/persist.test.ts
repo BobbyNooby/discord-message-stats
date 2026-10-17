@@ -89,6 +89,24 @@ describe("scope storage", () => {
     expect(dropped).toEqual([{ panelId: "word-cloud", dimension: "word", key: "dog" }]);
   });
 
+  it("round-trips a provider and kind scope", () => {
+    const scopes = { "most-reposted": { provider: "Tenor", kind: "gifv" } };
+    saveScopes(scopes);
+    expect(loadScopes(payload).scopes).toEqual(scopes);
+  });
+
+  it("drops a provider the payload no longer has, and says which", () => {
+    saveScopes({ "most-reposted": { provider: "YouTube" } });
+    const gone = { ...payload, providers: [["Tenor", 7]] } as unknown as Payload;
+
+    const { scopes, dropped } = loadScopes(gone);
+
+    expect(scopes["most-reposted"]).toBeUndefined();
+    expect(dropped).toEqual([
+      { panelId: "most-reposted", dimension: "provider", key: "YouTube" },
+    ]);
+  });
+
   it("ignores a scope for a card the registry no longer has", () => {
     saveScopes({ "no-such-card": { word: "cat" } });
     const { scopes, dropped } = loadScopes(payload);
@@ -171,6 +189,14 @@ describe("the url mirror", () => {
   it("returns nothing when the url names a card the registry does not have", () => {
     writeUrlState({ scopes: { "not-a-card": { word: "cat" } } });
     expect(readUrlState(payload).scopes).toEqual({});
+  });
+
+  it("round-trips a provider and kind scope through the query string", () => {
+    writeUrlState({ scopes: { "most-reposted": { provider: "Tenor", kind: "gifv" } } });
+    expect(readUrlState(payload).scopes["most-reposted"]).toEqual({
+      provider: "Tenor",
+      kind: "gifv",
+    });
   });
 });
 

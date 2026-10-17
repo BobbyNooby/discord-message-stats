@@ -1,4 +1,5 @@
 import type { FilterPatch } from "../filters/reducer";
+import { kindLabel, providerLabel } from "../lib/mediaLabels";
 import type { Dimension } from "../panels/registry";
 import { Chip } from "./ui";
 
@@ -30,6 +31,22 @@ export function scopeChips(patch: FilterPatch): { dimension: Dimension; label: s
 
   if ("word" in patch) {
     chips.push({ dimension: "word", label: patch.word ? `word “${patch.word}”` : "word: any" });
+  }
+
+  if ("provider" in patch) {
+    const name = patch.provider ?? "";
+    // Through the label helper, so the raw `unprovidenced` sentinel never shows.
+    chips.push({
+      dimension: "provider",
+      label: name ? `provider ${providerLabel(name, name)}` : "provider: any",
+    });
+  }
+
+  if ("kind" in patch) {
+    chips.push({
+      dimension: "kind",
+      label: patch.kind ? `kind ${kindLabel(patch.kind)}` : "kind: any",
+    });
   }
 
   return chips;
