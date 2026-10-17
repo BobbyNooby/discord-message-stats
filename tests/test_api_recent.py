@@ -2,6 +2,8 @@
 
 import json
 
+import pytest
+
 from discord_scraper.api.recent import BODY_LIMIT
 
 
@@ -43,6 +45,17 @@ def test_show_recent_zero_restores_the_strict_rule(seeded_db_path, tmp_path):
 
 def test_recent_requires_a_viewer(client_unauthenticated):
     assert client_unauthenticated.get("/api/recent").status_code == 401
+
+
+def test_a_viewer_can_ask_for_fewer_messages(client):
+    """`ui.show_recent` is the default, not a floor: a caller may ask for less."""
+    body = client.get("/api/recent", params={"limit": 2}).json()
+    assert len(body["messages"]) == 2
+
+
+@pytest.mark.parametrize("limit", [0, 999])
+def test_a_limit_outside_one_to_two_hundred_is_refused(client, limit):
+    assert client.get("/api/recent", params={"limit": limit}).status_code == 422
 
 
 def _viewer(path):

@@ -407,14 +407,19 @@ def create_app(
             conn.close()
 
     @app.get("/api/recent")
-    def recent_messages(_level: Level = Depends(require_viewer)) -> dict:
-        """The "is this still alive" strip (§11.8), bounded by ``ui.show_recent``."""
+    def recent_messages(limit: int | None = Query(None, ge=1, le=200),
+                        _level: Level = Depends(require_viewer)) -> dict:
+        """The "is this still alive" strip (§11.8), bounded by ``ui.show_recent``.
+
+        ``limit`` lets a caller ask for fewer messages; the 200 ceiling is this
+        endpoint's own, so a generous ``ui.show_recent`` cannot widen it.
+        """
         from discord_scraper.api.recent import recent
 
         conn = connection()
         try:
             effective = admin.effective_for(conn, cfg)
-            return recent(conn, effective)
+            return recent(conn, effective, limit=min(limit or effective.show_recent, 200))
         finally:
             conn.close()
 
