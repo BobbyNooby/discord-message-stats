@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { EChartsOption } from "echarts";
 
@@ -7,6 +7,7 @@ import { EmptyState, GlobalOnlyBadge, Panel, CARD_COLUMNS } from "../components/
 import { EChart } from "../lib/echart";
 import { providerLabel } from "../lib/mediaLabels";
 import type { Filters } from "../filters/reducer";
+import { readMediaOpen, writeMediaState } from "../filters/persist";
 import { MediaTile } from "./MediaTile";
 import { MediaView } from "./MediaView";
 
@@ -34,11 +35,45 @@ const IN_CARD = 10;
 const nf = new Intl.NumberFormat("en-US");
 const fmt = (n: number) => nf.format(Math.round(n));
 
+/**
+ * Whether the top-50 view is open is a URL state, not local state: that is what
+ * makes Back close it and the link shareable. Opening pushes an entry, so the
+ * very next Back returns here and the popstate handler closes the view; closing
+ * by a button replays that Back rather than stacking a second entry. A view
+ * opened from a shared link has no pushed entry to pop, so it is cleared in
+ * place — a browser Back from there leaves the page, as it should.
+ */
+function useMediaViewState(): { viewOpen: boolean; onViewOpenChange: (open: boolean) => void } {
+  const [viewOpen, setViewOpen] = useState(() => readMediaOpen());
+  const pushed = useRef(false);
+
+  useEffect(() => {
+    const sync = () => setViewOpen(readMediaOpen());
+    window.addEventListener("popstate", sync);
+    return () => window.removeEventListener("popstate", sync);
+  }, []);
+
+  const onViewOpenChange = useCallback((open: boolean) => {
+    if (open) {
+      window.history.pushState(null, "", writeMediaState(true));
+      pushed.current = true;
+    } else if (pushed.current) {
+      pushed.current = false;
+      window.history.back();
+    } else {
+      window.history.replaceState(null, "", writeMediaState(false));
+    }
+    setViewOpen(open);
+  }, []);
+
+  return { viewOpen, onViewOpenChange };
+}
+
 export function RichMedia({ payload }: { panelId?: string; payload: Payload; filters?: Filters }) {
   const items: MediaRow[] = payload.topMedia ?? [];
   const shown = items.slice(0, IN_CARD);
   const mode = payload.mediaThumbnails ?? "proxy";
-  const [viewOpen, setViewOpen] = useState(false);
+  const { viewOpen, onViewOpenChange } = useMediaViewState();
   // Raw provider totals, with Discord's unnamed bucket split by host: an
   // `cdn.discordapp.com` attachment is somebody's own upload, not a mystery.
   const providers: [string, number][] = Object.values(
@@ -93,7 +128,7 @@ export function RichMedia({ payload }: { panelId?: string; payload: Payload; fil
             <span className="flex flex-wrap items-center gap-1">
               <button
                 type="button"
-                onClick={() => setViewOpen(true)}
+                onClick={() => onViewOpenChange(true)}
                 className="rounded border border-[var(--color-line)] px-2 py-0.5 text-[10px] uppercase tracking-wider text-[var(--color-muted)] hover:text-[var(--color-text)]"
               >
                 Show top 50
@@ -113,7 +148,7 @@ export function RichMedia({ payload }: { panelId?: string; payload: Payload; fil
           )}
         </Panel>
         {viewOpen ? (
-          <MediaView open={viewOpen} onOpenChange={setViewOpen} payload={payload} />
+          <MediaView open={viewOpen} onOpenChange={onViewOpenChange} payload={payload} />
         ) : null}
       </div>
       <Panel

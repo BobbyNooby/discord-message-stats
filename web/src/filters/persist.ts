@@ -267,8 +267,26 @@ export function readUrlState(payload?: Payload, search?: string): UrlState {
   return { scopes };
 }
 
-/** One line the banner can show: "author “Bob” from Share of voice, word “cat”". */
-export function describeDropped(dropped: DroppedScope[], labelFor: (panelId: string) => string): string {
+/* ---------- the media view ---------- */
+
+/**
+ * "Show top 50" is a state of the view, so it lives in the URL beside the
+ * scopes: Back closes it, and the link is the view (§UI/UX rule 5).
+ */
+export function readMediaOpen(search?: string): boolean {
+  const source = search ?? window.location.search;
+  return new URLSearchParams(source).get("media") === "1";
+}
+
+/** The same URL with `?media=1` set or cleared, keeping everything else. */
+export function writeMediaState(open: boolean, url?: URL): string {
+  const target = url ?? new URL(window.location.href);
+  if (open) target.searchParams.set("media", "1");
+  else target.searchParams.delete("media");
+  return target.toString();
+}
+
+/** One line the banner can show: "author “Bob” from Share of voice, word “cat”". */export function describeDropped(dropped: DroppedScope[], labelFor: (panelId: string) => string): string {
   return dropped
     .map((entry) => {
       const label = isPanelId(entry.panelId) ? labelFor(entry.panelId) : entry.panelId;

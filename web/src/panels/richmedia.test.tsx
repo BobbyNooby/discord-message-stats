@@ -77,6 +77,8 @@ const openView = async () => userEvent.click(screen.getByRole("button", { name: 
 beforeEach(() => {
   server.getMedia.mockReset();
   server.getMedia.mockResolvedValue({ provider: null, items: many(3) });
+  // The view mirrors itself into the query string, so each test starts clean.
+  window.history.replaceState(null, "", "/");
 });
 
 afterEach(() => {
@@ -190,6 +192,32 @@ describe("<RichMedia>", () => {
     await openView();
 
     expect(await screen.findByRole("dialog", { name: /top 50/i })).toHaveClass("right-0");
+  });
+
+  it("puts ?media=1 in the url, and the Back button closes the view", async () => {
+    renderCard();
+    await openView();
+    expect(window.location.search).toBe("?media=1");
+
+    window.history.back();
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(window.location.search).toBe("");
+  });
+
+  it("opens straight from a shared ?media=1 link", async () => {
+    window.history.replaceState(null, "", "/?media=1&scope=nothing");
+    renderCard();
+    expect(await screen.findByRole("dialog", { name: /top 50/i })).toBeInTheDocument();
+  });
+
+  it("closes from its own Close button without leaving the page", async () => {
+    renderCard();
+    await openView();
+    await userEvent.click(await screen.findByRole("button", { name: "Close" }));
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(window.location.search).toBe("");
   });
 
   it("shows no images at all when thumbnails are off", () => {
