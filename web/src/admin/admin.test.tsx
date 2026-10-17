@@ -421,8 +421,10 @@ describe("<Admin>", () => {
     expect(confirm).toHaveTextContent(/jetkenon will be merged into alice/i);
     expect(confirm).toHaveTextContent(/including its alt kenon/i);
     expect(confirm).toHaveTextContent(/1 account/i);
-    // Nothing is written until the operator confirms.
+    // Nothing is written until the operator confirms, and the keyboard lands on
+    // the confirm button so the notice is announced and the next Tab is safe.
     expect(recorded("PUT", "/api/admin/identity")).toBe(false);
+    expect(within(confirm).getByRole("button", { name: /confirm merge/i })).toHaveFocus();
 
     await user.click(within(confirm).getByRole("button", { name: /confirm merge/i }));
     await waitFor(() => expect(recorded("PUT", "/api/admin/identity")).toBe(true));
@@ -557,7 +559,8 @@ describe("<Admin>", () => {
     await user.selectOptions(await screen.findByLabelText("First account"), "3");
     await user.selectOptions(screen.getByLabelText("Second account"), "2");
 
-    expect(await screen.findByText(/this merges 3 accounts into/i)).toBeInTheDocument();
+    const group = await screen.findByRole("group", { name: /which display name wins/i });
+    expect(group).toHaveTextContent(/this merges 3 accounts into alice/i);
   });
 
   it("offers undo of the last merge and writes the state it replaced back", async () => {
