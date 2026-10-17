@@ -34,3 +34,11 @@ const KIND_LABELS: Record<string, string> = { gifv: "GIF" };
 export function kindLabel(kind: string): string {
   return KIND_LABELS[kind] ?? kind;
 }
+
+const nf = new Intl.NumberFormat("en-US");
+
+/** "posted 63 times", not "63×": the count is a sentence a reader can read. */
+export function postedLabel(uses: number): string {
+  const count = nf.format(Math.round(uses));
+  return uses === 1 ? "posted 1 time" : `posted ${count} times`;
+}

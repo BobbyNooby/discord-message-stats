@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { kindLabel, providerLabel } from "./mediaLabels";
+import { kindLabel, postedLabel, providerLabel } from "./mediaLabels";
 
 /**
  * Discord writes the literal string "unprovidenced" when it cannot name an
@@ -39,5 +39,13 @@ describe("kindLabel", () => {
 
   it("passes an unknown kind through rather than hiding it", () => {
     expect(kindLabel("mystery")).toBe("mystery");
+  });
+});
+
+describe("postedLabel", () => {
+  it("counts a repost in words, and reads naturally at one", () => {
+    expect(postedLabel(63)).toBe("posted 63 times");
+    expect(postedLabel(1)).toBe("posted 1 time");
+    expect(postedLabel(2132)).toBe("posted 2,132 times");
   });
 });

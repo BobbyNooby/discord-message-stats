@@ -20,10 +20,12 @@ const base = {
 } as unknown as Payload;
 
 describe("<RichMedia>", () => {
-  it("shows the repost count and the provider for each item", () => {
+  it("says the repost count in words, with the provider and the kind", () => {
     render(<RichMedia payload={base} filters={initialFilters(base)} />);
-    expect(screen.getByText("63×")).toBeInTheDocument();
-    expect(screen.getByText("55×")).toBeInTheDocument();
+    // "63× Tenor gifv" is a convention, not a sentence (§UI/UX rule 1).
+    expect(screen.getByText(/posted 63 times · Tenor GIF/)).toBeInTheDocument();
+    expect(screen.getByText(/posted 55 times · Klipy GIF/)).toBeInTheDocument();
+    expect(screen.queryByText("63×")).toBeNull();
     expect(screen.getByText("Zesty Cat")).toBeInTheDocument();
   });
 
@@ -57,8 +59,8 @@ describe("<RichMedia>", () => {
 
   it("calls an unnamed Discord CDN item a direct upload, not 'unprovidenced'", () => {
     render(<RichMedia payload={base} filters={initialFilters(base)} />);
-    expect(screen.getByText("Direct upload")).toBeInTheDocument();
-    expect(screen.queryByText("unprovidenced")).toBeNull();
+    expect(screen.getByText(/posted 35 times · Direct upload image/)).toBeInTheDocument();
+    expect(document.body.textContent).not.toContain("unprovidenced");
   });
 
   it("has a tab whose ranking is computed for its own slice", () => {
@@ -75,6 +77,6 @@ describe("<RichMedia>", () => {
     );
     expect(thumbnails(container)).toHaveLength(0);
     expect(container.querySelectorAll("video")).toHaveLength(0);
-    expect(screen.getByText("63×")).toBeInTheDocument();
+    expect(screen.getByText(/posted 63 times/)).toBeInTheDocument();
   });
 });

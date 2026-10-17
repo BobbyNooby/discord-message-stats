@@ -5,7 +5,7 @@ import type { EChartsOption } from "echarts";
 import type { Payload } from "../api/types";
 import { EmptyState, GlobalOnlyBadge, Panel, CARD_COLUMNS } from "../components/Panel";
 import { EChart } from "../lib/echart";
-import { providerLabel } from "../lib/mediaLabels";
+import { providerLabel, kindLabel, postedLabel } from "../lib/mediaLabels";
 import type { Filters } from "../filters/reducer";
 
 /**
@@ -202,11 +202,12 @@ export function RichMedia({ payload, }: { panelId?: string; payload: Payload; fi
                         <p className="truncate text-xs text-[var(--color-text)]" title={label(url, title)}>
                           {label(url, title)}
                         </p>
-                        <p className="flex items-baseline justify-between gap-2 text-[10px] uppercase tracking-wide text-[var(--color-muted)]">
-                          <span className="truncate">{name}</span>
-                          <span className="tabular-nums">{fmt(uses)}×</span>
+                        <p
+                          className="truncate text-[10px] uppercase tracking-wide text-[var(--color-muted)]"
+                          title={`${postedLabel(uses)} · ${name} ${kindLabel(kind)}`}
+                        >
+                          {`${postedLabel(uses)} · ${name} ${kindLabel(kind)}`}
                         </p>
-                        <p className="text-[10px] text-[var(--color-muted)]">{kind}</p>
                       </div>
                     </a>
                   </li>
