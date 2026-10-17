@@ -32,6 +32,7 @@ import {
 } from "./filters/persist";
 import { PanelScopeProvider } from "./panels/panelScope";
 import { PANELS, specFor, type ChartKind, type PanelId } from "./panels/registry";
+import { useKeyboardShortcuts } from "./lib/shortcuts";
 import { Calendar } from "./panels/Calendar";
 import { LinksSection } from "./panels/LinksSection";
 import { MediaSection } from "./panels/MediaSection";
@@ -108,6 +109,8 @@ function DashboardBody({
   );
   const years = [...new Set(payload.days.map((day) => Number(day.slice(0, 4))))].sort();
   const notify = useNotice();
+  // `/` and `f`: the two things a reader reaches for on a page this long.
+  useKeyboardShortcuts();
   // Stable, so a card's "…" does not re-render every panel through the context.
   const openScope = useCallback(
     (panelId: PanelId) => dispatch({ type: "openScope", panelId }),

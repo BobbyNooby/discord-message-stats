@@ -2,6 +2,7 @@ import { SlidersHorizontal } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 
 import type { SidebarMode } from "../filters/reducer";
+import { OPEN_FILTERS_EVENT } from "../lib/shortcuts";
 import { CopyViewLink } from "./CopyLink";
 import { IconButton, Sheet } from "./ui";
 
@@ -66,6 +67,24 @@ export function AppShell({
   useEffect(() => {
     if (narrow && mode?.kind === "scoped") setOpen(true);
   }, [narrow, mode]);
+
+  // `f`: open the drawer on a phone, and on a wide screen put the caret in the
+  // sidebar that is already on screen — the shortcut means "take me to filters"
+  // either way, not "toggle a panel that is always visible".
+  useEffect(() => {
+    const openFilters = () => {
+      if (narrow) {
+        setOpen(true);
+        return;
+      }
+      document
+        .getElementById("filters")
+        ?.querySelector<HTMLElement>("button, input, select, a[href]")
+        ?.focus();
+    };
+    window.addEventListener(OPEN_FILTERS_EVENT, openFilters);
+    return () => window.removeEventListener(OPEN_FILTERS_EVENT, openFilters);
+  }, [narrow]);
 
   useScrollLock(narrow && open);
 
