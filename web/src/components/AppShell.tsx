@@ -171,7 +171,7 @@ export function Chip({
       onClick={onClick}
       className={`rounded border px-2 py-0.5 text-[11px] ${
         active
-          ? "border-[var(--color-accent)] bg-[var(--color-accent)]/20 text-[var(--color-text)]"
+          ? "border-[var(--color-accent)] bg-[var(--color-accent)]/30 font-semibold text-[var(--color-text)]"
           : "border-[var(--color-line)] text-[var(--color-muted)]"
       }`}
     >
