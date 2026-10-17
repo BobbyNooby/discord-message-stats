@@ -10,7 +10,24 @@ import {
   type Cell,
   type Payload,
 } from "../api/types";
-import type { Filters } from "./reducer";
+import type { FilterPatch, Filters } from "./reducer";
+
+/**
+ * The one resolver every card calls: the global filters with a card's own patch
+ * composed over them. Pure — neither argument is touched, and the arrays a
+ * patch carries are copied so no two cards can share one and drift.
+ */
+export function effective(global: Filters, patch?: FilterPatch): Filters {
+  if (!patch) return global;
+  const keys = Object.entries(patch).filter(([, value]) => value !== undefined);
+  if (!keys.length) return global;
+  const merged = { ...global, ...patch };
+  return {
+    ...merged,
+    years: merged.years ? [...merged.years] : merged.years,
+    active: merged.active ? [...merged.active] : merged.active,
+  };
+}
 
 export type Totals = {
   msgs: number;

@@ -1,4 +1,5 @@
 import type { Payload } from "../api/types";
+import type { PanelId } from "../panels/registry";
 
 /** One reducer owns every filter; charts are pure functions of (data, filters). */
 export type Filters = {
@@ -76,4 +77,130 @@ export function filtersReducer(state: Filters, action: Action): Filters {
     default:
       return state;
   }
+}
+
+/* ---------- per-card scopes ---------- */
+
+/** What one card overrides: any subset of the global filters. */
+export type FilterPatch = Partial<Filters>;
+
+/** Card id to its own override. The global filters still apply underneath. */
+export type Scopes = Record<string, FilterPatch>;
+
+/** Which filters the sidebar is editing: the global set, or one card's draft. */
+export type SidebarMode =
+  | { kind: "global" }
+  | { kind: "scoped"; panelId: PanelId; draft: FilterPatch };
+
+export type ScopeAction =
+  | { type: "openScope"; panelId: PanelId }
+  | { type: "patchScope"; panelId: PanelId; patch: FilterPatch }
+  | { type: "applyScope"; panelId: PanelId }
+  | { type: "clearScope"; panelId: PanelId }
+  | { type: "clearScopes" }
+  | { type: "closeScope" };
+
+export type ScopeState = { scopes: Scopes; mode: SidebarMode };
+
+export const GLOBAL_MODE: SidebarMode = { kind: "global" };
+
+export function initialScopeState(scopes: Scopes = {}): ScopeState {
+  return { scopes, mode: GLOBAL_MODE };
+}
+
+/** A patch of nothing is not a scope: that card is simply unfiltered. */
+function clean(patch: FilterPatch): FilterPatch {
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(patch)) {
+    if (value !== undefined) out[key] = value;
+  }
+  return out as FilterPatch;
+}
+
+function merge(base: FilterPatch, patch: FilterPatch): FilterPatch {
+  return { ...base, ...clean(patch) };
+}
+
+export function scopesReducer(state: ScopeState, action: ScopeAction): ScopeState {
+  const scoped = state.mode.kind === "scoped" ? state.mode : null;
+  switch (action.type) {
+    case "openScope":
+      // Opening a card picks up what it already applies, so the sidebar never
+      // shows something other than the state the card is in.
+      return {
+        ...state,
+        mode: {
+          kind: "scoped",
+          panelId: action.panelId,
+          draft: state.scopes[action.panelId] ?? {},
+        },
+      };
+    case "patchScope": {
+      // While the card's scope is open, an edit is a draft. Anywhere else it is
+      // an edit to what that card already applies.
+      if (scoped && scoped.panelId === action.panelId) {
+        return { ...state, mode: { ...scoped, draft: merge(scoped.draft, action.patch) } };
+      }
+      return {
+        ...state,
+        scopes: { ...state.scopes, [action.panelId]: merge(state.scopes[action.panelId] ?? {}, action.patch) },
+      };
+    }
+    case "applyScope": {
+      if (!scoped || scoped.panelId !== action.panelId) return state;
+      const patch = clean(scoped.draft);
+      const scopes = { ...state.scopes };
+      if (Object.keys(patch).length) scopes[action.panelId] = patch;
+      else delete scopes[action.panelId];
+      return { ...state, scopes };
+    }
+    case "clearScope": {
+      const scopes = { ...state.scopes };
+      delete scopes[action.panelId];
+      return {
+        scopes,
+        mode: scoped?.panelId === action.panelId ? { ...scoped, draft: {} } : state.mode,
+      };
+    }
+    case "clearScopes":
+      // Nothing is left to be scoped to, so the sidebar goes back to global.
+      return { scopes: {}, mode: GLOBAL_MODE };
+    case "closeScope":
+      // Leaving the draft behind would silently apply it on the next Apply.
+      return { ...state, mode: GLOBAL_MODE };
+    default:
+      return state;
+  }
+}
+
+/* ---------- one reducer for the dashboard ---------- */
+
+export type DashboardAction = Action | ScopeAction;
+
+export type DashboardState = { filters: Filters; scopes: Scopes; mode: SidebarMode };
+
+export function initialDashboardState(payload: Payload): DashboardState {
+  return { filters: initialFilters(payload), scopes: {}, mode: GLOBAL_MODE };
+}
+
+const SCOPE_ACTIONS = [
+  "openScope",
+  "patchScope",
+  "applyScope",
+  "clearScope",
+  "clearScopes",
+  "closeScope",
+] as const;
+
+function isScopeAction(action: DashboardAction): action is ScopeAction {
+  return (SCOPE_ACTIONS as readonly string[]).includes(action.type);
+}
+
+/**
+ * `useReducer(dashboardReducer, payload, initialDashboardState)` — the sidebar
+ * holds one dispatch, and a global action can never land on a card's scope.
+ */
+export function dashboardReducer(state: DashboardState, action: DashboardAction): DashboardState {
+  if (isScopeAction(action)) return { ...state, ...scopesReducer(state, action) };
+  return { ...state, filters: filtersReducer(state.filters, action) };
 }
