@@ -35,3 +35,12 @@ export const getWords = (query: string, limit = 50) =>
     total: number;
     authors: { id: string; name: string; count: number }[];
   }>(`/api/words?q=${encodeURIComponent(query)}&limit=${limit}`);
+
+/** The full media ranking, optionally for one provider (`/api/media`). */
+export const getMedia = (provider?: string, limit = 50) => {
+  const params = new URLSearchParams({ limit: String(limit) });
+  if (provider) params.set("provider", provider);
+  return request<{ provider: string | null; items: import("./types").MediaRow[] }>(
+    `/api/media?${params.toString()}`,
+  );
+};
