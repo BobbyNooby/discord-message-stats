@@ -37,6 +37,10 @@ from discord_scraper.rollups.schema import is_stale
 
 STATE_COOKIE = "dsh_oauth_state"
 
+# 400 cached thumbnails at the 25 MB fetch cap would be 10 GB of resident memory,
+# so the cache is bounded by total bytes as well as by entry count.
+THUMB_CACHE_BYTES = 256 * 1024 * 1024
+
 
 def _now() -> str:
     from datetime import datetime, timezone
@@ -131,7 +135,14 @@ def create_app(
     # still needed, because this endpoint fetches a URL from the query string
     # (the largest thumbnail in the reference data is 36.8 MB).
     THUMB_MAX_BYTES = 25 * 1024 * 1024
+    THUMB_CACHE_ENTRIES = 400
+    # Insertion-ordered, so the front of the dict is the least recently used
+    # entry; a hit is moved to the back and eviction takes from the front.
     thumb_cache: dict[str, tuple[float, bytes, str]] = {}
+    thumb_cache_bytes = 0
+    # Without this, N parallel requests each hold their own 25 MB body, which is
+    # what would turn the byte ceiling above into a per-request promise.
+    thumb_fetches = threading.Semaphore(4)
 
     def _thumb_allowed(url: str) -> bool:
         try:
@@ -150,42 +161,61 @@ def create_app(
 
         import httpx
 
+        nonlocal thumb_cache_bytes
         if not _thumb_allowed(u):
             raise HTTPException(status_code=400, detail="that host is not on the thumbnail allowlist")
         now = _time.monotonic()
         hit = thumb_cache.get(u)
         if hit and hit[0] > now:
+            # A hit is a use: move the entry to the most-recently-used end so
+            # eviction below throws away the genuinely cold entries.
+            thumb_cache[u] = thumb_cache.pop(u)
             return Response(hit[1], media_type=hit[2],
                             headers={"Cache-Control": "public, max-age=86400"})
         too_big = f"that image is larger than {THUMB_MAX_BYTES // 1024 // 1024} MB"
+        thumb_fetches.acquire()
         try:
-            # Redirects are not followed: a redirect is how an allowlisted host
-            # would be used to reach one that is not.
-            with httpx.stream("GET", u, timeout=10.0, follow_redirects=False) as response:
-                kind = response.headers.get("content-type", "").split(";")[0].strip().lower()
-                # mp4 as well as images: the playable asset of a gifv is an mp4,
-                # and routing it through here is what keeps Tenor and Klipy out
-                # of the viewer's browser.
-                if response.status_code != 200 or not (
-                    kind.startswith("image/") or kind in ("video/mp4", "video/webm")
-                ):
-                    raise HTTPException(status_code=502, detail="that URL did not return an image")
-                declared = response.headers.get("content-length", "")
-                if declared.isdigit() and int(declared) > THUMB_MAX_BYTES:
-                    raise HTTPException(status_code=502, detail=too_big)
-                body = bytearray()
-                for chunk in response.iter_bytes():
-                    body += chunk
-                    if len(body) > THUMB_MAX_BYTES:
+            try:
+                # Redirects are not followed: a redirect is how an allowlisted host
+                # would be used to reach one that is not.
+                with httpx.stream("GET", u, timeout=10.0, follow_redirects=False) as response:
+                    kind = response.headers.get("content-type", "").split(";")[0].strip().lower()
+                    # mp4 as well as images: the playable asset of a gifv is an mp4,
+                    # and routing it through here is what keeps Tenor and Klipy out
+                    # of the viewer's browser.
+                    if response.status_code != 200 or not (
+                        kind.startswith("image/") or kind in ("video/mp4", "video/webm")
+                    ):
+                        raise HTTPException(status_code=502, detail="that URL did not return an image")
+                    declared = response.headers.get("content-length", "")
+                    if declared.isdigit() and int(declared) > THUMB_MAX_BYTES:
                         raise HTTPException(status_code=502, detail=too_big)
-        except HTTPException:
-            raise
-        except Exception as exc:
-            raise HTTPException(status_code=502, detail=f"thumbnail fetch failed: {exc}") from exc
+                    body = bytearray()
+                    for chunk in response.iter_bytes():
+                        body += chunk
+                        if len(body) > THUMB_MAX_BYTES:
+                            raise HTTPException(status_code=502, detail=too_big)
+            except HTTPException:
+                raise
+            except Exception as exc:
+                raise HTTPException(status_code=502, detail=f"thumbnail fetch failed: {exc}") from exc
+        finally:
+            thumb_fetches.release()
         body = bytes(body)
-        if len(thumb_cache) > 400:
-            thumb_cache.clear()
+        # An entry for this URL that has expired is replaced, not double-counted.
+        expired = thumb_cache.pop(u, None)
+        if expired is not None:
+            thumb_cache_bytes -= len(expired[1])
+        while thumb_cache and (
+            len(thumb_cache) >= THUMB_CACHE_ENTRIES
+            or thumb_cache_bytes + len(body) > THUMB_CACHE_BYTES
+        ):
+            # `dict` keeps insertion order and has no `popitem(last=False)`, so
+            # the front of the dict — the least recently used entry — is named.
+            coldest = next(iter(thumb_cache))
+            thumb_cache_bytes -= len(thumb_cache.pop(coldest)[1])
         thumb_cache[u] = (now + 86400, body, kind)
+        thumb_cache_bytes += len(body)
         return Response(body, media_type=kind,
                         headers={"Cache-Control": "public, max-age=86400"})
 
