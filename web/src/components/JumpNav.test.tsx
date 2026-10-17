@@ -27,6 +27,20 @@ describe("<JumpNav>", () => {
     expect(screen.getByRole("navigation", { name: "Sections" }).className).toContain("overflow-x-auto");
   });
 
+  it("floats the bar clear of the viewport top and fills the gap with page surface", () => {
+    render(<JumpNav />);
+
+    const nav = screen.getByRole("navigation", { name: "Sections" });
+    const wrapper = nav.parentElement!;
+    // The wrapper is the sticky element; its padding is the offset and its
+    // background is what shows in the gap above the bar.
+    expect(wrapper.className).toContain("sticky");
+    expect(wrapper.className).toContain("bg-[var(--color-ink)]");
+    expect(wrapper.style.paddingTop).toContain("max(0.75rem, env(safe-area-inset-top))");
+    // The bar keeps its own border and blur.
+    expect(nav.className).toContain("backdrop-blur");
+  });
+
   it("goes back to the top", () => {
     const scrollTo = vi.fn();
     vi.stubGlobal("scrollTo", scrollTo);
