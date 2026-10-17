@@ -1,5 +1,6 @@
 import { EmptyState, GlobalOnlyBadge, Panel } from "../components/Panel";
 import { EChart } from "../lib/echart";
+import { providerLabel } from "../lib/mediaLabels";
 import { PALETTE } from "../lib/palette";
 import type { Payload } from "../api/types";
 import { allPairRows, fmt, horizontalBarsOption, sumRows } from "./mediaData";
@@ -22,7 +23,13 @@ import type { Filters } from "../filters/reducer";
 const MAX_BARS = 12;
 
 export function Providers({ payload, }: { panelId?: string; payload: Payload; filters?: Filters }) {
-  const all = allPairRows(payload.providers);
+  const all = allPairRows(payload.providers).map((row) => ({
+    ...row,
+    // Discord's `unprovidenced` is a bucket, not a provider name (§UI/UX rule 1).
+    // This list has no URL to split CDN uploads from unnamed links, so both read
+    // "No provider".
+    name: providerLabel(row.name, row.name),
+  }));
   const rows = all.slice(0, MAX_BARS);
   const total = sumRows(rows);
   const scope =

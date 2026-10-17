@@ -172,11 +172,15 @@ describe("Links & embeds section", () => {
       "Twitch",
       "FxTwitter",
       "Klipy",
-      "unprovidenced",
+      "No provider",
       "Tenor",
       "YouTube",
     ]);
     expect(option.series[0].data).toEqual([94, 114, 120, 201, 712, 2132, 5102, 6821]);
+    // No text card and no chart may print the sentinel: it is Discord's word
+    // for "I could not name this", not a provider name.
+    expect(document.body.textContent).not.toContain("unprovidenced");
+    expect(JSON.stringify(option)).not.toContain("unprovidenced");
     // A bar claims no total, and the subtitle says these are all the payload sent.
     expect(screen.getByText(/15,296 embeds from every provider the payload carries/)).toBeInTheDocument();
   });

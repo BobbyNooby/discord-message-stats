@@ -5,6 +5,7 @@ import type { EChartsOption } from "echarts";
 import type { Payload } from "../api/types";
 import { EmptyState, GlobalOnlyBadge, Panel, CARD_COLUMNS } from "../components/Panel";
 import { EChart } from "../lib/echart";
+import { providerLabel } from "../lib/mediaLabels";
 import type { Filters } from "../filters/reducer";
 
 /**
@@ -20,20 +21,6 @@ import type { Filters } from "../filters/reducer";
  */
 
 type MediaRow = [string, string, string, string, string, string, number];
-
-/** Providers Discord does not name, split by what the URL actually points at. */
-function providerLabel(provider: string, url: string): string {
-  if (provider && provider !== "unprovidenced") return provider;
-  return /(^|\.)(discordapp\.(com|net))$/.test(hostOf(url)) ? "Direct upload" : "No provider";
-}
-
-function hostOf(url: string): string {
-  try {
-    return new URL(url).hostname.toLowerCase();
-  } catch {
-    return "";
-  }
-}
 
 const TABS: { id: string; label: string; match?: (row: MediaRow) => boolean }[] = [
   { id: "all", label: "All" },
