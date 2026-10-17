@@ -55,7 +55,7 @@ export function DashboardSkeleton({ label = "Loading the dashboard…" }: { labe
       </p>
       <div className="space-y-4">
         {[0, 1, 2].map((row) => (
-          <div key={row} className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+          <div key={row} className="grid grid-cols-1 gap-4 md:grid-cols-2">
             {[0, 1, 2].map((card) => (
               <div
                 key={card}

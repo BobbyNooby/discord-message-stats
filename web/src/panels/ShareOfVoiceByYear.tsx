@@ -50,7 +50,7 @@ export function ShareOfVoiceByYear({ payload, filters: fallbackFilters }: PanelP
       <Panel
         title="Share of voice, year by year"
         subtitle={`${fmt(0)} messages · 0 years`}
-        className="xl:col-span-3"
+        className="md:col-span-2"
       >
         <EmptyState>{emptyLabel(payload, filters)}</EmptyState>
       </Panel>
@@ -101,7 +101,7 @@ export function ShareOfVoiceByYear({ payload, filters: fallbackFilters }: PanelP
     <Panel
       title="Share of voice, year by year"
       subtitle={`${fmt(total)} messages · ${yearCountLabel(years.length)} · one doughnut per year`}
-      className="xl:col-span-3"
+      className="md:col-span-2"
     >
       <EChart option={option} height={210} />
     </Panel>

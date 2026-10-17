@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { NoticeProvider } from "./Notice";
-import { GlobalOnlyBadge, Panel } from "./Panel";
+import { CARD_COLUMNS, GlobalOnlyBadge, Panel } from "./Panel";
 import { EChart } from "../lib/echart";
 import { TERMS } from "../lib/glossary";
 
@@ -88,6 +88,20 @@ describe("<Panel> csv export", () => {
     expect(
       await screen.findByRole("button", { name: "Export Cumulative growth as CSV" }),
     ).toBeInTheDocument();
+  });
+});
+
+/**
+ * The owner's layout rule: cards are wide, so they never pack into three
+ * columns. One column below the shell's 860px breakpoint, exactly two above it.
+ */
+describe("CARD_COLUMNS", () => {
+  it("is one column on a phone and never a three-column step", () => {
+    const classes = CARD_COLUMNS.split(" ");
+    expect(classes).toContain("columns-1");
+    expect(classes).toContain("md:columns-2");
+    expect(classes.filter((name) => name.includes("columns-3"))).toEqual([]);
+    expect(classes.filter((name) => name.startsWith("xl:"))).toEqual([]);
   });
 });
 

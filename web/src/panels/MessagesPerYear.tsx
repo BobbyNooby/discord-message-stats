@@ -30,7 +30,6 @@ export function MessagesPerYear({ payload, filters: fallbackFilters }: PanelProp
       <Panel
         title="Messages per year"
         subtitle={`${fmt(0)} messages · 0 years`}
-        className="lg:col-span-2"
       >
         <EmptyState>{emptyLabel(payload, filters)}</EmptyState>
       </Panel>
@@ -79,7 +78,6 @@ export function MessagesPerYear({ payload, filters: fallbackFilters }: PanelProp
     <Panel
       title="Messages per year"
       subtitle={`${fmt(total)} messages · ${yearCountLabel(years.length)} · peak ${peakYear}`}
-      className="lg:col-span-2"
     >
       <EChart option={option} height={220} />
     </Panel>

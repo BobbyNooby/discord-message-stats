@@ -169,7 +169,7 @@ export function MediaView({
       ) : shown.length === 0 ? (
         <p className="text-xs text-[var(--color-muted)]">No media in this filter.</p>
       ) : (
-        <ol aria-label="Top media" className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <ol aria-label="Top media" className="grid grid-cols-1 gap-3 md:grid-cols-2">
           {shown.map((row) => (
             <MediaTile key={row[0]} row={row} mode={mode} />
           ))}
