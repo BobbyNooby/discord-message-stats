@@ -2,18 +2,21 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { Dialog } from "../components/ui";
-import { OPEN_FILTERS_EVENT, WORD_SEARCH_ID, useKeyboardShortcuts } from "./shortcuts";
+import { GLOBAL_SEARCH_ID, OPEN_FILTERS_EVENT, WORD_SEARCH_ID, useKeyboardShortcuts } from "./shortcuts";
 
 /**
  * `/` and `f` must not fight the reader: they do nothing while a field has
  * focus, nothing when a browser or OS modifier is held, and nothing while a
  * modal is open.
  */
-function Harness({ modal = false }: { modal?: boolean }) {
+function Harness({ modal = false, globalSearch = false }: { modal?: boolean; globalSearch?: boolean }) {
   useKeyboardShortcuts();
   return (
     <>
       <input id={WORD_SEARCH_ID} aria-label="Search words" defaultValue="cat" />
+      {globalSearch ? (
+        <input id={GLOBAL_SEARCH_ID} aria-label="Search the dashboard" defaultValue="bob" />
+      ) : null}
       <input aria-label="Some other field" />
       {modal ? (
         <Dialog open onOpenChange={() => {}} title="Show top 50">
@@ -42,8 +45,18 @@ describe("keyboard shortcuts", () => {
     expect(search.selectionEnd).toBe(3);
   });
 
-  it("asks for the filters on f", () => {
-    const { listener, stop } = watchFilters();
+  it("prefers the dashboard's one search when it is on the page", () => {
+    render(<Harness globalSearch />);
+
+    fireEvent.keyDown(document.body, { key: "/" });
+
+    const search = screen.getByLabelText("Search the dashboard") as HTMLInputElement;
+    expect(search).toHaveFocus();
+    expect(search.selectionStart).toBe(0);
+    expect(search.selectionEnd).toBe(3);
+  });
+
+  it("asks for the filters on f", () => {    const { listener, stop } = watchFilters();
     render(<Harness />);
 
     fireEvent.keyDown(document.body, { key: "f" });
