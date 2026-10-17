@@ -156,7 +156,7 @@ export function Admin() {
               setActive(task.id);
               window.history.replaceState(null, "", `#${task.id}`);
             }}
-            className={`rounded px-2 py-1 text-xs ${
+            className={`min-h-9 rounded px-3 py-2 text-xs ${
               active === task.id
                 ? "bg-[var(--color-accent)]/20 font-medium text-[var(--color-text)]"
                 : "text-[var(--color-muted)]"
