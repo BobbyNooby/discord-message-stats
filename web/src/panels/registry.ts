@@ -191,6 +191,28 @@ export function specForLabel(label: string): PanelSpecLiteral | undefined {
   return SPECS.find((spec) => spec.label === label);
 }
 
+/** Every dimension a spec may declare, in the order the sidebar offers them. */
+export const DIMENSIONS: readonly Dimension[] = ["time", "author", "word", "provider", "kind"];
+
+/** How many cards honour a dimension, out of every card the registry declares. */
+export function dimensionReach(dimension: Dimension): { honoured: number; total: number } {
+  return { honoured: panelsHonouring(dimension).length, total: SPECS.length };
+}
+
+/**
+ * `Time range · 21 of 40 cards` — the reach of one control, computed from the
+ * specs at render time so the sidebar and the registry cannot disagree.
+ */
+export function reachLabel(label: string, dimension: Dimension): string {
+  const { honoured, total } = dimensionReach(dimension);
+  return `${label} · ${honoured} of ${total} cards`;
+}
+
+/** The dimensions worth a control: a dimension no rendered card honours is hidden. */
+export function offeredDimensions(): Dimension[] {
+  return DIMENSIONS.filter((dimension) => panelsHonouring(dimension).length > 0);
+}
+
 /** Every card whose numbers move with this dimension, in registry order. */
 export function panelsHonouring(dimension: Dimension): PanelId[] {
   return SPECS.filter((spec) => (spec.honours as readonly Dimension[]).includes(dimension)).map(

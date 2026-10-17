@@ -1,3 +1,4 @@
+import { reachLabel } from "../panels/registry";
 import { Chip, FilterGroup } from "./AppShell";
 
 const PRESETS: { label: string; days: number | null }[] = [
@@ -26,7 +27,7 @@ export function TimeRangePicker({
   onClearYears: () => void;
 }) {
   return (
-    <FilterGroup label="Time range">
+    <FilterGroup label={reachLabel("Time range", "time")}>
       <div className="flex flex-wrap gap-2">
         {PRESETS.map((preset) => (
           <Chip

@@ -1,6 +1,16 @@
 import { describe, expect, it } from "vitest";
 
-import { PANELS, isPanelId, panelsHonouring, specFor, specForLabel } from "./registry";
+import {
+  DIMENSIONS,
+  PANELS,
+  dimensionReach,
+  isPanelId,
+  offeredDimensions,
+  panelsHonouring,
+  reachLabel,
+  specFor,
+  specForLabel,
+} from "./registry";
 
 /** The panel sources as text, read the way Vite reads them — no node types. */
 const SOURCES = import.meta.glob("./*.tsx", {
@@ -132,6 +142,26 @@ describe("the panel registry", () => {
     );
     expect(panelsHonouring("provider")).toEqual(["most-reposted", "embeds-by-provider"]);
     expect(panelsHonouring("word").sort()).toEqual(["who-says-it", "word-index"]);
+  });
+
+  it("states a dimension's reach from the registry, so a label cannot drift", () => {
+    const total = Object.keys(PANELS).length;
+    for (const dimension of DIMENSIONS) {
+      expect(dimensionReach(dimension)).toEqual({
+        honoured: panelsHonouring(dimension).length,
+        total,
+      });
+      expect(reachLabel("X", dimension)).toBe(`X · ${panelsHonouring(dimension).length} of ${total} cards`);
+    }
+  });
+
+  it("offers only dimensions a rendered card honours", () => {
+    // Every declared dimension currently has a card, so nothing is removed;
+    // the gate exists so a future dimension with no card is never offered.
+    expect(offeredDimensions()).toEqual([...DIMENSIONS]);
+    for (const dimension of offeredDimensions()) {
+      expect(panelsHonouring(dimension).length).toBeGreaterThan(0);
+    }
   });
 
   it("resolves a spec by id and by the label a card shows", () => {

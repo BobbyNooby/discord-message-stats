@@ -7,6 +7,7 @@ import type { DashboardAction, FilterPatch, Filters, Scopes, SidebarMode } from 
 import { effective } from "../filters/selectors";
 import { kindLabel, providerChoices } from "../lib/mediaLabels";
 import { specFor, type Dimension, type PanelId } from "../panels/registry";
+import { offeredDimensions, reachLabel } from "../panels/registry";
 import { AuthorFilterList } from "./AuthorFilterList";
 import { Chip, FilterGroup } from "./AppShell";
 import { PrunedNotice, ResetView } from "./ResetView";
@@ -40,7 +41,7 @@ function KindControl({
 }) {
   const kinds = useMediaKinds(true).data ?? [];
   return (
-    <FilterGroup label="Kind">
+    <FilterGroup label={reachLabel("Kind", "kind")}>
       <div className="flex flex-wrap gap-1">
         <Chip active={value === null} onClick={() => onChange(null)}>
           Any kind
@@ -144,6 +145,11 @@ export function FilterSidebar({
   // so the three cannot disagree about which providers exist.
   const providerOptions = providerChoices(payload.providers ?? []);
 
+  // A dimension no rendered card honours has no control: the sidebar lists
+  // controls from the registry rather than from a hand-kept set.
+  const offered = offeredDimensions();
+  const has = (dimension: Dimension) => offered.includes(dimension);
+
   /**
    * A scope offers only the dimensions the card declared it can honour. Every
    * dimension has a control here — the map is a complete `Record`, so a declared
@@ -162,7 +168,7 @@ export function FilterSidebar({
       />
     ),
     provider: (
-      <FilterGroup label="Provider">
+      <FilterGroup label={reachLabel("Provider", "provider")}>
         <div className="flex flex-wrap gap-1">
           <Chip active={shown.provider === null} onClick={() => patch({ provider: null, kind: null })}>
             Any provider
@@ -190,7 +196,7 @@ export function FilterSidebar({
     kind: <KindControl value={shown.kind} onChange={(kind) => patch({ kind })} />,
     author: (
       <FilterGroup
-        label={`Authors (${shown.active.filter(Boolean).length}/${payload.authors.length})`}
+        label={reachLabel(`Authors (${shown.active.filter(Boolean).length}/${payload.authors.length})`, "author")}
       >
         <AuthorFilterList
           authors={payload.authors}
@@ -214,7 +220,7 @@ export function FilterSidebar({
       </FilterGroup>
     ),
     word: (
-      <FilterGroup label="Word">
+      <FilterGroup label={reachLabel("Word", "word")}>
         <input
           type="text"
           aria-label="Word"
@@ -244,7 +250,7 @@ export function FilterSidebar({
 
       {scoped && spec ? (
         <>
-          {spec.honours.map((dimension) => (
+          {spec.honours.filter((dimension) => has(dimension)).map((dimension) => (
             <div key={dimension}>{groups[dimension]}</div>
           ))}
           <ScopeChips patch={applied} onRemove={removeDimension} />
@@ -256,9 +262,9 @@ export function FilterSidebar({
         </>
       ) : (
         <>
-          {groups.time}
-          {groups.author}
-          <FilterGroup label="Bucket">
+          {has("time") ? groups.time : null}
+          {has("author") ? groups.author : null}
+          <FilterGroup label={reachLabel("Bucket", "time")}>
             <div className="flex flex-wrap gap-2">
               {BUCKETS.map((bucket) => (
                 <Chip
