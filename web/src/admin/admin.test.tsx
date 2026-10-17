@@ -19,7 +19,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { Payload } from "../api/types";
 import { Admin } from "../routes/Admin";
-import type { AdminConfig, AdminStatus } from "./api";
+import type { AdminConfig, AdminStatus, MergeEntry } from "./api";
 
 const STATUS: AdminStatus = {
   app: "Discord Scraper",
@@ -107,6 +107,8 @@ type Call = { url: string; method: string; body?: unknown };
 
 let calls: Call[];
 let handlers: Record<string, (init?: RequestInit) => Response>;
+/** What the server currently has, so `previous` is the real prior state. */
+let identityState: MergeEntry[];
 
 function response(status: number, body?: unknown): Response {
   return {
@@ -128,6 +130,7 @@ function key(method: string, url: string): string {
 
 beforeEach(() => {
   calls = [];
+  identityState = [{ canonical: "1", accounts: ["1", "2"] }];
   handlers = {
     "GET /api/admin/status": () => response(200, STATUS),
     "GET /api/admin/config": () => response(200, CONFIG),
@@ -136,12 +139,12 @@ beforeEach(() => {
     "PUT /api/admin/config": () => response(200, CONFIG),
     "PUT /api/admin/inclusions": (init) =>
       response(200, { included: bodyOf(init)?.included ?? {}, cache_stale: true }),
-    "PUT /api/admin/identity": (init) =>
-      response(200, {
-        merges: [{ canonical: "1", accounts: ["1", "2", "3"] }],
-        cache_stale: true,
-        previous: bodyOf(init)?.merges ?? [],
-      }),
+    "PUT /api/admin/identity": (init) => {
+      const body = bodyOf(init) as { merges?: MergeEntry[] } | undefined;
+      const previous = identityState;
+      identityState = body?.merges ?? [];
+      return response(200, { merges: identityState, cache_stale: true, previous });
+    },
     "POST /api/admin/sessions/revoke-all": () => response(200, { revoked: 3 }),
     "POST /api/admin/recalculate": () =>
       response(202, { id: 7, channel_id: "c1", kind: "rebuild_rollups", status: "queued" }),
@@ -347,6 +350,76 @@ describe("<Admin>", () => {
 
     const alarm = await screen.findByRole("alert");
     expect(alarm).toHaveTextContent(/not saved: duplicate account in 1/i);
+  });
+
+  it("merges any two accounts picked from the pickers and sends the winning name", async () => {
+    const user = userEvent.setup();
+    renderAdmin();
+
+    await openTask(user, "Fix the data");
+    await user.selectOptions(await screen.findByLabelText("First account"), "3");
+    await user.selectOptions(screen.getByLabelText("Second account"), "2");
+    // The busier identity (alice, 400 msgs) keeps its name by default.
+    expect(screen.getByRole("radio", { name: /keep the name alice/i })).toBeChecked();
+    await user.click(screen.getByRole("button", { name: /merge these accounts/i }));
+
+    await waitFor(() => expect(recorded("PUT", "/api/admin/identity")).toBe(true));
+    expect(recordedCall("PUT", "/api/admin/identity")?.body).toEqual({
+      merges: [{ canonical: "1", accounts: ["1", "2", "3"], name: "alice" }],
+    });
+    expect(await screen.findByText(/merged 3 accounts into alice/i)).toBeInTheDocument();
+  });
+
+  it("lets the operator type the name that wins", async () => {
+    const user = userEvent.setup();
+    renderAdmin();
+
+    await openTask(user, "Fix the data");
+    await user.selectOptions(await screen.findByLabelText("First account"), "3");
+    await user.selectOptions(screen.getByLabelText("Second account"), "2");
+    await user.type(screen.getByLabelText(/or type a name/i), "Veibot");
+    await user.click(screen.getByRole("button", { name: /merge these accounts/i }));
+
+    await waitFor(() => expect(recorded("PUT", "/api/admin/identity")).toBe(true));
+    expect(recordedCall("PUT", "/api/admin/identity")?.body).toEqual({
+      merges: [{ canonical: "1", accounts: ["1", "2", "3"], name: "Veibot" }],
+    });
+  });
+
+  it("offers undo of the last merge and writes the state it replaced back", async () => {
+    const user = userEvent.setup();
+    renderAdmin();
+
+    await openTask(user, "Fix the data");
+    await user.selectOptions(await screen.findByLabelText("First account"), "3");
+    await user.selectOptions(screen.getByLabelText("Second account"), "2");
+    await user.click(screen.getByRole("button", { name: /merge these accounts/i }));
+
+    const undo = await screen.findByRole("button", { name: /undo the last change/i });
+    await user.click(undo);
+
+    const writes = calls.filter(
+      (call) => call.method === "PUT" && call.url === "/api/admin/identity",
+    );
+    expect(writes).toHaveLength(2);
+    expect(writes[1].body).toEqual({ merges: [{ canonical: "1", accounts: ["1", "2"] }] });
+    expect(await screen.findByText(/undone/i)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /undo the last change/i })).not.toBeInTheDocument();
+  });
+
+  it("says a rebuild is required after a merge and puts the button beside it", async () => {
+    const user = userEvent.setup();
+    renderAdmin();
+
+    await openTask(user, "Fix the data");
+    await user.selectOptions(await screen.findByLabelText("First account"), "3");
+    await user.selectOptions(screen.getByLabelText("Second account"), "2");
+    await user.click(screen.getByRole("button", { name: /merge these accounts/i }));
+
+    const prompt = await screen.findByText(/a rebuild is required to apply the merge/i);
+    const card = prompt.closest("div") as HTMLElement;
+    await user.click(within(card).getByRole("button", { name: /recalculate all/i }));
+    await waitFor(() => expect(recorded("POST", "/api/admin/recalculate")).toBe(true));
   });
 
   it("revokes every other session and reports how many ended", async () => {
