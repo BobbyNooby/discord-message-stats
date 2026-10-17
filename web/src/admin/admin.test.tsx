@@ -19,7 +19,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { Payload } from "../api/types";
 import { Admin } from "../routes/Admin";
-import type { AdminConfig, AdminStatus, MergeEntry } from "./api";
+import type { AdminConfig, AdminRow, AdminStatus, MergeEntry } from "./api";
 
 const STATUS: AdminStatus = {
   app: "Discord Scraper",
@@ -113,6 +113,8 @@ let calls: Call[];
 let handlers: Record<string, (init?: RequestInit) => Response>;
 /** What the server currently has, so `previous` is the real prior state. */
 let identityState: MergeEntry[];
+/** The admin list the fake server holds, so add and remove really change it. */
+let adminState: AdminRow[];
 
 function response(status: number, body?: unknown): Response {
   return {
@@ -135,11 +137,32 @@ function key(method: string, url: string): string {
 beforeEach(() => {
   calls = [];
   identityState = [{ canonical: "1", accounts: ["1", "2"] }];
+  adminState = [
+    { discord_id: "4242", added_at: "2026-10-01T00:00:00+00:00", added_by: "config", known: true, source: "config" },
+  ];
   handlers = {
     "GET /api/admin/status": () => response(200, STATUS),
     "GET /api/admin/config": () => response(200, CONFIG),
     "GET /api/admin/timezones": () => response(200, TIMEZONES),
     "GET /api/bootstrap": () => response(200, PAYLOAD),
+    "GET /api/admin/admins": () => response(200, { admins: adminState }),
+    "POST /api/admin/admins": (init) => {
+      const body = bodyOf(init);
+      const id = String(body?.discord_id ?? "");
+      const known = id !== "999999999999999999";
+      if (!known && !body?.force) {
+        return response(409, { detail: `${id} matches no message in this channel — check the id, or add it anyway` });
+      }
+      const row: AdminRow = {
+        discord_id: id,
+        added_at: "2026-10-16T00:00:00+00:00",
+        added_by: "1",
+        known,
+        source: "table",
+      };
+      adminState = [...adminState.filter((admin) => admin.discord_id !== id), row];
+      return response(201, row);
+    },
     "PUT /api/admin/config": () => response(200, CONFIG),
     "PUT /api/admin/inclusions": (init) =>
       response(200, { included: bodyOf(init)?.included ?? {}, cache_stale: true }),
@@ -629,6 +652,103 @@ describe("<Admin>", () => {
     renderAdmin();
 
     expect(await screen.findByRole("heading", { name: "Not allowed" })).toBeInTheDocument();
-    expect(screen.getByText(/only the configured admin id/i)).toBeInTheDocument();
+    expect(screen.getByText(/only an admin can/i)).toBeInTheDocument();
+  });
+});
+
+/**
+ * The admins subsection (§8.1): the list is rows now, not one environment
+ * variable, and the board is where an admin grants it to somebody else.
+ */
+describe("<Admin> admins", () => {
+  const adminsSection = async () =>
+    ((await screen.findByRole("heading", { name: "Admins" })).closest("section") as HTMLElement);
+
+  it("lists the admins with their Discord ids and whether they have posted", async () => {
+    const user = userEvent.setup();
+    renderAdmin();
+
+    await openTask(user, "Access");
+    const section = await adminsSection();
+
+    expect(within(section).getByText("4242")).toBeInTheDocument();
+    expect(within(section).getByText(/from ADMIN_DISCORD_ID/i)).toBeInTheDocument();
+  });
+
+  it("adds an admin picked from the author list, with the id visible", async () => {
+    const user = userEvent.setup();
+    renderAdmin();
+
+    await openTask(user, "Access");
+    const section = await adminsSection();
+    const picker = within(section).getByLabelText(/from the author list/i);
+    expect(within(picker).getByRole("option", { name: /vei.*\b3\b/i })).toBeInTheDocument();
+
+    await user.selectOptions(picker, "3");
+    await user.click(within(section).getByRole("button", { name: /add admin/i }));
+
+    await waitFor(() => expect(recorded("POST", "/api/admin/admins")).toBe(true));
+    expect(recordedCall("POST", "/api/admin/admins")?.body).toEqual({ discord_id: "3", force: false });
+    expect(await within(section).findByText("3")).toBeInTheDocument();
+  });
+
+  it("warns about an id that matches no message, then adds it when the operator insists", async () => {
+    const user = userEvent.setup();
+    renderAdmin();
+
+    await openTask(user, "Access");
+    const section = await adminsSection();
+    await user.type(within(section).getByLabelText(/or type a discord id/i), "999999999999999999");
+    await user.click(within(section).getByRole("button", { name: /add admin/i }));
+
+    const warning = await within(section).findByText(/matches no message/i);
+    expect(warning).toBeInTheDocument();
+
+    await user.click(within(section).getByRole("button", { name: /add anyway/i }));
+
+    await waitFor(() => {
+      const posts = calls.filter((call) => call.method === "POST" && call.url === "/api/admin/admins");
+      expect(posts.at(-1)?.body).toEqual({
+        discord_id: "999999999999999999",
+        force: true,
+      });
+    });
+  });
+
+  it("removes an admin through the API", async () => {
+    adminState = [
+      ...adminState,
+      { discord_id: "3", added_at: "2026-10-02T00:00:00+00:00", added_by: "4242", known: true, source: "table" },
+    ];
+    handlers["DELETE /api/admin/admins/3"] = () => {
+      adminState = adminState.filter((admin) => admin.discord_id !== "3");
+      return response(200, { removed: "3", revoked: 0 });
+    };
+
+    const user = userEvent.setup();
+    renderAdmin();
+
+    await openTask(user, "Access");
+    const section = await adminsSection();
+    await user.click(within(section).getByRole("button", { name: /remove admin 3/i }));
+
+    await waitFor(() => expect(recorded("DELETE", "/api/admin/admins/3")).toBe(true));
+    await waitFor(() => expect(within(section).queryByText("3")).not.toBeInTheDocument());
+  });
+
+  it("shows why the last admin cannot be removed", async () => {
+    handlers["DELETE /api/admin/admins/4242"] = () =>
+      response(409, {
+        detail: "that is the configured admin (ADMIN_DISCORD_ID) — remove the setting there instead",
+      });
+
+    const user = userEvent.setup();
+    renderAdmin();
+
+    await openTask(user, "Access");
+    const section = await adminsSection();
+    await user.click(within(section).getByRole("button", { name: /remove admin 4242/i }));
+
+    expect(await within(section).findByRole("alert")).toHaveTextContent(/configured admin/i);
   });
 });

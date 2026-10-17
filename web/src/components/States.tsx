@@ -74,8 +74,8 @@ export function Forbidden({ what = "the admin board" }: { what?: string }) {
   return (
     <Screen icon={<Ban size={18} aria-hidden />} title="Not allowed">
       <p>
-        You are signed in, but this account cannot open {what}. Only the configured admin id can —
-        ask the operator to add yours to <code>ADMIN_DISCORD_ID</code>.
+        You are signed in, but this account cannot open {what}. Only an admin can — ask an admin to
+        add your Discord id in the Access task of the admin board.
       </p>
       <p>
         <a className="underline" href="/">

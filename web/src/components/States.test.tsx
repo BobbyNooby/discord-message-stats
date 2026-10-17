@@ -19,7 +19,8 @@ describe("fetch states", () => {
     render(<Forbidden />);
 
     expect(screen.getByRole("heading", { name: "Not allowed" })).toBeInTheDocument();
-    expect(screen.getByText(/only the configured admin id/i)).toBeInTheDocument();
+    expect(screen.getByText(/only an admin can/i)).toBeInTheDocument();
+    expect(screen.getByText(/access task/i)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /back to the stats page/i })).toBeInTheDocument();
   });
 
