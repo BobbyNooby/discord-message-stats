@@ -345,6 +345,7 @@ export function RefreshCache({
       <SubSection id="refresh-progress" title="Rebuild progress">
         <NowLine
           running={feed.data?.running ?? false}
+          abandoned={feed.data?.abandoned ?? false}
           phase={feed.data?.phase ?? null}
           startedAt={feed.data?.started_at ?? null}
           elapsedSeconds={runningSeconds}
