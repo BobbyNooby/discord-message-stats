@@ -1,6 +1,7 @@
 import type { Payload } from "../api/types";
 import { EmptyState, GlobalOnlyBadge, Panel } from "../components/Panel";
 import type { Filters } from "../filters/reducer";
+import { TERMS } from "../lib/glossary";
 import { EChart } from "../lib/echart";
 import { dur, fmt, hbarOption, responseRows, weightedAverage } from "./people";
 import { usePanelFilters } from "./panelScope";
@@ -25,6 +26,7 @@ export function ResponseTime({ payload, filters: fallbackFilters }: { panelId?: 
       title="How fast people reply"
       subtitle={`${fmt(replies)} replies · ${dur(weightedAverage(rows))} average wait across ${rows.length} authors`}
       badge={badge}
+      help={TERMS.averageWait}
     >
       <EChart
         option={hbarOption(rows, {
