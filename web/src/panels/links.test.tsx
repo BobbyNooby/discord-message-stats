@@ -30,7 +30,7 @@ vi.mock("echarts", () => ({ init: mocks.init, use: vi.fn() }));
 
 type LastOption = {
   yAxis: { data: string[] };
-  series: { data: { name?: string; value?: number }[] }[];
+  series: { type?: string; data: (number | { name?: string; value?: number })[] }[];
 };
 const lastOption = () => mocks.instance.setOption.mock.calls.at(-1)?.[0] as unknown as LastOption;
 
@@ -148,7 +148,7 @@ describe("Links & embeds section", () => {
     expect(screen.getByText(/global only/i)).toBeInTheDocument();
   });
 
-  it("caps a provider doughnut at six slices, folding the tail into Others", () => {
+  it("ranks the providers as a bar, saying which slice of the ranking it draws", () => {
     const payload = makePayload({
       providers: [
         ["YouTube", 6821],
@@ -163,18 +163,33 @@ describe("Links & embeds section", () => {
     });
     render(<Providers payload={payload} filters={allOn} />);
 
-    const slices = lastOption().series[0].data;
-    expect(slices).toHaveLength(6);
-    expect(slices[0]).toEqual({ name: "YouTube", value: 6821, itemStyle: { color: "#eb459e" } });
-    expect(slices.at(-1)).toMatchObject({ name: "Others", value: 120 + 114 + 94 });
-    expect(screen.getByText(/15,296 embeds/)).toBeInTheDocument();
+    const option = lastOption();
+    // Largest at the top: a category axis draws its first entry at the bottom.
+    expect(option.series[0].type).toBe("bar");
+    expect(option.yAxis.data).toEqual([
+      "Streamable",
+      "Spotify",
+      "Twitch",
+      "FxTwitter",
+      "Klipy",
+      "unprovidenced",
+      "Tenor",
+      "YouTube",
+    ]);
+    expect(option.series[0].data).toEqual([94, 114, 120, 201, 712, 2132, 5102, 6821]);
+    // A bar claims no total, and the subtitle says these are all the payload sent.
+    expect(screen.getByText(/15,296 embeds from every provider the payload carries/)).toBeInTheDocument();
   });
 
-  it("keeps a doughnut when the categories fit", () => {
-    render(<Providers payload={makePayload({ providers: [["YouTube", 10], ["Tenor", 4]] })} filters={allOn} />);
+  it("says so in words when it is drawing a cut of a longer provider list", () => {
+    const providers: [string, number][] = Array.from({ length: 30 }, (_, index) => [
+      `provider-${index}`,
+      (30 - index) * 2,
+    ]);
+    render(<Providers payload={makePayload({ providers })} filters={allOn} />);
 
-    expect(lastOption().series[0].data.map((slice) => slice.name)).toEqual(["YouTube", "Tenor"]);
-    expect(screen.queryByText(/rest as Others/)).not.toBeInTheDocument();
+    expect(lastOption().series[0].data).toHaveLength(12);
+    expect(screen.getByText(/the 12 biggest providers/)).toBeInTheDocument();
   });
 
   it("renders an empty embed-types panel without a chart", () => {
