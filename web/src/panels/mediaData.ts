@@ -169,21 +169,24 @@ export function globalEmpty(payload: Payload, filters: Filters): string | null {
 
 /* ---------- the global arrays: types, attachments, emoji, reactions ---------- */
 
-export function typeRows(payload: Payload, limit = 7): Row[] {
+export function allTypeRows(payload: Payload): Row[] {
   const types: TypeRow[] = payload.types?.length ? payload.types : (payload.meta?.types ?? []);
   return types
     .filter((row) => row[2] > 0)
     .slice()
     .sort((a, b) => b[2] - a[2])
-    .slice(0, limit)
     .map((row) => ({ name: row[1], value: row[2] }));
 }
 
-export function pairRows(pairs: [string, number][] | undefined, limit: number): Row[] {
+/** Every pair the payload carries, in the order the payload ranked it. */
+export function allPairRows(pairs: [string, number][] | undefined): Row[] {
   return (pairs ?? [])
     .filter(([, count]) => count > 0)
-    .slice(0, limit)
     .map(([name, value]) => ({ name, value }));
+}
+
+export function pairRows(pairs: [string, number][] | undefined, limit: number): Row[] {
+  return allPairRows(pairs).slice(0, limit);
 }
 
 export function sumRows(rows: Row[]): number {

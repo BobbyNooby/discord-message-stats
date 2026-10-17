@@ -1,7 +1,8 @@
 import { createContext, useContext, useMemo, type ReactNode } from "react";
 
 import { EMPTY_FILTERS, type Filters, type Scopes } from "../filters/reducer";
-import type { PanelId } from "./registry";
+import type { Charts } from "../filters/persist";
+import { isPanelId, specFor, type ChartKind, type PanelId } from "./registry";
 import { effective } from "../filters/selectors";
 
 /**
@@ -16,22 +17,34 @@ type PanelScopeValue = {
   filters: Filters;
   scopes: Scopes;
   onOpenScope: ((panelId: PanelId) => void) | null;
+  charts: Charts;
+  onShapeChange: ((panelId: PanelId, shape: ChartKind) => void) | null;
 };
 
 const PanelScope = createContext<PanelScopeValue | null>(null);
+
+/** One shared empty map, so a provider with no shapes does not re-render its cards. */
+const NO_CHARTS: Charts = {};
 
 export function PanelScopeProvider({
   filters,
   scopes,
   onOpenScope = null,
+  charts = NO_CHARTS,
+  onShapeChange = null,
   children,
 }: {
   filters: Filters;
   scopes: Scopes;
   onOpenScope?: ((panelId: PanelId) => void) | null;
+  charts?: Charts;
+  onShapeChange?: ((panelId: PanelId, shape: ChartKind) => void) | null;
   children: ReactNode;
 }) {
-  const value = useMemo(() => ({ filters, scopes, onOpenScope }), [filters, scopes, onOpenScope]);
+  const value = useMemo(
+    () => ({ filters, scopes, onOpenScope, charts, onShapeChange }),
+    [filters, scopes, onOpenScope, charts, onShapeChange],
+  );
   return <PanelScope.Provider value={value}>{children}</PanelScope.Provider>;
 }
 
@@ -55,6 +68,22 @@ export function usePanelFilters(panelId: PanelId | string, fallback?: Filters): 
 /** The "…" target, or null when a card renders on its own outside the shell. */
 export function usePanelScopeTarget(): ((panelId: PanelId) => void) | null {
   return useContext(PanelScope)?.onOpenScope ?? null;
+}
+
+/**
+ * The shape a card is drawn in: what the reader chose, else the default its own
+ * spec declares. A card rendered outside the shell (a test, a preview) simply
+ * gets the registry's default rather than a missing value.
+ */
+export function useChartShape(panelId: PanelId | string): ChartKind {
+  const chosen = useContext(PanelScope)?.charts[panelId];
+  if (chosen) return chosen;
+  return isPanelId(panelId) ? specFor(panelId).defaultShape : "bar";
+}
+
+/** The one way to record a shape, or null where there is no shell to remember it. */
+export function useShapeChange(): ((panelId: PanelId, shape: ChartKind) => void) | null {
+  return useContext(PanelScope)?.onShapeChange ?? null;
 }
 
 /** A card may be told its own id; it reads its scope through the context above. */
