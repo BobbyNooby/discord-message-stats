@@ -96,18 +96,29 @@ export function FreshnessLine(facts: FreshnessFacts) {
 /** "deriving · 42s elapsed" — proof the wait is work, not a frozen button. */
 export function NowLine({
   running,
+  abandoned = false,
   phase,
   startedAt,
   elapsedSeconds,
   loading = false,
 }: {
   running: boolean;
+  /** A run whose worker died: not running, but not "nothing happened" either. */
+  abandoned?: boolean;
   phase: string | null;
   startedAt: string | null;
   elapsedSeconds: number | null;
   loading?: boolean;
 }) {
   if (!running) {
+    if (abandoned) {
+      return (
+        <p role="status" className="text-xs text-amber-200">
+          A rebuild stopped partway — the worker died before it finished, so the numbers are still
+          the previous build. Queue another to finish it.
+        </p>
+      );
+    }
     return (
       <p role="status" className="text-xs text-[var(--color-muted)]">
         {loading ? "Checking whether a rebuild is running…" : "No rebuild is running."}

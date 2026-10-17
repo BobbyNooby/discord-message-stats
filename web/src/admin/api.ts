@@ -215,6 +215,8 @@ export type ProgressLast = {
  */
 export type Progress = {
   running: boolean;
+  /** A run whose process died between `started` and its finish row. */
+  abandoned: boolean;
   started_at: string | null;
   phase: string | null;
   families: ProgressFamily[];

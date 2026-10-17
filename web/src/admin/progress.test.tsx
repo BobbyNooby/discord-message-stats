@@ -87,6 +87,7 @@ function family(name: string, overrides: Partial<ProgressFamily> = {}): Progress
 function body(overrides: Partial<Progress> = {}): Progress {
   return {
     running: false,
+    abandoned: false,
     started_at: null,
     phase: null,
     families: FAMILIES.map((name) => family(name)),
@@ -253,6 +254,20 @@ describe("the fresh, empty database", () => {
     expect(screen.getByText("No rebuild is running.")).toBeInTheDocument();
     expect(screen.getAllByText("pending")).toHaveLength(FAMILIES.length);
     expect(screen.getAllByRole("rowheader")).toHaveLength(FAMILIES.length);
+  });
+});
+
+describe("a run whose worker died", () => {
+  it("says it was abandoned rather than that nothing ran", async () => {
+    // The endpoint reports `abandoned` when a process dies between `started`
+    // and its finish row. Before this, the board fell through to the idle copy
+    // and the operator saw "No rebuild is running." with the cache still stale.
+    progressAnswer = () => body({ running: false, abandoned: true });
+    renderCache();
+    await flush();
+
+    expect(screen.getByText(/stopped partway/i)).toBeInTheDocument();
+    expect(screen.queryByText("No rebuild is running.")).toBeNull();
   });
 });
 

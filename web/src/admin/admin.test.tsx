@@ -69,6 +69,7 @@ const STATUS: AdminStatus = {
 
 const PROGRESS: Progress = {
   running: false,
+  abandoned: false,
   started_at: null,
   phase: null,
   families: [
