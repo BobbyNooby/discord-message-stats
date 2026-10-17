@@ -147,6 +147,16 @@ def status(request: Request) -> dict:
         active_sessions = conn.execute(
             "SELECT COUNT(*) FROM sessions WHERE revoked = 0 AND expires_at > ?", (_now(),)
         ).fetchone()[0]
+        # A typo'd id is "nobody is admin" in silence, so the board is told
+        # plainly. `known` is None when no id is configured at all, which is a
+        # different state from "configured and seen nowhere".
+        admin_id = cfg.admin_id or ""
+        known: bool | None = None
+        if admin_id:
+            known = conn.execute(
+                "SELECT 1 FROM messages WHERE channel_id = ? AND author_id = ? LIMIT 1",
+                (cfg.channel_id, admin_id),
+            ).fetchone() is not None
         database = Path(app_db_path(request))
         return {
             "app": cfg.app_name,
@@ -159,7 +169,7 @@ def status(request: Request) -> dict:
             },
             # The id, never the token: §10.2 keeps the token out of the database
             # and out of every response.
-            "admin": {"discord_id": cfg.admin_id or ""},
+            "admin": {"discord_id": admin_id, "known": known},
             "config_hash": digest,
             "rollups": rollups,
             "worker": _worker_view(conn),

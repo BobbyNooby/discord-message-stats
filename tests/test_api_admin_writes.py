@@ -150,3 +150,32 @@ def test_the_api_migrates_an_older_database_at_boot(seeded_db_path, tmp_path):
     client.cookies.set(SESSION_COOKIE, token)
     response = client.put("/api/admin/inclusions", json={"included": {"u2": False}})
     assert response.status_code == 200, response.text
+
+
+def test_status_says_when_the_admin_id_matches_no_message(admin_client):
+    """A typo'd ADMIN_DISCORD_ID means "nobody is admin" in silence; the board
+    has to say so instead of showing an id that looks configured (audit #5)."""
+    from dataclasses import replace
+
+    cfg = admin_client.app.state.cfg
+    admin_client.app.state.cfg = replace(
+        cfg, secrets=replace(cfg.secrets, admin_id="999999999999999999")
+    )
+    body = admin_client.get("/api/admin/status").json()
+    assert body["admin"] == {"discord_id": "999999999999999999", "known": False}
+
+
+def test_status_confirms_an_admin_id_that_has_posted(admin_client):
+    from dataclasses import replace
+
+    cfg = admin_client.app.state.cfg
+    admin_client.app.state.cfg = replace(cfg, secrets=replace(cfg.secrets, admin_id="u1"))
+    assert admin_client.get("/api/admin/status").json()["admin"] == {
+        "discord_id": "u1",
+        "known": True,
+    }
+
+
+def test_status_leaves_known_unset_when_no_admin_id_is_configured(admin_client):
+    body = admin_client.get("/api/admin/status").json()
+    assert body["admin"] == {"discord_id": "", "known": None}
