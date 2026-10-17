@@ -88,6 +88,13 @@ const SPECS = [
   // People
   { id: "who-talks-the-most", label: "Who talks the most", honours: TA, shapes: BAR, defaultShape: "bar" },
   {
+    id: "who-writes-the-most",
+    label: "Who writes the most",
+    honours: TA,
+    shapes: BAR,
+    defaultShape: "bar",
+  },
+  {
     id: "how-fast-people-reply",
     label: "How fast people reply",
     honours: A,

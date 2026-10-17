@@ -30,7 +30,8 @@ export const PANEL_ABOUT: Record<PanelId, string> = {
   "who-was-talking-when": "Each author's share of each bucket, drawn as a streamgraph.",
 
   // People
-  "who-talks-the-most": "Authors ranked by messages, characters, replies or media.",
+  "who-talks-the-most": "Authors ranked by messages, honouring the time and author filters.",
+  "who-writes-the-most": "The same messages ranked by characters, so the long posts win.",
   "how-fast-people-reply": "The average wait before someone answers each author.",
   "who-replies-to-whom": "Who answers whom, as a network; node size is message volume.",
   "reply-balance": "Replies sent against replies received; on the diagonal is even.",

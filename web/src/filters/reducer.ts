@@ -8,7 +8,6 @@ export type Filters = {
   years: number[];
   active: boolean[];
   bucket: "day" | "month" | "year";
-  rankBy: "msgs" | "chars" | "media" | "replies";
   word: string | null;
   /** Discord's exact provider string, as `/api/media` filters on it. */
   provider: string | null;
@@ -25,7 +24,6 @@ export type Action =
   | { type: "toggleYear"; year: number }
   | { type: "clearYears" }
   | { type: "setBucket"; bucket: Filters["bucket"] }
-  | { type: "setRankBy"; rankBy: Filters["rankBy"] }
   | { type: "setWord"; word: string | null }
   | { type: "setProvider"; provider: string | null }
   | { type: "setKind"; kind: string | null }
@@ -38,7 +36,6 @@ export const EMPTY_FILTERS: Filters = {
   years: [],
   active: [],
   bucket: "month",
-  rankBy: "msgs",
   word: null,
   provider: null,
   kind: null,
@@ -74,8 +71,6 @@ export function filtersReducer(state: Filters, action: Action): Filters {
       return { ...state, years: [] };
     case "setBucket":
       return { ...state, bucket: action.bucket };
-    case "setRankBy":
-      return { ...state, rankBy: action.rankBy };
     case "setWord":
       return { ...state, word: action.word };
     case "setProvider":

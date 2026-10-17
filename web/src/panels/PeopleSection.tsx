@@ -11,8 +11,9 @@ import { ReplyNetwork } from "./ReplyNetwork";
 import { ResponseTime } from "./ResponseTime";
 import { Starters } from "./Starters";
 import { Treemap } from "./Treemap";
+import { WhoWrites } from "./WhoWrites";
 
-/** The People section: ten panels, one grid, every one a pure function of the payload and the filters. */
+/** The People section: eleven panels, packed in columns, every one a pure function of the payload and the filters. */
 export function PeopleSection({ payload, filters }: { payload: Payload; filters: Filters }) {
   return (
     <section aria-labelledby="sec-people" className="space-y-4">
@@ -21,6 +22,7 @@ export function PeopleSection({ payload, filters }: { payload: Payload; filters:
       </h2>
       <div className={CARD_COLUMNS}>
         <Leaderboard payload={payload} filters={filters} />
+        <WhoWrites payload={payload} filters={filters} />
         <ResponseTime payload={payload} filters={filters} />
         <ReplyNetwork payload={payload} filters={filters} />
         <ReplyBalance payload={payload} filters={filters} />

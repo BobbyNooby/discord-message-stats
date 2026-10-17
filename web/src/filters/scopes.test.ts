@@ -21,7 +21,6 @@ const GLOBAL: Filters = {
   from: "2024-01-01",
   to: "2024-06-30",
   bucket: "month",
-  rankBy: "msgs",
   word: null,
 };
 

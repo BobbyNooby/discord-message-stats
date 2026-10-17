@@ -15,7 +15,6 @@ import { ScopeChips } from "./ScopeChips";
 import { TimeRangePicker } from "./TimeRangePicker";
 
 const BUCKETS: Filters["bucket"][] = ["day", "month", "year"];
-const RANKS: Filters["rankBy"][] = ["msgs", "chars", "media", "replies"];
 
 /** The keys a dimension owns, so a chip can retire exactly those. */
 const DIMENSION_KEYS: Record<Dimension, (keyof Filters)[]> = {
@@ -268,19 +267,6 @@ export function FilterSidebar({
                   onClick={() => dispatch({ type: "setBucket", bucket })}
                 >
                   {bucket}
-                </Chip>
-              ))}
-            </div>
-          </FilterGroup>
-          <FilterGroup label="Rank by">
-            <div className="flex flex-wrap gap-2">
-              {RANKS.map((rankBy) => (
-                <Chip
-                  key={rankBy}
-                  active={filters.rankBy === rankBy}
-                  onClick={() => dispatch({ type: "setRankBy", rankBy })}
-                >
-                  {rankBy}
                 </Chip>
               ))}
             </div>

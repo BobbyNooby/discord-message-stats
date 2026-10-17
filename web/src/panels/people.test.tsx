@@ -9,6 +9,7 @@ import { Leaderboard } from "./Leaderboard";
 import { PeopleSection } from "./PeopleSection";
 import { ReplyMatrix } from "./ReplyMatrix";
 import { ResponseTime } from "./ResponseTime";
+import { WhoWrites } from "./WhoWrites";
 import { matrixData } from "./people";
 
 /**
@@ -92,6 +93,7 @@ function withFilters(overrides: Partial<Filters> = {}): Filters {
 
 const TITLES = [
   "Who talks the most",
+  "Who writes the most",
   "How fast people reply",
   "Who replies to whom",
   "Reply balance",
@@ -214,26 +216,25 @@ describe("filter semantics", () => {
     expect(unfiltered.total).toBe(8);
   });
 
-  it("ranks the leaderboard by whichever measure the filter names", () => {
-    for (const [rankBy, leader] of [
-      ["msgs", "Alice"],
-      ["chars", "Alice"],
-      ["media", "Bob"],
-      ["replies", "Bob"],
-    ] as const) {
-      const view = render(<Leaderboard payload={payload} filters={withFilters({ rankBy })} />);
-      const option = options.at(-1) as { yAxis: { data: string[] } };
-      expect(option.yAxis.data.at(-1)).toBe(leader); // hbar sorts shortest first
-      view.unmount();
-    }
+  it("ranks messages and characters as two separate leaderboards", () => {
+    // Alice leads both here, but they are independent cards: one reads `msgs`,
+    // the other `chars`, so neither can be reordered by a global switch.
+    const talks = render(<Leaderboard payload={payload} filters={withFilters()} />);
+    const byMessages = options.at(-1) as { yAxis: { data: string[] } };
+    expect(byMessages.yAxis.data.at(-1)).toBe("Alice");
+    talks.unmount();
+
+    render(<WhoWrites payload={payload} filters={withFilters()} />);
+    const byCharacters = options.at(-1) as { yAxis: { data: string[] } };
+    expect(byCharacters.yAxis.data.at(-1)).toBe("Alice");
   });
 });
 
 describe("empty and degenerate payloads", () => {
-  it("renders ten empty states and no NaN when there are no rows at all", () => {
+  it("renders eleven empty states and no NaN when there are no rows at all", () => {
     render(<PeopleSection payload={nothing} filters={EMPTY_FILTERS} />);
     for (const title of TITLES) expect(screen.getByText(title)).toBeInTheDocument();
-    expect(screen.getAllByText(/^No /)).toHaveLength(10);
+    expect(screen.getAllByText(/^No /)).toHaveLength(11);
     expect(document.body.textContent).not.toContain("NaN");
     expect(options.flatMap((option) => nonFinite(option))).toEqual([]);
   });
@@ -241,7 +242,7 @@ describe("empty and degenerate payloads", () => {
   it("does the same when every author is switched off", () => {
     const off = payload.authors.map(() => false);
     render(<PeopleSection payload={payload} filters={withFilters({ active: off })} />);
-    expect(screen.getAllByText(/^No /)).toHaveLength(10);
+    expect(screen.getAllByText(/^No /)).toHaveLength(11);
     expect(document.body.textContent).not.toContain("NaN");
   });
 

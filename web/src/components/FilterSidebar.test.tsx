@@ -69,15 +69,17 @@ const openScope = (label: string) => userEvent.click(screen.getByRole("button", 
 describe("<FilterSidebar> in a card's scope", () => {
   it("swaps the sidebar to the card's own scope and names the card", async () => {
     render(<Harness />);
-    expect(screen.getByText("Rank by")).toBeInTheDocument();
+    expect(screen.getByText("Bucket")).toBeInTheDocument();
 
     await openScope("Who talks the most");
 
     expect(screen.getByRole("status")).toHaveTextContent("Filter for Who talks the most");
     expect(screen.getByText("Authors (2/2)")).toBeInTheDocument();
     // The global-only controls are not part of a card's scope.
-    expect(screen.queryByText("Rank by")).toBeNull();
     expect(screen.queryByText("Bucket")).toBeNull();
+    // No global metric switch exists any more: messages and characters are
+    // separate cards, each saying what it ranks.
+    expect(screen.queryByText("Rank by")).toBeNull();
   });
 
   it("offers only the dimensions the card honours", async () => {
@@ -113,7 +115,7 @@ describe("<FilterSidebar> in a card's scope", () => {
     await userEvent.click(screen.getByRole("button", { name: "Back to global" }));
 
     expect(screen.queryByRole("status")).toBeNull();
-    expect(screen.getByText("Rank by")).toBeInTheDocument();
+    expect(screen.getByText("Bucket")).toBeInTheDocument();
     expect(screen.getByTestId("authors")).toHaveTextContent("2");
     // The draft is gone, not merely hidden: reopening starts from what applies.
     await openScope("Who talks the most");
