@@ -84,6 +84,8 @@ def state_is_valid(returned: str, cookie: str, secret: str | None) -> bool:
     """Whether the callback's ``state`` is the one this browser was given."""
     if not returned or not cookie:
         return False
+    if not returned.strip() or not cookie.strip():
+        return False
     if secret:
         nonce, separator, signature = returned.partition(STATE_SEPARATOR)
         if not separator or not hmac.compare_digest(signature, _sign_state(nonce, secret)):
