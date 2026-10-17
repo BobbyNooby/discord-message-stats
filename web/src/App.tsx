@@ -1,12 +1,23 @@
 import { useCallback, useEffect, useReducer, useState } from "react";
 
-import { Unauthorized } from "./api/client";
+import {
+  Forbidden as ForbiddenError,
+  Offline as OfflineError,
+  ServerError as ServerErrorResponse,
+  Unauthorized,
+} from "./api/client";
 import { useBootstrap, useHealth, useRecent } from "./api/queries";
 import { AppShell } from "./components/AppShell";
 import { FilterSidebar } from "./components/FilterSidebar";
 import { HealthBanner } from "./components/HealthBanner";
 import { NoticeProvider, useNotice } from "./components/Notice";
 import { RecentStrip } from "./components/RecentStrip";
+import {
+  DashboardSkeleton,
+  Forbidden as ForbiddenScreen,
+  Offline as OfflineScreen,
+  ServerError as ServerErrorScreen,
+} from "./components/States";
 import { dashboardReducer, initialDashboardState } from "./filters/reducer";
 import {
   describeDropped,
@@ -52,17 +63,23 @@ function Dashboard() {
   const payload = bootstrap.data;
 
   if (bootstrap.isLoading) {
-    return <main className="p-6 text-sm text-[var(--color-muted)]">Loading…</main>;
+    return <DashboardSkeleton />;
   }
   if (bootstrap.error instanceof Unauthorized) {
     return <Login />;
   }
+  if (bootstrap.error instanceof ForbiddenError) {
+    return <ForbiddenScreen what="the dashboard" />;
+  }
+  if (bootstrap.error instanceof OfflineError) {
+    return <OfflineScreen onRetry={() => void bootstrap.refetch()} />;
+  }
   if (bootstrap.isError || !payload) {
-    return (
-      <main className="p-6 text-sm text-red-300">
-        Could not load the dashboard: {(bootstrap.error as Error)?.message}
-      </main>
-    );
+    const detail =
+      bootstrap.error instanceof ServerErrorResponse
+        ? bootstrap.error.message
+        : (bootstrap.error as Error)?.message;
+    return <ServerErrorScreen detail={detail} onRetry={() => void bootstrap.refetch()} />;
   }
 
   // Mounted only once the payload exists: the reducer seeds `active` from the

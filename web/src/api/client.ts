@@ -1,10 +1,31 @@
 /** One fetch wrapper, so every query fails the same way. */
 
+/**
+ * The four ways a fetch can fail, told apart so the screen can say something
+ * useful: "sign in" is not "you are not allowed", which is not "the server is
+ * broken", which is not "you are offline". Today a failed fetch was
+ * indistinguishable from a slow one, which is exactly what this fixes.
+ */
 export class Unauthorized extends Error {}
+export class Forbidden extends Error {}
+export class Offline extends Error {}
+export class ServerError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+  ) {
+    super(message);
+  }
+}
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(path, { credentials: "same-origin", ...init });
-  if (response.status === 401) throw new Unauthorized("login required");
+  let response: Response;
+  try {
+    response = await fetch(path, { credentials: "same-origin", ...init });
+  } catch {
+    // A rejected fetch is the browser saying it never reached the server.
+    throw new Offline("the dashboard could not reach the server");
+  }
   if (!response.ok) {
     let detail = `${response.status} ${response.statusText}`;
     try {
@@ -13,6 +34,9 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     } catch {
       /* a non-JSON body keeps the status line */
     }
+    if (response.status === 401) throw new Unauthorized(detail);
+    if (response.status === 403) throw new Forbidden(detail);
+    if (response.status >= 500) throw new ServerError(detail, response.status);
     throw new Error(detail);
   }
   return (await response.json()) as T;

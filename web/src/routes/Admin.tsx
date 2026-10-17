@@ -14,13 +14,25 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
 
-import { Unauthorized, getBootstrap } from "../api/client";
+import {
+  Forbidden as ForbiddenError,
+  Offline as OfflineError,
+  ServerError as ServerErrorResponse,
+  Unauthorized,
+  getBootstrap,
+} from "../api/client";
 import { Access } from "../admin/Access";
 import { FixData } from "../admin/FixData";
 import { RefreshCache } from "../admin/RefreshCache";
 import { ReplaceDatabase } from "../admin/ReplaceDatabase";
 import { getConfig, getStatus, putConfig, recalculate, type ConfigPatch } from "../admin/api";
 import { Notice, type SaveMode } from "../admin/shared";
+import {
+  DashboardSkeleton,
+  Forbidden as ForbiddenScreen,
+  Offline as OfflineScreen,
+  ServerError as ServerErrorScreen,
+} from "../components/States";
 import { Login } from "./Login";
 
 /** The workflow, in the order an operator moves through it (§11.6). */
@@ -96,17 +108,23 @@ export function Admin() {
   }, [queryClient]);
 
   if (status.isLoading) {
-    return <main className="p-6 text-sm text-[var(--color-muted)]">Loading the admin board…</main>;
+    return <DashboardSkeleton label="Loading the admin board…" />;
   }
   if (status.error instanceof Unauthorized) {
     return <Login />;
   }
+  if (status.error instanceof ForbiddenError) {
+    return <ForbiddenScreen />;
+  }
+  if (status.error instanceof OfflineError) {
+    return <OfflineScreen onRetry={() => void status.refetch()} />;
+  }
   if (status.isError || !status.data) {
-    return (
-      <main className="p-6 text-sm text-red-300">
-        Could not load the admin board: {(status.error as Error)?.message}
-      </main>
-    );
+    const detail =
+      status.error instanceof ServerErrorResponse
+        ? status.error.message
+        : (status.error as Error)?.message;
+    return <ServerErrorScreen detail={detail} onRetry={() => void status.refetch()} />;
   }
 
   const data = status.data;

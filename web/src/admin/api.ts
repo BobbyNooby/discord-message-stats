@@ -10,7 +10,7 @@
  * browser, so nothing in this file accepts or returns one.
  */
 
-import { Unauthorized } from "../api/client";
+import { Forbidden, Offline, Unauthorized } from "../api/client";
 
 export class ApiError extends Error {
   constructor(
@@ -189,8 +189,15 @@ function detailFrom(body: unknown, fallback: string): string {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(path, { credentials: "same-origin", ...init });
+  let response: Response;
+  try {
+    response = await fetch(path, { credentials: "same-origin", ...init });
+  } catch {
+    throw new Offline("the admin board could not reach the server");
+  }
   if (response.status === 401) throw new Unauthorized("login required");
+  // A viewer who typed /admin: a boundary, not a failure they can retry away.
+  if (response.status === 403) throw new Forbidden("admin only");
   if (!response.ok) {
     let detail = `${response.status} ${response.statusText}`;
     try {
