@@ -97,3 +97,22 @@ def test_the_board_accepts_the_documented_auto_timezone(admin_client):
     response = admin_client.put("/api/admin/config", json={"timezone": "auto"})
     assert response.status_code == 200, response.text
     assert response.json()["effective"]["timezone"] == "auto"
+
+
+def test_the_zone_picker_lists_real_zones_and_the_zone_in_force(admin_client):
+    """The picker offers the real vocabulary, not a hard-coded shortlist, and
+    says which zone is actually bucketing the messages right now."""
+    body = admin_client.get("/api/admin/timezones").json()
+    assert len(body["zones"]) > 100
+    assert "Asia/Kuala_Lumpur" in body["zones"]
+    assert "GMT+8" not in body["zones"]
+    assert body["configured"] == "UTC"
+    assert body["effective"] == "UTC"
+    assert body["auto_zone"]
+
+
+def test_the_picker_shows_what_auto_resolves_to(admin_client):
+    assert admin_client.put("/api/admin/config", json={"timezone": "auto"}).status_code == 200
+    body = admin_client.get("/api/admin/timezones").json()
+    assert body["configured"] == "auto"
+    assert body["effective"] == body["auto_zone"]

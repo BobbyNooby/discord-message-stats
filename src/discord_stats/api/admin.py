@@ -14,6 +14,7 @@ import sqlite3
 from dataclasses import replace
 from datetime import datetime, timezone
 from typing import Any
+from zoneinfo import available_timezones
 
 from pathlib import Path
 
@@ -22,7 +23,7 @@ from pydantic import BaseModel
 
 from discord_scraper.api.deps import connect_writable
 from discord_scraper.auth.session import require_admin
-from discord_scraper.config import Config, config_from_settings, is_timezone
+from discord_scraper.config import AUTO_TIMEZONE, Config, config_from_settings, is_timezone
 from discord_scraper.rollups import query
 from discord_scraper.rollups.build import config_digest
 from discord_scraper.rollups.schema import FAMILIES, is_stale
@@ -192,6 +193,31 @@ def get_config(request: Request) -> dict:
         }
     finally:
         conn.close()
+
+
+@router.get("/timezones")
+def list_timezones(request: Request) -> dict:
+    """The real IANA vocabulary for the picker, plus the zone in force today.
+
+    ``zoneinfo.available_timezones()`` is the same set the loader validates
+    against, so the picker cannot offer a name the server would reject, and the
+    board can name the host zone ``"auto"`` actually resolves to.
+    """
+    from discord_scraper.timeutil import resolve_tz
+
+    conn = _conn(request)
+    try:
+        cfg = _effective_for(request, conn)
+    finally:
+        conn.close()
+    host = resolve_tz("auto")
+    auto_zone = getattr(host, "key", None) or str(host)
+    return {
+        "zones": sorted(available_timezones()),
+        "configured": cfg.timezone,
+        "effective": auto_zone if cfg.timezone == AUTO_TIMEZONE else cfg.timezone,
+        "auto_zone": auto_zone,
+    }
 
 
 @router.put("/config")
