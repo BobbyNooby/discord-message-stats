@@ -23,7 +23,11 @@ export function RecentStrip({
             <time className="shrink-0 text-[var(--color-muted)]" dateTime={message.created_at}>
               {message.created_at.slice(0, 16).replace("T", " ")}
             </time>
-            <span className="truncate text-[var(--color-muted)]">{message.body}</span>
+            {/* One line per message, so a long body is clipped: the full text
+                stays on the element rather than being silently cut. */}
+            <span className="truncate text-[var(--color-muted)]" title={message.body}>
+              {message.body}
+            </span>
           </li>
         ))}
       </ul>
