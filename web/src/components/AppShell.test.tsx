@@ -88,7 +88,7 @@ describe("<FilterSidebar>", () => {
           "who-talks-the-most": { active: [false, true] },
           "word-cloud": { word: "cat" },
         }}
-        charts={{ "embed-providers": "pie" }}
+        charts={{ "message-types": "pie" }}
         onResetView={onResetView}
       />,
     );

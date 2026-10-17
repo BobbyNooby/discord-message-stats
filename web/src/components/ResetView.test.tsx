@@ -10,7 +10,7 @@ describe("storedCounts", () => {
     expect(
       storedCounts(
         { "who-talks-the-most": { word: "cat" }, "word-cloud": { active: [true, false] } },
-        { "embed-providers": "pie" },
+        { "message-types": "pie" },
       ),
     ).toEqual(["2 cards have their own filters", "1 chart shape", "2 filters"]);
     expect(storedCounts({ "word-cloud": { word: "cat" } }, {})).toEqual([
@@ -25,7 +25,7 @@ describe("<ResetView>", () => {
     render(
       <ResetView
         scopes={{ "who-talks-the-most": { word: "cat" }, "word-cloud": { active: [true, false] } }}
-        charts={{ "embed-providers": "pie" }}
+        charts={{ "message-types": "pie" }}
         onReset={vi.fn()}
       />,
     );
@@ -52,7 +52,7 @@ describe("<ResetView>", () => {
     render(
       <ResetView
         scopes={{ "word-cloud": { word: "cat" } }}
-        charts={{ "embed-providers": "pie" }}
+        charts={{ "message-types": "pie" }}
         onReset={onReset}
       />,
     );

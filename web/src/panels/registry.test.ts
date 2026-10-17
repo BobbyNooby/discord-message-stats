@@ -103,20 +103,17 @@ describe("the panel registry", () => {
     for (const spec of Object.values(PANELS)) expect(spec.shapes).toContain(spec.defaultShape);
   });
 
-  it("offers a pie only where a whole exists", () => {
+  it("offers a pie only where the payload ships the whole list", () => {
+    // The two survivors are the closed vocabularies: `rollup_type` (no LIMIT,
+    // and every message has exactly one type) and `rollup_embed_type` (one row
+    // per Discord embed kind). Providers, mime types, emoji and reactions come
+    // from `query.pairs(..., limit=30)` — an open vocabulary cut to its thirty
+    // biggest rows — so a full circle would claim a total that is not there.
     const pie = Object.values(PANELS)
       .filter((spec) => spec.shapes.includes("pie"))
       .map((spec) => spec.id)
       .sort();
-    expect(pie).toEqual([
-      "embed-providers",
-      "embed-types",
-      "embeds-by-provider",
-      "emoji-in-text",
-      "message-types",
-      "reactions",
-      "what-gets-attached",
-    ]);
+    expect(pie).toEqual(["embed-types", "message-types"]);
   });
 
   it("names the panels that honour a dimension, and only those", () => {

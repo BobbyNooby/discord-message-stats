@@ -10,6 +10,16 @@
  * silent-filter failure the design set out to remove. `shapes` lists a pie only
  * where the card shows a whole; a ranked top-N or a cut-off list stays a bar.
  *
+ * "A whole" means the payload ships every row of it. Two cards qualify:
+ * `rollup_type` has no LIMIT and every message has exactly one type, and
+ * `rollup_embed_type` has one row per Discord embed kind, a closed set of six.
+ * The rest — providers, mime types, emoji, reactions — arrive through
+ * `query.pairs(..., limit=30)`, an open vocabulary cut to its thirty biggest
+ * rows (on the reference database: 30 of 678 providers, 30 of 335 emoji, 30 of
+ * 89 reactions). A pie over one of those would print a full circle and a
+ * denominator that is missing up to 13% of the total, so those cards are bars
+ * until the payload ships an uncapped total for them.
+ *
  * Ids are the slug of the card's title — one source of truth for the "…"
  * target, the scope key and the URL. The `sec-*` section headings are not
  * cards: they carry no controls and no scope, so they have no spec here.
@@ -116,7 +126,7 @@ const SPECS = [
 
   // Links & embeds
   { id: "where-the-chat-lives", label: "Where the chat lives", honours: A, shapes: BAR, defaultShape: "bar" },
-  { id: "embed-providers", label: "Embed providers", honours: NONE, shapes: BAR_PIE, defaultShape: "bar" },
+  { id: "embed-providers", label: "Embed providers", honours: NONE, shapes: BAR, defaultShape: "bar" },
   { id: "most-reposted-links", label: "Most reposted links", honours: NONE, shapes: BAR, defaultShape: "bar" },
   { id: "embed-types", label: "Embed types", honours: NONE, shapes: BAR_PIE, defaultShape: "bar" },
 
@@ -130,9 +140,9 @@ const SPECS = [
     defaultShape: "bar",
   },
   { id: "message-types", label: "Message types", honours: NONE, shapes: BAR_PIE, defaultShape: "bar" },
-  { id: "what-gets-attached", label: "What gets attached", honours: NONE, shapes: BAR_PIE, defaultShape: "bar" },
-  { id: "emoji-in-text", label: "Emoji in text", honours: NONE, shapes: BAR_PIE, defaultShape: "bar" },
-  { id: "reactions", label: "Reactions", honours: NONE, shapes: BAR_PIE, defaultShape: "bar" },
+  { id: "what-gets-attached", label: "What gets attached", honours: NONE, shapes: BAR, defaultShape: "bar" },
+  { id: "emoji-in-text", label: "Emoji in text", honours: NONE, shapes: BAR, defaultShape: "bar" },
+  { id: "reactions", label: "Reactions", honours: NONE, shapes: BAR, defaultShape: "bar" },
   { id: "chat-health", label: "Chat health", honours: TA, shapes: BAR, defaultShape: "bar" },
 
   // Rich media: its ranking and its provider chart are payload rollups.
@@ -141,7 +151,7 @@ const SPECS = [
     id: "embeds-by-provider",
     label: "Embeds by provider",
     honours: ["provider"] as const,
-    shapes: BAR_PIE,
+    shapes: BAR,
     defaultShape: "bar",
   },
 ] as const satisfies readonly PanelSpec[];
