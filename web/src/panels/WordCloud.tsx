@@ -2,7 +2,7 @@ import type { EChartsOption } from "echarts";
 import { useEffect, useMemo, useState } from "react";
 
 import type { Payload } from "../api/types";
-import { EmptyState, GlobalOnlyBadge, Panel } from "../components/Panel";
+import { EmptyState, Panel } from "../components/Panel";
 import type { Filters } from "../filters/reducer";
 import { EChart } from "../lib/echart";
 import { PALETTE } from "../lib/palette";
@@ -119,7 +119,6 @@ export function WordCloud({
   return (
     <Panel
       title="Word cloud"
-      badge={<GlobalOnlyBadge what="The word rollup" />}
       subtitle={`top ${fmt(rows.length)} words by frequency · ${fmt(total)} uses shown · no date dimension`}
     >
       {!rows.length ? (

@@ -1,6 +1,7 @@
 import type { Dispatch } from "react";
 
 import { CARD_COLUMNS, SectionHeading } from "../components/Panel";
+import { SectionScopeNote } from "../components/SectionScopeNote";
 
 import type { Payload } from "../api/types";
 import type { Action, Filters } from "../filters/reducer";
@@ -22,6 +23,7 @@ export function WordsSection({
   return (
     <section aria-labelledby="sec-words" className="space-y-4">
       <SectionHeading id="sec-words">Words</SectionHeading>
+      <SectionScopeNote section="words" />
       <div className={CARD_COLUMNS}>
         <WordLift payload={payload} filters={filters} />
         <WordIndex

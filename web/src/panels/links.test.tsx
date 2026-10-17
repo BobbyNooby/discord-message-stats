@@ -5,6 +5,7 @@ import type { Payload } from "../api/types";
 import { EMPTY_FILTERS, type Filters } from "../filters/reducer";
 import { EmbedTypes } from "./EmbedTypes";
 import { LinkDomains } from "./LinkDomains";
+import { LinksSection } from "./LinksSection";
 import { Providers } from "./Providers";
 import { TopLinks } from "./TopLinks";
 
@@ -138,16 +139,18 @@ describe("Links & embeds section", () => {
     expect(screen.getByText("No authors selected — switch one back on in the filters.")).toBeInTheDocument();
   });
 
-  it("marks the normalised link list as global only, filters or not", () => {
+  it("leaves the normalised link list unbadged, filters or not", () => {
+    // The Links section note names the date-less cards once; the card itself
+    // carries no badge under any filter.
     const payload = makePayload();
     const { rerender } = render(<TopLinks payload={payload} filters={allOn} />);
-    expect(screen.getByText(/global only/i)).toBeInTheDocument();
+    expect(screen.queryByText(/global only/i)).not.toBeInTheDocument();
 
     rerender(<TopLinks payload={payload} filters={{ ...allOn, years: [2024] }} />);
-    expect(screen.getByText(/global only/i)).toBeInTheDocument();
+    expect(screen.queryByText(/global only/i)).not.toBeInTheDocument();
 
     rerender(<TopLinks payload={payload} filters={{ ...allOn, active: [true, false] }} />);
-    expect(screen.getByText(/global only/i)).toBeInTheDocument();
+    expect(screen.queryByText(/global only/i)).not.toBeInTheDocument();
   });
 
   it("ranks the providers as a bar, saying which slice of the ranking it draws", () => {
@@ -218,7 +221,7 @@ describe("Links & embeds section", () => {
     expect(mocks.init).not.toHaveBeenCalled();
   });
 
-  it("labels the embed-type doughnut as global only under a filter", () => {
+  it("leaves the embed-type doughnut unbadged under a filter", () => {
     const payload = makePayload({
       embedTypes: [
         ["video", 7506],
@@ -230,9 +233,18 @@ describe("Links & embeds section", () => {
       ],
     });
     const { rerender } = render(<EmbedTypes payload={payload} filters={allOn} />);
-    expect(screen.getByText(/global only/i)).toBeInTheDocument();
+    expect(screen.queryByText(/global only/i)).not.toBeInTheDocument();
 
     rerender(<EmbedTypes payload={payload} filters={{ ...allOn, years: [2024] }} />);
-    expect(screen.getByText(/global only/i)).toBeInTheDocument();
+    expect(screen.queryByText(/global only/i)).not.toBeInTheDocument();
+  });
+
+  it("explains the date-less Links cards once, at the section", () => {
+    render(<LinksSection payload={makePayload()} filters={allOn} />);
+    const note = screen.getByText(/all 4 cards here/);
+    expect(note).toHaveTextContent("Where the chat lives");
+    expect(note).toHaveTextContent("Embed providers");
+    expect(note).toHaveTextContent("Most reposted links");
+    expect(note).toHaveTextContent("Embed types");
   });
 });

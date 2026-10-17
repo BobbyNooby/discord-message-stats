@@ -191,6 +191,86 @@ export function specForLabel(label: string): PanelSpecLiteral | undefined {
   return SPECS.find((spec) => spec.label === label);
 }
 
+/**
+ * The six rendered sections, each card accounted for once. The section note
+ * reads this so a card cannot fall out of its section's explanation.
+ */
+export type SectionId = "overview" | "time" | "people" | "words" | "links" | "rich-media" | "media";
+
+export const SECTIONS: readonly { id: SectionId; label: string; panels: readonly PanelId[] }[] = [
+  {
+    id: "overview",
+    label: "Overview",
+    panels: ["stat-cards", "share-of-voice", "messages-per-year", "share-of-voice-year-by-year"],
+  },
+  {
+    id: "time",
+    label: "Time & rhythm",
+    panels: [
+      "messages-over-time",
+      "cumulative-growth",
+      "how-conversational",
+      "every-day-six-years",
+      "when-the-chat-comes-alive",
+      "what-time-of-day",
+      "which-month-of-the-year",
+      "who-was-talking-when",
+    ],
+  },
+  {
+    id: "people",
+    label: "People",
+    panels: [
+      "who-talks-the-most",
+      "who-writes-the-most",
+      "how-fast-people-reply",
+      "who-replies-to-whom",
+      "reply-balance",
+      "who-starts-conversations",
+      "author-profile",
+      "reply-matrix",
+      "volume-by-author-and-year",
+      "how-bursty-is-everyone",
+      "who-proofreads",
+    ],
+  },
+  {
+    id: "words",
+    label: "Words",
+    panels: ["word-lift", "word-index", "who-says-it", "word-cloud"],
+  },
+  {
+    id: "links",
+    label: "Links & embeds",
+    panels: ["where-the-chat-lives", "embed-providers", "most-reposted-links", "embed-types"],
+  },
+  { id: "rich-media", label: "Rich media", panels: ["most-reposted", "embeds-by-provider"] },
+  {
+    id: "media",
+    label: "Media & reactions",
+    panels: [
+      "text-vs-media",
+      "replies-vs-standalone",
+      "message-types",
+      "what-gets-attached",
+      "emoji-in-text",
+      "reactions",
+      "chat-health",
+    ],
+  },
+];
+
+export function sectionOf(id: PanelId): SectionId | undefined {
+  return SECTIONS.find((section) => (section.panels as readonly PanelId[]).includes(id))?.id;
+}
+
+/** The cards in one section whose numbers do not move with a dimension. */
+export function panelsIgnoring(section: SectionId, dimension: Dimension): PanelId[] {
+  const spec = SECTIONS.find((entry) => entry.id === section);
+  if (!spec) return [];
+  return spec.panels.filter((id) => !(PANELS[id].honours as readonly Dimension[]).includes(dimension));
+}
+
 /** Every dimension a spec may declare, in the order the sidebar offers them. */
 export const DIMENSIONS: readonly Dimension[] = ["time", "author", "word", "provider", "kind"];
 

@@ -1,7 +1,7 @@
 import type { EChartsOption } from "echarts";
 
 import type { Payload } from "../api/types";
-import { EmptyState, GlobalOnlyBadge, Panel } from "../components/Panel";
+import { EmptyState, Panel } from "../components/Panel";
 import type { Filters } from "../filters/reducer";
 import { EChart } from "../lib/echart";
 import { swatch } from "../lib/palette";
@@ -16,7 +16,6 @@ export function ReplyBalance({ payload, filters: fallbackFilters }: { panelId?: 
   const filters = usePanelFilters("reply-balance", fallbackFilters);
   const balance = sendRecv(payload, filters);
   const totals = globalTotals(payload, filters);
-  const badge = true ? <GlobalOnlyBadge what="Reply pairs" /> : null;
 
   const points = payload.authors
     .map((author, index) => ({
@@ -30,7 +29,7 @@ export function ReplyBalance({ payload, filters: fallbackFilters }: { panelId?: 
 
   if (!points.length) {
     return (
-      <Panel title="Reply balance" badge={badge}>
+      <Panel title="Reply balance">
         <EmptyState>No authors selected — switch one back on in the filters.</EmptyState>
       </Panel>
     );
@@ -96,7 +95,6 @@ export function ReplyBalance({ payload, filters: fallbackFilters }: { panelId?: 
     <Panel
       title="Reply balance"
       subtitle={`${points.length} authors · ${fmt(balance.total)} replies exchanged`}
-      badge={badge}
     >
       <EChart option={option} height={320} />
     </Panel>

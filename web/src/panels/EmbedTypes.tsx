@@ -1,4 +1,4 @@
-import { EmptyState, GlobalOnlyBadge, Panel } from "../components/Panel";
+import { EmptyState, Panel } from "../components/Panel";
 import { EChart } from "../lib/echart";
 import { PALETTE } from "../lib/palette";
 import type { Payload } from "../api/types";
@@ -13,8 +13,8 @@ import { useChartShape } from "./panelScope";
  * of the two cards whose whole the payload really knows: a pie here covers
  * every embed rather than a cut of them.
  *
- * `embedTypes` has neither a day nor an author column, so it is a global view
- * and shows the badge when any filter is set.
+ * `embedTypes` has neither a day nor an author column; the Links section note
+ * says once which cards a date filter cannot move.
  */
 export function EmbedTypes({ payload, }: { panelId?: string; payload: Payload; filters?: Filters }) {
   const shape = useChartShape("embed-types");
@@ -24,7 +24,6 @@ export function EmbedTypes({ payload, }: { panelId?: string; payload: Payload; f
   return (
     <Panel
       title="Embed types"
-      badge={<GlobalOnlyBadge what="The embed-type rollup" />}
       subtitle={
         shape === "pie"
           ? `video, gifv, link, article… · ${pieNote(rows, "types")} · ${fmt(total)} embeds`

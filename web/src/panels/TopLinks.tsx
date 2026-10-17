@@ -2,7 +2,7 @@ import type { EChartsOption } from "echarts";
 import { useMemo } from "react";
 
 import type { Payload } from "../api/types";
-import { EmptyState, GlobalOnlyBadge, Panel } from "../components/Panel";
+import { EmptyState, Panel } from "../components/Panel";
 import { EChart } from "../lib/echart";
 import type { Filters } from "../filters/reducer";
 
@@ -11,8 +11,8 @@ import type { Filters } from "../filters/reducer";
  *
  * `topLinks` arrives already normalised (host + path, query and fragment
  * stripped, §5.11) as one flat list. It has no day or author column, so unlike
- * "Where the chat lives" it cannot honour either filter — and §11.2 says a panel
- * that ignores a filter has to say so rather than quietly showing global numbers.
+ * "Where the chat lives" it cannot honour either filter; the Links section note
+ * names it once rather than badging the card.
  */
 
 const TOP_LINKS = 13;
@@ -77,7 +77,6 @@ export function TopLinks({ payload, }: { panelId?: string; payload: Payload; fil
   return (
     <Panel
       title="Most reposted links"
-      badge={<GlobalOnlyBadge what="The normalised link list" />}
       subtitle="normalised · query strings and fragments stripped"
     >
       {!rows.length ? (

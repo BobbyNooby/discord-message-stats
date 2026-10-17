@@ -4,7 +4,8 @@ import type { EChartsOption } from "echarts";
 
 import type { MediaRow, Payload } from "../api/types";
 import { useMedia } from "../api/queries";
-import { EmptyState, GlobalOnlyBadge, Panel, CARD_COLUMNS, SectionHeading } from "../components/Panel";
+import { EmptyState, Panel, CARD_COLUMNS, SectionHeading } from "../components/Panel";
+import { SectionScopeNote } from "../components/SectionScopeNote";
 import { EChart } from "../lib/echart";
 import { kindLabel, providerChoices, providerLabel } from "../lib/mediaLabels";
 import type { Filters } from "../filters/reducer";
@@ -162,16 +163,13 @@ export function RichMedia({ payload, filters }: { panelId?: string; payload: Pay
                 : `the same link posted again and again · ${fmt(items.length)} links`
           }
           badge={
-            <span className="flex flex-wrap items-center gap-1">
-              <button
-                type="button"
-                onClick={() => openView(null)}
-                className="rounded border border-[var(--color-line)] px-2 py-0.5 text-[10px] uppercase tracking-wider text-[var(--color-muted)] hover:text-[var(--color-text)]"
-              >
-                {totalEmbeds ? `Browse all ${fmt(totalEmbeds)}` : "Browse all"}
-              </button>
-              <GlobalOnlyBadge what="Most reposted" />
-            </span>
+            <button
+              type="button"
+              onClick={() => openView(null)}
+              className="rounded border border-[var(--color-line)] px-2 py-0.5 text-[10px] uppercase tracking-wider text-[var(--color-muted)] hover:text-[var(--color-text)]"
+            >
+              {totalEmbeds ? `Browse all ${fmt(totalEmbeds)}` : "Browse all"}
+            </button>
           }
           csv={{
             name: "Most reposted",
@@ -257,6 +255,7 @@ export function RichMediaSection({ payload, filters }: { payload: Payload; filte
   return (
     <section aria-labelledby="sec-media-rich" className="space-y-4">
       <SectionHeading id="sec-media-rich">Rich media</SectionHeading>
+      <SectionScopeNote section="rich-media" />
       <RichMedia payload={payload} filters={filters} />
     </section>
   );

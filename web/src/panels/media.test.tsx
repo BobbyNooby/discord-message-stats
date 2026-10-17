@@ -165,22 +165,22 @@ describe("Media & reactions", () => {
     expect(slices.map((slice) => slice.name)).toEqual(["with media", "text only"]);
   });
 
-  it("says Message types is global only, and holds its numbers under a time filter", () => {
+  it("holds Message types' numbers under a time filter, without badging the card", () => {
     const payload = fixture();
     const base = initialFilters(payload);
-    // The registry declares this card honours nothing, so the badge is not a
-    // reaction to a filter being on: it is true whenever the card is drawn.
+    // The explanation lives once in the Media section note, so the card itself
+    // carries no badge; the number is still fixed under a time filter.
     const { unmount } = render(<MessageTypes payload={payload} filters={base} />);
-    expect(screen.getByText(/global only/i)).toBeInTheDocument();
+    expect(screen.queryByText(/global only/i)).not.toBeInTheDocument();
     const unfiltered = screen.getByText(/212 messages across 3 types/).textContent;
     unmount();
 
     render(<MessageTypes payload={payload} filters={{ ...base, years: [2024] }} />);
-    expect(screen.getByText(/global only/i)).toBeInTheDocument();
+    expect(screen.queryByText(/global only/i)).not.toBeInTheDocument();
     expect(screen.getByText(/212 messages across 3 types/).textContent).toBe(unfiltered);
   });
 
-  it("keeps the other three global-only panels' numbers fixed under a time filter", () => {
+  it("keeps the other three date-less panels' numbers fixed under a time filter", () => {
     const payload = fixture();
     const base = initialFilters(payload);
     const timeFiltered = { ...base, years: [2024] };
@@ -193,14 +193,24 @@ describe("Media & reactions", () => {
     for (const [PanelComponent, figure] of cases) {
       const { unmount } = render(<PanelComponent payload={payload} filters={base} />);
       const before = screen.getByText(figure).textContent;
-      expect(screen.getByText(/global only/i)).toBeInTheDocument();
+      expect(screen.queryByText(/global only/i)).not.toBeInTheDocument();
       unmount();
 
       render(<PanelComponent payload={payload} filters={timeFiltered} />);
-      expect(screen.getByText(/global only/i)).toBeInTheDocument();
+      expect(screen.queryByText(/global only/i)).not.toBeInTheDocument();
       expect(screen.getByText(figure).textContent).toBe(before);
       cleanup();
     }
+  });
+
+  it("explains the date-less cards once, at the section, naming all four", () => {
+    const payload = fixture();
+    render(<MediaSection payload={payload} filters={initialFilters(payload)} />);
+    const note = screen.getByText(/4 of these 7 cards/);
+    expect(note).toHaveTextContent("Message types");
+    expect(note).toHaveTextContent("What gets attached");
+    expect(note).toHaveTextContent("Emoji in text");
+    expect(note).toHaveTextContent("Reactions");
   });
 
   it("reads message types from payload.types, falling back to meta.types", () => {

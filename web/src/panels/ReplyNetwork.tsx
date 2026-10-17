@@ -1,7 +1,7 @@
 import type { EChartsOption } from "echarts";
 
 import type { Payload } from "../api/types";
-import { EmptyState, GlobalOnlyBadge, Panel } from "../components/Panel";
+import { EmptyState, Panel } from "../components/Panel";
 import type { Filters } from "../filters/reducer";
 import { EChart } from "../lib/echart";
 import { swatch } from "../lib/palette";
@@ -23,10 +23,7 @@ export function ReplyNetwork({ payload, filters: fallbackFilters }: { panelId?: 
 
   if (!nodes.length) {
     return (
-      <Panel
-        title="Who replies to whom"
-        badge={true ? <GlobalOnlyBadge what="Reply pairs" /> : null}
-      >
+      <Panel title="Who replies to whom">
         <EmptyState>No authors selected — switch one back on in the filters.</EmptyState>
       </Panel>
     );
@@ -75,7 +72,6 @@ export function ReplyNetwork({ payload, filters: fallbackFilters }: { panelId?: 
     <Panel
       title="Who replies to whom"
       subtitle={`${nodes.length} authors · ${links.length} reply pairs · ${fmt(replies)} replies`}
-      badge={true ? <GlobalOnlyBadge what="Reply pairs" /> : null}
     >
       <EChart option={option} height={320} />
     </Panel>

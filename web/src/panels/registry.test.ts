@@ -3,10 +3,12 @@ import { describe, expect, it } from "vitest";
 import {
   DIMENSIONS,
   PANELS,
+  SECTIONS,
   dimensionReach,
   isPanelId,
   offeredDimensions,
   panelsHonouring,
+  panelsIgnoring,
   reachLabel,
   specFor,
   specForLabel,
@@ -162,6 +164,40 @@ describe("the panel registry", () => {
     for (const dimension of offeredDimensions()) {
       expect(panelsHonouring(dimension).length).toBeGreaterThan(0);
     }
+  });
+
+  it("partitions every card into exactly one section", () => {
+    const seen = SECTIONS.flatMap((section) => section.panels);
+    // One card can only be explained once: a duplicate would put two notes on
+    // the same card, and a missing card would carry no note at all.
+    expect(new Set(seen).size).toBe(seen.length);
+    expect([...seen].sort()).toEqual(Object.keys(PANELS).sort());
+  });
+
+  it("names the cards a section cannot move with a dimension", () => {
+    expect(panelsIgnoring("overview", "time")).toEqual([]);
+    expect(panelsIgnoring("time", "time")).toEqual([]);
+    expect(panelsIgnoring("people", "time").sort()).toEqual(
+      [
+        "how-fast-people-reply",
+        "reply-balance",
+        "reply-matrix",
+        "who-replies-to-whom",
+        "who-starts-conversations",
+      ].sort(),
+    );
+    expect(panelsIgnoring("links", "time").sort()).toEqual(
+      ["embed-providers", "embed-types", "most-reposted-links", "where-the-chat-lives"].sort(),
+    );
+    // Every one of these cards honours nothing, which is why none renders a
+    // scope control any more.
+    expect(panelsIgnoring("media", "time").sort()).toEqual(
+      ["emoji-in-text", "message-types", "reactions", "what-gets-attached"].sort(),
+    );
+    expect(panelsIgnoring("rich-media", "time").sort()).toEqual(["embeds-by-provider", "most-reposted"].sort());
+    expect(panelsIgnoring("words", "time").sort()).toEqual(
+      ["who-says-it", "word-cloud", "word-index", "word-lift"].sort(),
+    );
   });
 
   it("resolves a spec by id and by the label a card shows", () => {

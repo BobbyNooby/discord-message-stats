@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import { CARD_COLUMNS, SectionHeading } from "../components/Panel";
+import { SectionScopeNote } from "../components/SectionScopeNote";
 
 import { Activity } from "./Activity";
 import { Conversational } from "./Conversational";
@@ -26,6 +27,7 @@ export function TimeSection({
   return (
     <section aria-labelledby="sec-time" className="space-y-4">
       <SectionHeading id="sec-time">Time &amp; rhythm</SectionHeading>
+      <SectionScopeNote section="time" />
       <div className={CARD_COLUMNS}>
         <Activity payload={payload} filters={filters} />
         <Cumulative payload={payload} filters={filters} />
