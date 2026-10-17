@@ -1,6 +1,8 @@
 import * as echarts from "echarts";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { EChartsOption } from "echarts";
+
+import { useReducedMotion } from "./motion";
 
 /**
  * The one component here that wraps a library rather than encoding an idea.
@@ -34,6 +36,14 @@ export function EChart({
   const ready = useRef(onReady);
   ready.current = onReady;
   const [label, setLabel] = useState(ariaLabel ?? "chart");
+  // A reader who asked for less motion gets the finished picture, not the
+  // animation that draws it. ECharts animates by default, so this has to be
+  // said explicitly rather than left to the browser's CSS.
+  const reduced = useReducedMotion();
+  const drawn = useMemo(
+    () => (reduced ? { ...option, animation: false } : option),
+    [option, reduced],
+  );
 
   useEffect(() => {
     // The heading is only reachable once the node is in the document, so this
@@ -58,8 +68,8 @@ export function EChart({
   }, []);
 
   useEffect(() => {
-    chart.current?.setOption(option, true);
-  }, [option]);
+    chart.current?.setOption(drawn, true);
+  }, [drawn]);
 
   return (
     <div
