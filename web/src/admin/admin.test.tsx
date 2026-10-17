@@ -364,6 +364,127 @@ describe("<Admin>", () => {
     expect(await screen.findByText(/cache marked stale/i)).toBeInTheDocument();
   });
 
+  it("does not offer a row's own canonical as an alt of itself", async () => {
+    const user = userEvent.setup();
+    renderAdmin();
+
+    await openTask(user, "Fix the data");
+    const select = await screen.findByLabelText(/add an alt account to alice/i);
+    const values = within(select)
+      .getAllByRole("option")
+      .map((option) => (option as HTMLOptionElement).value);
+    // alice is canonical 1; 1 must never be a candidate for alice's own alt list.
+    expect(values).not.toContain("1");
+  });
+
+  it("says two picks are the same person instead of merging them again", async () => {
+    const user = userEvent.setup();
+    renderAdmin();
+
+    await openTask(user, "Fix the data");
+    await user.selectOptions(await screen.findByLabelText("First account"), "1");
+    await user.selectOptions(screen.getByLabelText("Second account"), "2");
+
+    expect(await screen.findByText(/already the same person/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /merge these accounts/i })).toBeDisabled();
+  });
+
+  it("names what an identity absorbs before a canonical is added as an alt", async () => {
+    // Jetkenon (5) heads its own identity with the alt Kenon (4). Adding it to
+    // alice silently used to absorb both; now it must be confirmed first.
+    identityState = [
+      { canonical: "1", accounts: ["1", "2"] },
+      { canonical: "5", accounts: ["5", "4"] },
+    ];
+    handlers["GET /api/bootstrap"] = () =>
+      response(200, {
+        ...PAYLOAD,
+        identities: [
+          { canonical: "1", members: ["1", "2"] },
+          { canonical: "5", members: ["5", "4"] },
+        ],
+      });
+
+    const user = userEvent.setup();
+    renderAdmin();
+
+    await openTask(user, "Fix the data");
+    const select = await screen.findByLabelText(/add an alt account to alice/i);
+    // The picker itself announces the extra accounts before selection.
+    expect(within(select).getByRole("option", { name: /jetkenon.*brings 1 alt/i })).toBeInTheDocument();
+
+    await user.selectOptions(select, "5");
+    const aliceRow = select.closest("article") as HTMLElement;
+    await user.click(within(aliceRow).getByRole("button", { name: /add alt/i }));
+
+    const confirm = await screen.findByRole("alertdialog");
+    expect(confirm).toHaveTextContent(/jetkenon will be merged into alice/i);
+    expect(confirm).toHaveTextContent(/including its alt kenon/i);
+    expect(confirm).toHaveTextContent(/1 account/i);
+    // Nothing is written until the operator confirms.
+    expect(recorded("PUT", "/api/admin/identity")).toBe(false);
+
+    await user.click(within(confirm).getByRole("button", { name: /confirm merge/i }));
+    await waitFor(() => expect(recorded("PUT", "/api/admin/identity")).toBe(true));
+    expect(recordedCall("PUT", "/api/admin/identity")?.body).toEqual({
+      merges: [{ canonical: "1", accounts: ["1", "2", "4", "5"] }],
+    });
+  });
+
+  it("cancelling an absorb writes nothing", async () => {
+    identityState = [
+      { canonical: "1", accounts: ["1", "2"] },
+      { canonical: "5", accounts: ["5", "4"] },
+    ];
+    handlers["GET /api/bootstrap"] = () =>
+      response(200, {
+        ...PAYLOAD,
+        identities: [
+          { canonical: "1", members: ["1", "2"] },
+          { canonical: "5", members: ["5", "4"] },
+        ],
+      });
+
+    const user = userEvent.setup();
+    renderAdmin();
+
+    await openTask(user, "Fix the data");
+    const picker = await screen.findByLabelText(/add an alt account to alice/i);
+    await user.selectOptions(picker, "5");
+    await user.click(within(picker.closest("article") as HTMLElement).getByRole("button", {
+      name: /add alt/i,
+    }));
+    await user.click(within(await screen.findByRole("alertdialog")).getByRole("button", {
+      name: /cancel/i,
+    }));
+
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+    expect(recorded("PUT", "/api/admin/identity")).toBe(false);
+  });
+
+  it("says when admin rights followed a person into a merge", async () => {
+    handlers["PUT /api/admin/identity"] = (init) => {
+      const body = bodyOf(init) as { merges?: MergeEntry[] } | undefined;
+      const previous = identityState;
+      identityState = body?.merges ?? [];
+      return response(200, {
+        merges: identityState,
+        cache_stale: true,
+        previous,
+        admins_moved: [{ from: "2", to: "1", configured: false }],
+      });
+    };
+
+    const user = userEvent.setup();
+    renderAdmin();
+
+    await openTask(user, "Fix the data");
+    await user.selectOptions(await screen.findByLabelText(/add an alt account to alice/i), "3");
+    await user.click(screen.getByRole("button", { name: /add alt/i }));
+
+    expect(await screen.findByText(/admin rights followed 2 into 1/i)).toBeInTheDocument();
+  });
+
   it("surfaces a failed merge instead of quietly swallowing it", async () => {
     handlers["PUT /api/admin/identity"] = () =>
       response(400, { detail: "duplicate account in 1" });
@@ -413,6 +534,32 @@ describe("<Admin>", () => {
     });
   });
 
+  it("warns when the winning name is one another person already uses", async () => {
+    const user = userEvent.setup();
+    renderAdmin();
+
+    await openTask(user, "Fix the data");
+    await user.selectOptions(await screen.findByLabelText("First account"), "3");
+    await user.selectOptions(screen.getByLabelText("Second account"), "2");
+    // Kenon (4) is a different person; naming the merge "Kenon" collides.
+    await user.type(screen.getByLabelText(/or type a name/i), "Kenon");
+
+    expect(await screen.findByText(/another person already goes by Kenon/i)).toBeInTheDocument();
+    // A warning, not a refusal: the merge still goes through.
+    expect(screen.getByRole("button", { name: /merge these accounts/i })).toBeEnabled();
+  });
+
+  it("names how many accounts a merge moves before it is written", async () => {
+    const user = userEvent.setup();
+    renderAdmin();
+
+    await openTask(user, "Fix the data");
+    await user.selectOptions(await screen.findByLabelText("First account"), "3");
+    await user.selectOptions(screen.getByLabelText("Second account"), "2");
+
+    expect(await screen.findByText(/this merges 3 accounts into/i)).toBeInTheDocument();
+  });
+
   it("offers undo of the last merge and writes the state it replaced back", async () => {
     const user = userEvent.setup();
     renderAdmin();
@@ -429,7 +576,10 @@ describe("<Admin>", () => {
       (call) => call.method === "PUT" && call.url === "/api/admin/identity",
     );
     expect(writes).toHaveLength(2);
-    expect(writes[1].body).toEqual({ merges: [{ canonical: "1", accounts: ["1", "2"] }] });
+    expect(writes[1].body).toEqual({
+      merges: [{ canonical: "1", accounts: ["1", "2"] }],
+      clear_names: ["1"],
+    });
     expect(await screen.findByText(/undone/i)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /undo the last change/i })).not.toBeInTheDocument();
   });
@@ -457,7 +607,7 @@ describe("<Admin>", () => {
     expect(writes[0].body).toEqual({
       merges: [{ canonical: "3", accounts: ["3", "2"], name: "vei" }],
     });
-    expect(writes[1].body).toEqual({ merges: [] });
+    expect(writes[1].body).toEqual({ merges: [], clear_names: ["3"] });
   });
 
   it("says a rebuild is required after a merge and puts the button beside it", async () => {
