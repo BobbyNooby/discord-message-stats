@@ -57,6 +57,27 @@ describe("scope storage", () => {
     ]);
   });
 
+  it("falls back to everybody when every author the reader kept is gone", () => {
+    // The reader narrowed the card to Bob, and the rebuild no longer has him.
+    // Writing an all-off list back would draw an empty card that looks broken
+    // rather than filtered — the one state a saved scope must not produce.
+    saveScopes({ "who-talks-the-most": { active: [false, true, false] } }, ["Alice", "Bob", "Carol"]);
+    const gone = { ...payload, authors: [{ id: "u1", name: "Alice", msgs: 10 }] } as unknown as Payload;
+
+    const { scopes, dropped } = loadScopes(gone);
+
+    expect(scopes["who-talks-the-most"]).toBeUndefined();
+    expect(dropped).toEqual([{ panelId: "who-talks-the-most", dimension: "author", key: "Bob" }]);
+  });
+
+  it("keeps a deliberate nobody, which is a state the reader can ask for", () => {
+    saveScopes({ "who-talks-the-most": { active: [false, false, false] } }, ["Alice", "Bob", "Carol"]);
+
+    const { scopes } = loadScopes(payload);
+
+    expect(scopes["who-talks-the-most"].active).toEqual([false, false, false]);
+  });
+
   it("drops a word the payload no longer has, and says which", () => {
     saveScopes({ "word-cloud": { word: "dog" } });
     const gone = { ...payload, words: [["cat", 9]] } as unknown as Payload;

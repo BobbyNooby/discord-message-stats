@@ -92,8 +92,10 @@ export function loadScopes(payload: Payload, raw?: string | null): LoadedScopes 
             // with them is resolved by name and anything that vanished is
             // dropped rather than left switching a card off.
             const named = new Set<string>();
+            let keptAny = false;
             active.forEach((on, index) => {
               if (!on) return;
+              keptAny = true;
               const name = savedNames[index];
               if (typeof name !== "string" || !name) {
                 dropped.push({ panelId, dimension: "author", key: `#${index}` });
@@ -103,6 +105,11 @@ export function loadScopes(payload: Payload, raw?: string | null): LoadedScopes 
                 named.add(name);
               }
             });
+            // Every name the reader kept is gone. An all-off list is the one
+            // state a saved scope must not produce — the card would draw
+            // nothing and read as broken rather than filtered — so the
+            // dimension goes with the names, and the drops are already said.
+            if (keptAny && !named.size) continue;
             patch.active = payload.authors.map((author) => named.has(author.name));
           } else if (authorsChanged && Array.isArray((payload as { authors?: unknown }).authors)) {
             // No names recorded: positions are all there is, so a shorter
