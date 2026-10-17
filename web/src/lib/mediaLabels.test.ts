@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { kindLabel, postedLabel, providerLabel } from "./mediaLabels";
+import { kindLabel, postedLabel, providerChoices, providerLabel } from "./mediaLabels";
 
 /**
  * Discord writes the literal string "unprovidenced" when it cannot name an
@@ -27,6 +27,45 @@ describe("providerLabel", () => {
 
   it("does not treat a lookalike host as Discord's CDN", () => {
     expect(providerLabel("unprovidenced", "https://notdiscordapp.com/a.png")).toBe("No provider");
+  });
+
+  it("names an unnamed link by its host, so Instagram and Twitter stop hiding", () => {
+    expect(providerLabel("unprovidenced", "https://www.instagram.com/p/abc")).toBe("Instagram");
+    expect(providerLabel("", "https://instagram.com/reel/xyz")).toBe("Instagram");
+    expect(providerLabel("unprovidenced", "https://x.com/user/status/1")).toBe("Twitter / X");
+    expect(providerLabel("", "https://twitter.com/user/status/1")).toBe("Twitter / X");
+    expect(providerLabel("unprovidenced", "https://youtu.be/dQw4w9WgXcQ")).toBe("YouTube");
+    expect(providerLabel("", "https://www.youtube.com/watch?v=dQw4w9WgXcQ")).toBe("YouTube");
+    expect(providerLabel("unprovidenced", "https://old.reddit.com/r/x/comments/1")).toBe("Reddit");
+  });
+
+  it("does not mistake a lookalike host for a named service", () => {
+    expect(providerLabel("unprovidenced", "https://notinstagram.com/p/abc")).toBe("No provider");
+    expect(providerLabel("unprovidenced", "https://instagram.com.evil.test/p/abc")).toBe("No provider");
+    expect(providerLabel("unprovidenced", "https://mytwitter.com/user")).toBe("No provider");
+    expect(providerLabel("unprovidenced", "https://youtube.com.evil.test/watch")).toBe("No provider");
+  });
+
+  it("keeps Discord's own CDN a direct upload even when the URL also looks named", () => {
+    expect(providerLabel("unprovidenced", "https://cdn.discordapp.com/a.png")).toBe("Direct upload");
+  });
+});
+
+describe("providerChoices", () => {
+  it("keeps the raw name for the API and ranks by embeds", () => {
+    const choices = providerChoices([
+      ["Tenor", 10],
+      ["unprovidenced", 4],
+      ["YouTube", 30],
+    ]);
+    expect(choices.map((choice) => choice.value)).toEqual(["YouTube", "Tenor", "unprovidenced"]);
+    expect(choices.map((choice) => choice.label)).toEqual(["YouTube", "Tenor", "No provider"]);
+  });
+
+  it("drops providers with nothing in them", () => {
+    expect(providerChoices([["Tenor", 0], ["YouTube", 2]])).toEqual([
+      { value: "YouTube", label: "YouTube", count: 2 },
+    ]);
   });
 });
 
