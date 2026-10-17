@@ -8,11 +8,13 @@ well as after it finished — including on a database where one never ran.
 from __future__ import annotations
 
 import sqlite3
+from datetime import datetime, timedelta, timezone
 
 import pytest
 from fastapi.testclient import TestClient
 
 from discord_scraper.api.app import create_app
+from discord_scraper.api.progress import ABANDONED_AFTER_SECONDS
 from discord_scraper.auth.session import SESSION_COOKIE, Level, establish_session
 from discord_scraper.rollups.build import (
     EVENTS_KEEP,
@@ -87,6 +89,37 @@ def test_rebuild_reports_its_phases_to_the_caller(seeded_db, cfg):
     assert seen[0] == "deriving"
     assert "writing" in seen
     assert seen[-1] == "finished"
+
+
+def test_the_run_start_is_committed_before_the_slow_prelude(seeded_db_path, cfg, monkeypatch):
+    """A poll during the prelude must already see the run.
+
+    Creating the tables, resolving identities and hashing the config take tens
+    of seconds on a real database — that is the window where the operator used
+    to click Recalculate and see nothing at all.
+    """
+    import discord_scraper.rollups.build as build
+
+    seen: list[int] = []
+    real = build.resolve_identities
+
+    def spy(conn, config):
+        check = sqlite3.connect(seeded_db_path)
+        try:
+            seen.append(check.execute(
+                "SELECT COUNT(*) FROM rebuild_events WHERE kind = 'run' AND phase = 'started'"
+            ).fetchone()[0])
+        finally:
+            check.close()
+        return real(conn, config)
+
+    monkeypatch.setattr(build, "resolve_identities", spy)
+    conn = sqlite3.connect(seeded_db_path)
+    try:
+        rebuild_all(conn, cfg)
+    finally:
+        conn.close()
+    assert seen == [1]
 
 
 def test_a_failing_rebuild_records_its_failure(seeded_db, cfg, monkeypatch):
@@ -175,22 +208,62 @@ def test_progress_reports_a_finished_run_and_freshness(admin_client):
 
 
 def test_progress_shows_a_run_that_is_still_going(admin_client, conn):
+    started = datetime.now(timezone.utc).isoformat(timespec="microseconds")
     conn.executemany(
         "INSERT INTO rebuild_events (started_at, kind, family, phase, message) "
         "VALUES (?, ?, ?, ?, ?)",
         [
-            ("2026-01-01T00:00:00+00:00", "run", None, "started", "rebuild started"),
-            ("2026-01-01T00:00:01+00:00", "family", "activity", "started", "activity started"),
+            (started, "run", None, "started", "rebuild started"),
+            (started, "family", "activity", "started", "activity started"),
         ],
     )
     conn.commit()
     body = admin_client.get("/api/admin/progress").json()
     assert body["running"] is True
-    assert body["started_at"] == "2026-01-01T00:00:00+00:00"
+    assert body["abandoned"] is False
+    assert body["started_at"] == started
     assert body["phase"] == "writing"
     states = {family["family"]: family["state"] for family in body["families"]}
     assert states["activity"] == "running"
     assert states["word"] == "pending"
+
+
+def test_a_run_that_died_before_finishing_is_not_claimed_as_running(admin_client, conn):
+    """Started with no finish and long past the threshold: the feed must not lie.
+
+    A worker killed mid-rebuild leaves the start row behind forever; without
+    this the board would say "rebuild in progress" until the next rebuild.
+    """
+    died = (datetime.now(timezone.utc)
+            - timedelta(seconds=ABANDONED_AFTER_SECONDS + 60)).isoformat(timespec="microseconds")
+    conn.execute(
+        "INSERT INTO rebuild_events (started_at, kind, phase, message) "
+        "VALUES (?, 'run', 'started', 'rebuild started')",
+        (died,),
+    )
+    conn.commit()
+
+    body = admin_client.get("/api/admin/progress").json()
+    assert body["running"] is False
+    assert body["abandoned"] is True
+    assert body["phase"] is None
+    assert {family["state"] for family in body["families"]} == {"pending"}
+
+
+def test_a_recent_start_is_still_running_within_the_threshold(admin_client, conn):
+    """The guard must not turn a genuinely slow rebuild into a dead one."""
+    started = (datetime.now(timezone.utc)
+               - timedelta(seconds=ABANDONED_AFTER_SECONDS - 60)).isoformat(timespec="microseconds")
+    conn.execute(
+        "INSERT INTO rebuild_events (started_at, kind, phase, message) "
+        "VALUES (?, 'run', 'started', 'rebuild started')",
+        (started,),
+    )
+    conn.commit()
+
+    body = admin_client.get("/api/admin/progress").json()
+    assert body["running"] is True
+    assert body["abandoned"] is False
 
 
 def test_progress_since_returns_only_events_newer_than_that_id(admin_client):
