@@ -19,7 +19,7 @@ const TITLE = "Reactions";
 export function Reactions({ payload, filters: fallbackFilters }: MediaPanelProps & WithPanelId) {
   const filters = usePanelFilters("reactions", fallbackFilters);
   const rows = pairRows(payload.reactions, 14);
-  const blank = globalEmpty(payload, filters) ?? (rows.length ? null : "No reaction data.");
+  const blank = globalEmpty(payload, filters) ?? (rows.length ? null : "No reactions yet — ingest, or upload a database from the Admin board.");
 
   return (
     <Panel

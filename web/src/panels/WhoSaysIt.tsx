@@ -108,7 +108,7 @@ export function WhoSaysIt({
       ) : !indexed ? (
         <EmptyState>{OUTSIDE_SLICE}</EmptyState>
       ) : allOff ? (
-        <EmptyState>No authors selected.</EmptyState>
+        <EmptyState>No authors selected — switch one back on in the filters.</EmptyState>
       ) : !rows.length ? (
         <EmptyState>None of the selected authors use this word.</EmptyState>
       ) : (

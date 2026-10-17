@@ -1,6 +1,7 @@
 import { C_AUTHOR, C_DAY, C_MSGS, type Payload } from "../api/types";
 import type { Filters } from "../filters/reducer";
 import { bucketOf, selectVisibleCells } from "../filters/selectors";
+import { EMPTY_AUTHORS, EMPTY_DATABASE, EMPTY_FILTER } from "../lib/empty";
 
 /**
  * The shapes the Overview and Time & rhythm panels share.
@@ -57,9 +58,8 @@ export function noAuthorsSelected(payload: Payload, filters: Filters): boolean {
 }
 
 export function emptyLabel(payload: Payload, filters: Filters): string {
-  return noAuthorsSelected(payload, filters)
-    ? "No authors selected"
-    : "No data for this filter";
+  if (!payload.cells?.length) return EMPTY_DATABASE;
+  return noAuthorsSelected(payload, filters) ? EMPTY_AUTHORS : EMPTY_FILTER;
 }
 
 /** Author indices the filters leave visible, in payload order. */

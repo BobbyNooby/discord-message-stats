@@ -27,7 +27,7 @@ export function ReplyNetwork({ payload, filters: fallbackFilters }: { panelId?: 
         title="Who replies to whom"
         badge={true ? <GlobalOnlyBadge what="Reply pairs" /> : null}
       >
-        <EmptyState>No authors selected.</EmptyState>
+        <EmptyState>No authors selected — switch one back on in the filters.</EmptyState>
       </Panel>
     );
   }

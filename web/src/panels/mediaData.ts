@@ -22,6 +22,7 @@ import {
 } from "../api/types";
 import type { Filters } from "../filters/reducer";
 import { selectVisibleCells } from "../filters/selectors";
+import { EMPTY_AUTHORS, EMPTY_DATABASE, EMPTY_FILTER } from "../lib/empty";
 import { PALETTE } from "../lib/palette";
 
 export type MediaPanelProps = { payload: Payload; filters: Filters };
@@ -142,14 +143,12 @@ export function mediaCells(
   payload: Payload,
   filters: Filters,
 ): { cells: Cell[]; empty: string | null } {
-  if (!payload.cells?.length) return { cells: [], empty: "No messages in this database." };
+  if (!payload.cells?.length) return { cells: [], empty: EMPTY_DATABASE };
   const cells = selectVisibleCells(payload, filters);
   if (!cells.length) {
     return {
       cells: [],
-      empty: authorFilterIsEmpty(filters)
-        ? "No authors selected."
-        : "No messages match the active filters.",
+      empty: authorFilterIsEmpty(filters) ? EMPTY_AUTHORS : EMPTY_FILTER,
     };
   }
   return { cells, empty: null };
@@ -162,8 +161,8 @@ export function mediaCells(
  * "global only" and keep their numbers.
  */
 export function globalEmpty(payload: Payload, filters: Filters): string | null {
-  if (!payload.cells?.length) return "No messages in this database.";
-  if (authorFilterIsEmpty(filters)) return "No authors selected.";
+  if (!payload.cells?.length) return EMPTY_DATABASE;
+  if (authorFilterIsEmpty(filters)) return EMPTY_AUTHORS;
   return null;
 }
 

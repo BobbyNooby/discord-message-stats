@@ -118,9 +118,9 @@ export function WordLift({ payload, filters: fallbackFilters }: { panelId?: stri
       help={TERMS.lift}
     >
       {!payload.words.length ? (
-        <EmptyState>No words in this payload.</EmptyState>
+        <EmptyState>No words yet — ingest, or upload a database from the Admin board.</EmptyState>
       ) : !anyActive ? (
-        <EmptyState>No authors selected.</EmptyState>
+        <EmptyState>No authors selected — switch one back on in the filters.</EmptyState>
       ) : (
         <EChart option={option} height={430} />
       )}

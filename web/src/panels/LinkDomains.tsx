@@ -105,7 +105,11 @@ export function LinkDomains({ payload, filters: fallbackFilters }: { panelId?: s
         domains posted, extracted from message text — not from embeds
       </p>
       {!rows.length ? (
-        <EmptyState>{allOff ? "No authors selected." : "No links in this filter."}</EmptyState>
+        <EmptyState>
+          {allOff
+            ? "No authors selected — switch one back on in the filters."
+            : "No links match the active filters — widen the time range, or switch an author back on."}
+        </EmptyState>
       ) : (
         <EChart option={option} height={340} />
       )}

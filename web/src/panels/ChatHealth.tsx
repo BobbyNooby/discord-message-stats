@@ -22,7 +22,7 @@ export function ChatHealth({ payload, filters: fallbackFilters }: MediaPanelProp
   const { cells, empty } = mediaCells(payload, filters);
   const gauges = healthGauges(cells);
   const msgs = totalMessages(cells);
-  const blank = empty ?? (msgs > 0 ? null : "No messages match the active filters.");
+  const blank = empty ?? (msgs > 0 ? null : "No messages match the active filters — widen the time range, or switch an author back on.");
 
   return (
     <Panel

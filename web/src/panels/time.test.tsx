@@ -323,7 +323,7 @@ describe("the time and rhythm section", () => {
     const payload = emptyPayload();
     render(<TimeSection payload={payload} filters={all(payload)} />);
 
-    expect(screen.getAllByText("No data for this filter")).toHaveLength(7);
+    expect(screen.getAllByText("No messages yet — ingest, or upload a database from the Admin board.")).toHaveLength(7);
     expect(screen.queryByText(/NaN/)).toBeNull();
   });
 
@@ -331,7 +331,7 @@ describe("the time and rhythm section", () => {
     const payload = makePayload();
     render(<TimeSection payload={payload} filters={none(payload)} />);
 
-    expect(screen.getAllByText("No authors selected")).toHaveLength(7);
+    expect(screen.getAllByText("No authors selected — switch one back on in the filters.")).toHaveLength(7);
     expect(screen.queryByText(/NaN/)).toBeNull();
   });
 });

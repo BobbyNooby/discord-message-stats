@@ -129,7 +129,7 @@ describe("stat cards", () => {
 
     expect(screen.getAllByText("—")).toHaveLength(6);
     expect(document.body.textContent).not.toMatch(/NaN/);
-    expect(screen.getByText("No data for this filter")).toBeInTheDocument();
+    expect(screen.getByText("No messages yet — ingest, or upload a database from the Admin board.")).toBeInTheDocument();
   });
 
   it("never prints NaN when every author is switched off", () => {
@@ -144,7 +144,7 @@ describe("stat cards", () => {
     expect(within(card("Messages")).getByText("0")).toBeInTheDocument();
     expect(within(card("Avg length")).getByText("—")).toBeInTheDocument();
     expect(document.body.textContent).not.toMatch(/NaN/);
-    expect(screen.getByText("No authors selected")).toBeInTheDocument();
+    expect(screen.getByText("No authors selected — switch one back on in the filters.")).toBeInTheDocument();
   });
 });
 
@@ -175,7 +175,7 @@ describe("share of voice", () => {
   it("renders an empty state rather than a chart with no data", () => {
     const payload = emptyPayload();
     render(<ShareOfVoice payload={payload} filters={initialFilters(payload)} />);
-    expect(screen.getByText("No data for this filter")).toBeInTheDocument();
+    expect(screen.getByText("No messages yet — ingest, or upload a database from the Admin board.")).toBeInTheDocument();
   });
 });
 
@@ -210,7 +210,7 @@ describe("the overview section", () => {
     const payload = emptyPayload();
     render(<OverviewSection payload={payload} filters={initialFilters(payload)} />);
 
-    expect(screen.getAllByText("No data for this filter")).toHaveLength(4);
+    expect(screen.getAllByText("No messages yet — ingest, or upload a database from the Admin board.")).toHaveLength(4);
     expect(screen.queryByText(/NaN/)).toBeNull();
   });
 
@@ -223,7 +223,7 @@ describe("the overview section", () => {
       />,
     );
 
-    expect(screen.getAllByText("No authors selected")).toHaveLength(4);
+    expect(screen.getAllByText("No authors selected — switch one back on in the filters.")).toHaveLength(4);
     expect(screen.getByText("0 messages · 0 authors")).toBeInTheDocument();
   });
 });

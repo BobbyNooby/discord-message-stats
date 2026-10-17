@@ -228,7 +228,7 @@ describe("Media & reactions", () => {
     const payload = fixture({ cells: [] });
     render(<MediaSection payload={payload} filters={initialFilters(payload)} />);
 
-    expect(screen.getAllByText("No messages in this database.")).toHaveLength(7);
+    expect(screen.getAllByText("No messages yet — ingest, or upload a database from the Admin board.")).toHaveLength(7);
     expect(mocks.instance.setOption).not.toHaveBeenCalled();
     expect(document.body.textContent).not.toMatch(/NaN/);
   });
@@ -238,7 +238,7 @@ describe("Media & reactions", () => {
     const filters = { ...initialFilters(payload), active: [false, false] };
     render(<MediaSection payload={payload} filters={filters} />);
 
-    expect(screen.getAllByText("No authors selected.")).toHaveLength(7);
+    expect(screen.getAllByText("No authors selected — switch one back on in the filters.")).toHaveLength(7);
     expect(mocks.instance.setOption).not.toHaveBeenCalled();
   });
 
@@ -250,7 +250,7 @@ describe("Media & reactions", () => {
     render(<RepliesVsStandalone payload={payload} filters={filters} />);
     render(<ChatHealth payload={payload} filters={filters} />);
 
-    expect(screen.getAllByText("No messages match the active filters.")).toHaveLength(3);
+    expect(screen.getAllByText("No messages match the active filters — widen the time range, or switch an author back on.")).toHaveLength(3);
     expect(mocks.instance.setOption).not.toHaveBeenCalled();
     expect(document.body.textContent).not.toMatch(/NaN/);
   });
@@ -263,9 +263,9 @@ describe("Media & reactions", () => {
     render(<Emoji payload={payload} filters={filters} />);
     render(<Reactions payload={payload} filters={filters} />);
 
-    expect(screen.getByText("No attachment data.")).toBeInTheDocument();
-    expect(screen.getByText("No emoji in this history.")).toBeInTheDocument();
-    expect(screen.getByText("No reaction data.")).toBeInTheDocument();
+    expect(screen.getByText("No attachments yet — ingest, or upload a database from the Admin board.")).toBeInTheDocument();
+    expect(screen.getByText("No emoji yet — ingest, or upload a database from the Admin board.")).toBeInTheDocument();
+    expect(screen.getByText("No reactions yet — ingest, or upload a database from the Admin board.")).toBeInTheDocument();
   });
 
   it("gives every panel in the section a heading", () => {

@@ -145,7 +145,7 @@ export function RichMedia({ payload }: { panelId?: string; payload: Payload; fil
           }}
         >
           {shown.length === 0 ? (
-            <EmptyState>No embeds in the rollups yet.</EmptyState>
+            <EmptyState>No embeds yet — ingest, or upload a database from the Admin board.</EmptyState>
           ) : (
             <ol className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
               {shown.map((row) => (
@@ -163,7 +163,7 @@ export function RichMedia({ payload }: { panelId?: string; payload: Payload; fil
         subtitle="Klipy and Tenor both appear because Discord switched"
       >
         {providers.length === 0 ? (
-          <EmptyState>No embeds yet.</EmptyState>
+          <EmptyState>No embeds yet — ingest, or upload a database from the Admin board.</EmptyState>
         ) : (
           <EChart option={option} height={260} />
         )}

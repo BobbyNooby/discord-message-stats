@@ -37,7 +37,7 @@ export function ReplyMatrix({
   if (!matrix.k) {
     return (
       <Panel title="Reply matrix" badge={badge} className={className}>
-        <EmptyState>No authors selected.</EmptyState>
+        <EmptyState>No authors selected — switch one back on in the filters.</EmptyState>
       </Panel>
     );
   }

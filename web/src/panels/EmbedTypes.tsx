@@ -32,7 +32,7 @@ export function EmbedTypes({ payload, }: { panelId?: string; payload: Payload; f
       }
     >
       {!rows.length ? (
-        <EmptyState>No embed data in this payload.</EmptyState>
+        <EmptyState>No embeds yet — ingest, or upload a database from the Admin board.</EmptyState>
       ) : shape === "pie" ? (
         <EChart option={pieOption(foldPie(rows), "embeds")} height={340} />
       ) : (
