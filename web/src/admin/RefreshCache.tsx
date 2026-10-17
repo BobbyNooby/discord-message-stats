@@ -163,6 +163,13 @@ export function RefreshCache({
     wasRunning.current = running;
   }, [feed.data?.running, feed.data?.last?.status, onRebuilt, queryClient]);
 
+  // The click-time confirmation names a job the worker has not picked up yet.
+  // Once the run is visible the live panel below is the honest answer, so the
+  // "queued" copy gives way to it and never comes back.
+  useEffect(() => {
+    if (feed.data?.running) setNotice(null);
+  }, [feed.data?.running]);
+
   async function run() {
     setBusy(true);
     setError(null);

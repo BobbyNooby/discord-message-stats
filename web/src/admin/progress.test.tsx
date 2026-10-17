@@ -470,3 +470,49 @@ describe("the poll", () => {
     expect(screen.getByText(/worker offline/i)).toBeInTheDocument();
   });
 });
+
+describe("the queued confirmation", () => {
+  it("names the job while it is still waiting to be picked up", async () => {
+    progressAnswer = () => body();
+    renderCache();
+    await flush();
+
+    fireEvent.click(screen.getByRole("button", { name: /recalculate all/i }));
+    await flush();
+
+    expect(screen.getByText(/rebuild queued as job #7 \(queued\)/i)).toBeInTheDocument();
+  });
+
+  it("gives way to the live panel once the run is visible, and does not come back", async () => {
+    progressAnswer = () => body();
+    renderCache();
+    await flush();
+
+    fireEvent.click(screen.getByRole("button", { name: /recalculate all/i }));
+    await flush();
+    expect(screen.getByText(/rebuild queued as job #7/i)).toBeInTheDocument();
+
+    // The run appears: the panel's own line is the honest answer now, so the
+    // click-time string must not sit beside it still claiming "queued".
+    progressAnswer = () => body({ ...RUNNING, last: null });
+    await flush(1000);
+    expect(screen.getByText(/rebuild in progress/i)).toBeInTheDocument();
+    expect(screen.queryByText(/rebuild queued as job #7/i)).not.toBeInTheDocument();
+
+    // And once it is done, the finished line stands alone — the stale copy
+    // does not reappear.
+    progressAnswer = () =>
+      body({
+        last: FINISHED_LAST,
+        freshness: {
+          built_at: "2026-10-15T05:37:00+00:00",
+          current: true,
+          added_since: 0,
+          newest_message_id: "903",
+        },
+      });
+    await flush(1000);
+    expect(screen.queryByText(/rebuild queued as job #7/i)).not.toBeInTheDocument();
+    expect(screen.getByText("built 05:37 · took 164s · current")).toBeInTheDocument();
+  });
+});
