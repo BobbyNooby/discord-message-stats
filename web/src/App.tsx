@@ -33,6 +33,7 @@ import {
 import { PanelScopeProvider } from "./panels/panelScope";
 import { PANELS, specFor, type ChartKind, type PanelId } from "./panels/registry";
 import { useKeyboardShortcuts } from "./lib/shortcuts";
+import { stampLabel, timeFormatOf } from "./lib/timeFormat";
 import { Calendar } from "./panels/Calendar";
 import { LinksSection } from "./panels/LinksSection";
 import { MediaSection } from "./panels/MediaSection";
@@ -193,13 +194,17 @@ function DashboardBody({
             {filters.active.filter(Boolean).length} of {payload.authors.length} authors
           </span>
           <span>
-            {payload.tz.label} · as of {payload.meta.computed_at?.slice(0, 16).replace("T", " ") ??
-              "never"}
+            {payload.tz.label} · as of {stampLabel(payload.meta.computed_at, timeFormatOf(payload.meta))}
           </span>
         </>
       }
     >
-      <HealthBanner banner={banner} stale={payload.meta.stale} staleAt={payload.meta.computed_at} />
+      <HealthBanner
+        banner={banner}
+        stale={payload.meta.stale}
+        staleAt={payload.meta.computed_at}
+        timeFormat={timeFormatOf(payload.meta)}
+      />
       <JumpNav />
       <RecentStrip messages={recent?.messages ?? []} truncated={recent?.truncated} />
       {/* Six sections in the spec's order; the calendar sits inside Time &

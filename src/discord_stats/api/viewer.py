@@ -67,6 +67,12 @@ def bootstrap(conn: sqlite3.Connection, cfg: Config) -> dict[str, Any]:
             "source_count": int(provenance.get("source_count", 0)),
             "stale": stale,
             "timezone": built_in,
+            # Display settings, not data settings: they change how a label is
+            # written, never which bucket a message lands in, so they ride in
+            # `meta` and are deliberately absent from `config_digest` — changing
+            # one must not mark every rollup stale.
+            "week_start": cfg.week_start,
+            "time_format": cfg.time_format,
             "authors": len(author_rows),
             "cells": len(cells),
             "heat_cells": len(heat),

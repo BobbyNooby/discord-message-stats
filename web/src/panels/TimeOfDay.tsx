@@ -4,7 +4,8 @@ import type { EChartsOption } from "echarts";
 import { Chip } from "../components/AppShell";
 import { EmptyState, Panel } from "../components/Panel";
 import { EChart } from "../lib/echart";
-import { TOOLTIP, byHour, clock, emptyLabel, fmt, heatGrid, kfmt, type PanelProps } from "./timeAggregates";
+import { hourLabel, timeFormatOf } from "../lib/timeFormat";
+import { TOOLTIP, byHour, emptyLabel, fmt, heatGrid, kfmt, type PanelProps } from "./timeAggregates";
 import type { WithPanelId } from "./panelScope";
 import { usePanelFilters } from "./panelScope";
 
@@ -24,7 +25,9 @@ export function TimeOfDay({ payload, filters: fallbackFilters }: PanelProps & Wi
   const hours = byHour(heat.grid);
   const peak = Math.max(...hours);
   const busiest = hours.indexOf(peak);
-  const subtitle = `${fmt(heat.total)} messages · ${payload.tz.label} · peak ${clock(busiest)}`;
+  // `ui.time_format`: the peak and every tooltip read the same clock.
+  const timeFormat = timeFormatOf(payload.meta);
+  const subtitle = `${fmt(heat.total)} messages · ${payload.tz.label} · peak ${hourLabel(busiest, timeFormat)}`;
 
   if (!heat.total) {
     return (
@@ -49,7 +52,7 @@ export function TimeOfDay({ payload, filters: fallbackFilters }: PanelProps & Wi
   }));
   const tooltip = {
     ...TOOLTIP,
-    formatter: (p: any) => `${clock(p.dataIndex)} — <b>${fmt(Number(p.value))}</b> msgs`,
+    formatter: (p: any) => `${hourLabel(p.dataIndex, timeFormat)} — <b>${fmt(Number(p.value))}</b> msgs`,
   };
 
   const option: EChartsOption =

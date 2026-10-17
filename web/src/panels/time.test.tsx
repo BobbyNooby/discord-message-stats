@@ -71,6 +71,8 @@ function makePayload(over: Partial<Payload> = {}): Payload {
       source_count: 4,
       stale: false, can_admin: false,
       timezone: "Asia/Kuala_Lumpur",
+      week_start: "monday",
+      time_format: "24h",
       computed_at: "2024-01-02T00:00:00Z",
       authors: 2,
       cells: 4,
@@ -333,5 +335,19 @@ describe("the time and rhythm section", () => {
 
     expect(screen.getAllByText("No authors selected — switch one back on in the filters.")).toHaveLength(7);
     expect(screen.queryByText(/NaN/)).toBeNull();
+  });
+});
+
+describe("the clock the panels write", () => {
+  it("follows ui.time_format, so the setting is not dead", () => {
+    const payload = makePayload();
+    const { rerender } = render(<TimeOfDay payload={payload} filters={all(payload)} />);
+    // The fixture's default is the 24-hour clock every panel drew before.
+    expect(screen.getByText(/peak \d{2}:00/)).toBeInTheDocument();
+
+    const twelve = { ...payload, meta: { ...payload.meta, time_format: "12h" } } as Payload;
+    rerender(<TimeOfDay payload={twelve} filters={all(twelve)} />);
+    expect(screen.getByText(/peak \d{1,2}(am|pm)/)).toBeInTheDocument();
+    expect(screen.queryByText(/peak \d{2}:00/)).toBeNull();
   });
 });

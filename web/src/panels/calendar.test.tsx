@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { Payload } from "../api/types";
 import { EMPTY_FILTERS, initialFilters } from "../filters/reducer";
 import { Calendar } from "./Calendar";
-import { buildWeeks, calendarGeometry, clampStart, MIN_WEEKS } from "./calendarWeeks";
+import { buildWeeks, calendarGeometry, clampStart, MIN_WEEKS, weekdayLabels } from "./calendarWeeks";
 
 const payload = {
   days: ["2026-01-01", "2026-01-02", "2026-02-01"],
@@ -48,7 +48,36 @@ describe("calendar data", () => {
   it("groups filtered messages into weeks and weekdays", () => {
     const weeks = buildWeeks(payload, filters());
     expect(weeks.total).toBe(4);
-    expect(weeks.weeks[0]).toBe("2025-12-28"); // the Sunday of 2026-01-01
+    // The config's default is a Monday week, so 2026-01-01 (a Thursday) belongs
+    // to the week that opened on 2025-12-29.
+    expect(weeks.weeks[0]).toBe("2025-12-29");
+  });
+
+  it("starts the week on the day `ui.week_start` names", () => {
+    // 2026-01-01 is a Thursday, so it is row 3 of a Monday week and row 4 of a
+    // Sunday one — the value moves with its label, not away from it.
+    const monday = buildWeeks(payload, filters(), "monday");
+    const sunday = buildWeeks(payload, filters(), "sunday");
+
+    expect(monday.weeks[0]).toBe("2025-12-29");
+    expect(sunday.weeks[0]).toBe("2025-12-28");
+    expect(monday.values.get("2025-12-29|3")).toBe(2); // Thursday
+    expect(sunday.values.get("2025-12-28|4")).toBe(2); // the same Thursday
+    expect(monday.total).toBe(sunday.total);
+    expect(weekdayLabels("monday")[0]).toBe("Mon");
+    expect(weekdayLabels("sunday")[0]).toBe("Sun");
+  });
+
+  it("reads the week start off the payload, so a config edit is visible", () => {
+    const { getByRole } = render(
+      <Calendar
+        payload={{ ...payload, meta: { ...(payload.meta ?? {}), week_start: "sunday" } } as Payload}
+        filters={filters()}
+      />,
+    );
+    // The panel exists and drew; the rotation itself is pinned above, because
+    // ECharts draws axis labels onto a canvas no test can read back.
+    expect(getByRole("heading", { name: "Every day, six years" })).toBeInTheDocument();
   });
 
   it("drops the cells a filter removes", () => {
