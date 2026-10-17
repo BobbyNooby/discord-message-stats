@@ -23,9 +23,43 @@ function hostOf(url: string): string {
   }
 }
 
+/**
+ * When Discord names no provider, the host is the only evidence left — and it
+ * is good evidence: Instagram and some Twitter links arrive as `unprovidenced`,
+ * so an anonymous "No provider" hides exactly the services a reader wants to
+ * tell apart. Each pattern is anchored to a whole label or a dot boundary, so
+ * `notinstagram.com` is not Instagram.
+ *
+ * This stays a *label*, never a filter key: the server's provider filter
+ * matches Discord's exact string, and nothing here rewrites that.
+ */
+const HOST_LABELS: readonly [RegExp, string][] = [
+  [/(^|\.)instagram\.com$/, "Instagram"],
+  [/(^|\.)(x\.com|twitter\.com)$/, "Twitter / X"],
+  [/(^|\.)(youtu\.be|youtube\.com)$/, "YouTube"],
+  [/(^|\.)reddit\.com$/, "Reddit"],
+];
+
 export function providerLabel(provider: string, url: string): string {
   if (provider && provider !== UNNAMED) return provider;
-  return /(^|\.)(discordapp\.(com|net))$/.test(hostOf(url)) ? "Direct upload" : "No provider";
+  const host = hostOf(url);
+  if (/(^|\.)discordapp\.(com|net)$/.test(host)) return "Direct upload";
+  for (const [pattern, label] of HOST_LABELS) {
+    if (pattern.test(host)) return label;
+  }
+  return "No provider";
+}
+
+/** One provider a reader can filter by: the raw name the API matches, and the
+ *  label they see. Shared by the card's chip row, the full view and the scoped
+ *  sidebar so the three can never offer different options. */
+export type ProviderChoice = { value: string; label: string; count: number };
+
+export function providerChoices(providers: readonly (readonly [string, number])[]): ProviderChoice[] {
+  return providers
+    .filter(([, count]) => count > 0)
+    .map(([name, count]) => ({ value: name, label: providerLabel(name, name), count }))
+    .sort((a, b) => b.count - a.count);
 }
 
 /** Embed kinds as they are said out loud; an unknown kind is left alone. */
