@@ -1,5 +1,5 @@
 import type { Payload } from "../api/types";
-import { isPanelId, type Dimension } from "../panels/registry";
+import { isPanelId, PANELS, type Dimension } from "../panels/registry";
 import type { FilterPatch, Scopes } from "./reducer";
 
 /**
@@ -158,6 +158,11 @@ export function loadCharts(raw?: string | null): Charts {
     for (const [panelId, kind] of Object.entries(parsed.charts)) {
       if (!isPanelId(panelId)) continue;
       if (kind !== "bar" && kind !== "pie") continue;
+      // A shape the card's spec no longer declares is dropped on the same
+      // principle as a scope naming a vanished author: the registry is what
+      // says a card can draw it, and a stale "pie" for a bar-only card would
+      // sit in storage pretending to be a state the card cannot be in.
+      if (!PANELS[panelId].shapes.includes(kind)) continue;
       charts[panelId] = kind;
     }
     return charts;

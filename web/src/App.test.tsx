@@ -1,0 +1,151 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+/**
+ * The shape switch through the real dashboard: the choice has to reach
+ * localStorage, survive a remount, come back to the registry's default under
+ * "Reset view", and — the point of deriving both options from rows already in
+ * hand — never cause another fetch.
+ */
+const server = vi.hoisted(() => ({
+  bootstrap: vi.fn(),
+  health: vi.fn(),
+  recent: vi.fn(),
+  words: vi.fn(),
+}));
+
+vi.mock("./api/client", () => ({
+  Unauthorized: class Unauthorized extends Error {},
+  getBootstrap: server.bootstrap,
+  getHealth: server.health,
+  getRecent: server.recent,
+  getWords: server.words,
+}));
+
+import App from "./App";
+import { CHARTS_KEY } from "./filters/persist";
+import type { Payload } from "./api/types";
+
+const TYPES: [number, string, number][] = [
+  [0, "Default", 1000],
+  [1, "Reply", 500],
+  [2, "Call", 300],
+  [3, "Pin", 200],
+  [4, "Join", 150],
+  [5, "Boost", 100],
+  [6, "Thread", 80],
+  [7, "Poll", 60],
+  [8, "Stage", 40],
+  [9, "Guild", 30],
+  [10, "Recruit", 20],
+  [11, "Mystery", 10],
+];
+
+const payload = {
+  meta: {
+    total: 2490,
+    source_count: 2490,
+    stale: false,
+    can_admin: false,
+    timezone: "UTC",
+    computed_at: "2026-10-17T00:00:00Z",
+    authors: 1,
+    cells: 1,
+    heat_cells: 0,
+    active_days: 1,
+    firstLocal: "2024-01-01",
+    lastLocal: "2024-01-01",
+    stopwords: 0,
+    kept_words: 0,
+    payload_kb: 1,
+    payload_gzip_kb: 1,
+    types: TYPES,
+  },
+  authors: [{ id: "u1", name: "Ada", msgs: 2490 }],
+  days: ["2024-01-01"],
+  cells: [[0, 0, 2490, 100, 10, 5, 0]],
+  heat: [],
+  edges: [],
+  response: [],
+  editSpeed: [],
+  starters: [],
+  attachments: [["image/png", 40]],
+  words: [],
+  wordAuthors: {},
+  authorWordTotals: [],
+  authorDistinct: [],
+  identities: [],
+  linkDomains: [],
+  linkCells: [],
+  topLinks: [],
+  providers: [],
+  embedTypes: [["video", 10]],
+  linkStats: { msgs: 0, domains: 0, both: 0 },
+  emoji: [],
+  reactions: [],
+  types: TYPES,
+  tz: { name: "UTC", label: "UTC" },
+  channel_hint: "c1",
+} as unknown as Payload;
+
+function renderApp() {
+  return render(
+    <QueryClientProvider
+      client={new QueryClient({ defaultOptions: { queries: { retry: false, refetchOnWindowFocus: false } } })}
+    >
+      <App />
+    </QueryClientProvider>,
+  );
+}
+
+const storedCharts = () => JSON.parse(localStorage.getItem(CHARTS_KEY) ?? "null")?.charts;
+
+beforeEach(() => {
+  localStorage.clear();
+  server.bootstrap.mockReset().mockResolvedValue(payload);
+  server.health.mockReset().mockResolvedValue({ ok: true, checked_at: "", banner: null });
+  server.recent.mockReset().mockResolvedValue({ messages: [], truncated: false });
+  server.words.mockReset().mockResolvedValue({ word: "", total: 0, authors: [] });
+});
+
+describe("a chart shape through the dashboard", () => {
+  it("records the choice, and restores it on the next load", async () => {
+    const first = renderApp();
+    await userEvent.click(await screen.findByRole("button", { name: "Message types as bars" }));
+    expect(screen.getByRole("button", { name: "Message types as pie" })).toBeInTheDocument();
+    await waitFor(() => expect(storedCharts()).toEqual({ "message-types": "pie" }));
+
+    first.unmount();
+    renderApp();
+    expect(await screen.findByRole("button", { name: "Message types as pie" })).toBeInTheDocument();
+  });
+
+  it("returns every card to the shape its spec declares under Reset view", async () => {
+    localStorage.setItem(CHARTS_KEY, JSON.stringify({ version: 1, charts: { "message-types": "pie" } }));
+    renderApp();
+
+    // The saved shape is on screen before anything is cleared.
+    expect(await screen.findByRole("button", { name: "Message types as pie" })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Reset view" }));
+    await userEvent.click(screen.getByRole("button", { name: "Clear saved view" }));
+
+    expect(screen.getByRole("button", { name: "Message types as bars" })).toBeInTheDocument();
+    await waitFor(() => expect(storedCharts()).toEqual({}));
+  });
+
+  it("redraws from the rows already in hand, without asking the server again", async () => {
+    renderApp();
+    const toggle = await screen.findByRole("button", { name: "Message types as bars" });
+    await waitFor(() => expect(server.bootstrap).toHaveBeenCalledTimes(1));
+
+    await userEvent.click(toggle);
+
+    expect(screen.getByRole("button", { name: "Message types as pie" })).toBeInTheDocument();
+    // A shape is a way of drawing one payload, not a new question for the API.
+    expect(server.bootstrap).toHaveBeenCalledTimes(1);
+    expect(server.recent).toHaveBeenCalledTimes(1);
+    expect(server.health).toHaveBeenCalledTimes(1);
+  });
+});
