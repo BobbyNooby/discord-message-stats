@@ -86,15 +86,23 @@ describe("scope storage", () => {
 
 describe("chart storage", () => {
   it("round-trips the shapes a reader chose", () => {
-    saveCharts({ "embed-providers": "pie" });
-    expect(loadCharts()).toEqual({ "embed-providers": "pie" });
+    saveCharts({ "message-types": "pie" });
+    expect(loadCharts()).toEqual({ "message-types": "pie" });
+  });
+
+  it("drops a shape the card no longer offers, rather than drawing one it cannot", () => {
+    localStorage.setItem(
+      CHARTS_KEY,
+      JSON.stringify({ version: 1, charts: { "message-types": "pie", "emoji-in-text": "pie" } }),
+    );
+    expect(loadCharts()).toEqual({ "message-types": "pie" });
   });
 
   it("ignores a version it does not know, rather than half-reading it", () => {
-    localStorage.setItem(CHARTS_KEY, JSON.stringify({ version: 9, charts: { "embed-providers": "pie" } }));
+    localStorage.setItem(CHARTS_KEY, JSON.stringify({ version: 9, charts: { "message-types": "pie" } }));
     expect(loadCharts()).toEqual({});
 
-    localStorage.setItem(CHARTS_KEY, JSON.stringify({ version: 1, charts: { "embed-providers": "donut" } }));
+    localStorage.setItem(CHARTS_KEY, JSON.stringify({ version: 1, charts: { "message-types": "donut" } }));
     expect(loadCharts()).toEqual({});
   });
 });

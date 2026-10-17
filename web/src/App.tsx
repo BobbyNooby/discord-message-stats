@@ -18,7 +18,7 @@ import {
   type Charts,
 } from "./filters/persist";
 import { PanelScopeProvider } from "./panels/panelScope";
-import { PANELS, type PanelId } from "./panels/registry";
+import { PANELS, specFor, type ChartKind, type PanelId } from "./panels/registry";
 import { Calendar } from "./panels/Calendar";
 import { LinksSection } from "./panels/LinksSection";
 import { MediaSection } from "./panels/MediaSection";
@@ -100,7 +100,18 @@ function DashboardBody({
     };
   });
   const [charts, setCharts] = useState<Charts>(() => loadCharts());
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- Reset view writes this back (Task 7)
+
+  // One card's shape, recorded beside the others. Choosing the shape the spec
+  // already defaults to stores nothing, so "Reset view" reports only the cards
+  // the reader has really changed.
+  const setShape = useCallback((panelId: PanelId, shape: ChartKind) => {
+    setCharts((previous) => {
+      const next = { ...previous };
+      if (shape === specFor(panelId).defaultShape) delete next[panelId];
+      else next[panelId] = shape;
+      return next;
+    });
+  }, []);
 
   useEffect(() => {
     for (const [panelId, patch] of Object.entries(saved.scopes)) {
@@ -163,7 +174,13 @@ function DashboardBody({
       {/* Six sections in the spec's order; the calendar sits inside Time &
           rhythm where §11.1 puts it. Every card inside can hand its id to the
           sidebar, which is how a card's "…" swaps what the sidebar edits. */}
-      <PanelScopeProvider filters={filters} scopes={scopes} onOpenScope={openScope}>
+      <PanelScopeProvider
+        filters={filters}
+        scopes={scopes}
+        onOpenScope={openScope}
+        charts={charts}
+        onShapeChange={setShape}
+      >
         <OverviewSection payload={payload} filters={filters} />
         <TimeSection payload={payload} filters={filters} calendar={<Calendar payload={payload} filters={filters} />} />
         <PeopleSection payload={payload} filters={filters} />
