@@ -32,8 +32,10 @@ def bootstrap(conn: sqlite3.Connection, cfg: Config) -> dict[str, Any]:
     day_list = query.days(conn, channel)
     day_index = {day: index for index, day in enumerate(day_list)}
 
-    author_rows = query.authors(conn, channel)
-    author_index = {row["id"]: index for index, row in enumerate(author_rows)}
+    author_rows = query.authors(conn, channel, cfg)
+    # Every raw account maps to its canonical row, so a rollup built before a
+    # merge still lands its cells on the person they were merged into.
+    author_index = query.author_index(author_rows)
 
     cells = query.activity_cells(conn, channel, day_index, author_index)
     heat = query.heat_cells(conn, channel, author_index)
@@ -42,10 +44,7 @@ def bootstrap(conn: sqlite3.Connection, cfg: Config) -> dict[str, Any]:
     by_word: dict[str, list[list[int]]] = {}
     author_totals = [0] * len(author_rows)
     author_distinct = [0] * len(author_rows)
-    for word, _uses, author_id, uses in query.word_rows(conn, channel):
-        index = author_index.get(author_id)
-        if index is None:
-            continue
+    for (word, index), uses in query.word_author_uses(conn, channel, author_index).items():
         author_totals[index] += uses
         author_distinct[index] += 1
         if word in indexed_words:
