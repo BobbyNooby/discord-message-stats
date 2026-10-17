@@ -9,7 +9,7 @@
  */
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import {
   createJob,
@@ -19,7 +19,17 @@ import {
   type AdminStatus,
   type ConfigPatch,
   type JobKind,
+  type RollupFamily,
 } from "./api";
+import {
+  FreshnessLine,
+  LiveLog,
+  NowLine,
+  formatSeconds,
+  mergeFamilies,
+  type FamilyProgress,
+} from "./ProgressView";
+import { useProgress } from "./useProgress";
 import {
   Def,
   DefList,
@@ -55,6 +65,13 @@ function tokenTone(status: string): "ok" | "warn" | "error" {
   return "warn";
 }
 
+function stateTone(state: FamilyProgress["state"]): string {
+  if (state === "done") return "text-emerald-300";
+  if (state === "running") return "text-amber-300";
+  if (state === "failed") return "text-red-300";
+  return "text-[var(--color-muted)]";
+}
+
 /** One sentence for what the provenance row says about a family. */
 export function changeSummary(family: {
   built_from_rows: number | null;
@@ -75,6 +92,14 @@ export function changeSummary(family: {
   return parts.join(" · ");
 }
 
+/** What the provenance row says about a family, from whichever source has it. */
+export function provenance(row: FamilyProgress, rollup: RollupFamily | undefined): string {
+  if (rollup) return changeSummary(rollup);
+  if (row.computed_at === null) return "never built";
+  if (row.added_since) return `${row.added_since.toLocaleString()} added since`;
+  return "nothing added since";
+}
+
 export function RefreshCache({
   status,
   stale,
@@ -90,6 +115,7 @@ export function RefreshCache({
 }) {
   const queryClient = useQueryClient();
   const jobs = useQuery({ queryKey: ["admin", "jobs"], queryFn: () => listJobs(50) });
+  const feed = useProgress();
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -105,7 +131,12 @@ export function RefreshCache({
   const totalRows = families.reduce((total, [, family]) => total + family.rows, 0);
   const staleFamilies = families.filter(([, family]) => family.stale).length;
   const worker = status.worker;
-  const offline = workerOffline(worker.last_seen_at);
+  // A rebuild blocks the worker's own loop, so its heartbeat goes stale while it
+  // is demonstrably alive. A live run is the freshest proof the worker exists.
+  const offline = workerOffline(worker.last_seen_at) && !feed.data?.running;
+  // One row per family: the live run's state and the last build's provenance.
+  const familyRows = mergeFamilies(feed.data?.families ?? null, status.rollups);
+  const runningSeconds = feed.data?.running ? (feed.data.totals.seconds ?? null) : null;
 
   useEffect(() => {
     if (!config) return;
@@ -113,9 +144,26 @@ export function RefreshCache({
     setCronHours(String(config.effective.cron_hours));
   }, [config]);
 
+  // One refetch when a run ends: /status carries the new rollup rows and the
+  // worker heartbeat written as the job finished, and the job that was just
+  // "queued" in the history below is now done.
+  const wasRunning = useRef(false);
+  useEffect(() => {
+    const running = feed.data?.running ?? false;
+    if (wasRunning.current && !running) {
+      void queryClient.invalidateQueries({ queryKey: ["admin", "status"] });
+      void queryClient.invalidateQueries({ queryKey: ["admin", "jobs"] });
+    }
+    wasRunning.current = running;
+  }, [feed.data?.running, queryClient]);
+
   async function run() {
     setBusy(true);
     setError(null);
+    // The worker only picks a queued job up on its next pass, so poll from the
+    // click: waiting for the stale flag would only start the feed once the
+    // rebuild is already over.
+    feed.kick();
     try {
       const job = await recalculate();
       onDirty();
@@ -184,6 +232,17 @@ export function RefreshCache({
             ? ` — ${staleFamilies} of ${families.length} families need a rebuild`
             : " — every family matches the current configuration"}
         </Notice>
+        {feed.data ? (
+          <FreshnessLine
+            running={feed.data.running}
+            startedAt={feed.data.started_at}
+            elapsedSeconds={runningSeconds}
+            last={feed.data.last}
+            freshness={feed.data.freshness}
+          />
+        ) : (
+          <Notice tone="info">Checking whether the cache is current…</Notice>
+        )}
         <DefList>
           <Def label="Configuration hash">{status.config_hash.slice(0, 12)}</Def>
           <Def label="Status as of">{formatStamp(status.checked_at)}</Def>
@@ -196,8 +255,8 @@ export function RefreshCache({
         <div className="overflow-x-auto rounded border border-[var(--color-line)] bg-[var(--color-surface)] p-3">
           <table className="w-full text-left text-xs">
             <caption className="sr-only">
-              Every rollup family with its row count, when it was computed, what it was built from,
-              and whether it is current or stale
+              Every rollup family with what the running rebuild is doing to it, its row count, when
+              it was computed, what it was built from, and whether it is current or stale
             </caption>
             <thead>
               <tr className="text-[11px] uppercase tracking-wider text-[var(--color-muted)]">
@@ -205,7 +264,13 @@ export function RefreshCache({
                   Family
                 </th>
                 <th scope="col" className="py-1 pr-3">
+                  State
+                </th>
+                <th scope="col" className="py-1 pr-3">
                   Rows
+                </th>
+                <th scope="col" className="py-1 pr-3">
+                  Took
                 </th>
                 <th scope="col" className="py-1 pr-3">
                   Built
@@ -219,16 +284,24 @@ export function RefreshCache({
               </tr>
             </thead>
             <tbody>
-              {families.map(([family, row]) => (
-                <tr key={family} className="border-t border-[var(--color-line)]/50">
+              {familyRows.map((row) => (
+                <tr key={row.family} className="border-t border-[var(--color-line)]/50">
                   <th scope="row" className="py-1 pr-3 text-left font-medium">
-                    {family}
+                    {row.family}
                   </th>
-                  <td className="py-1 pr-3 tabular-nums">{row.rows.toLocaleString()}</td>
+                  <td className={`py-1 pr-3 ${stateTone(row.state)}`}>{row.state ?? "—"}</td>
+                  <td className="py-1 pr-3 tabular-nums">
+                    {row.rows === null ? "—" : row.rows.toLocaleString()}
+                  </td>
+                  <td className="py-1 pr-3 tabular-nums text-[var(--color-muted)]">
+                    {row.seconds === null ? "—" : formatSeconds(row.seconds)}
+                  </td>
                   <td className="py-1 pr-3 whitespace-nowrap text-[var(--color-muted)]">
                     {formatStamp(row.computed_at)}
                   </td>
-                  <td className="py-1 pr-3 text-[var(--color-muted)]">{changeSummary(row)}</td>
+                  <td className="py-1 pr-3 text-[var(--color-muted)]">
+                    {provenance(row, status.rollups[row.family])}
+                  </td>
                   <td className={`py-1 ${row.stale ? "text-amber-300" : "text-emerald-300"}`}>
                     {row.stale ? "stale" : "current"}
                   </td>
@@ -240,8 +313,8 @@ export function RefreshCache({
 
         <div>
           <p className="text-xs text-[var(--color-muted)]">
-            A full rebuild measures a few seconds on the reference database and runs as a background
-            job. Needed after a timezone, merge, who-shows or ignore-list change.
+            A rebuild runs as a background job and takes as long as the message table is big — minutes
+            on a large database. Needed after a timezone, merge, who-shows or ignore-list change.
           </p>
           <button
             type="button"
@@ -254,6 +327,20 @@ export function RefreshCache({
         </div>
         {notice ? <Notice tone="ok">{notice}</Notice> : null}
         {error ? <Notice tone="error">{error}</Notice> : null}
+      </SubSection>
+
+      <SubSection id="refresh-progress" title="Rebuild progress">
+        <NowLine
+          running={feed.data?.running ?? false}
+          phase={feed.data?.phase ?? null}
+          startedAt={feed.data?.started_at ?? null}
+          elapsedSeconds={runningSeconds}
+          loading={feed.loading}
+        />
+        {feed.error ? (
+          <Notice tone="warn">Live progress unavailable: {feed.error.message}</Notice>
+        ) : null}
+        <LiveLog entries={feed.log} />
       </SubSection>
 
       <SubSection id="refresh-ingest" title="Fetch new messages">
