@@ -1,26 +1,23 @@
 /**
- * Identity merge (§11.6, §5.5): one card per merge, the canonical account with
- * its alts as removable chips, an "add alt" affordance, and the name-heuristic
- * suggestions with a Merge button.
+ * Identity merge (§11.6, §5.5): merge **any two accounts** the operator picks,
+ * choose which display name wins (or type one), and undo it. The name heuristic
+ * is a suggestion list beside that, never the only route.
  *
- * The heuristic only ever *suggests*: it produces false positives on short or
- * common handles, so a human presses Merge.
+ * Every action writes the whole merge set through `PUT /api/admin/identity` —
+ * the endpoint replaces, so an unmerge is the same call without the alt, and the
+ * response carries the state it replaced, which is what Undo writes back.
  *
- * Every one of those actions writes the whole merge set through
- * `PUT /api/admin/identity` — the endpoint replaces, so an unmerge is the same
- * call without the alt. A write that fails is shown and the list is put back to
- * what the server still has; a merge that merely looked applied would be worse
- * than no merge at all.
- *
- * The message box below is the one place the admin API returns message text
- * (§4.4) — it is here to check whether a suggested alt really is the same
- * person, and it is labelled as the exception rather than hidden.
+ * The chosen name is sent with the merge and pinned server-side (`renamed = 1`),
+ * so the next Discord rename or rebuild cannot quietly undo it. A failed write
+ * is shown and the list is put back to what the server still has; a merge that
+ * merely looked applied would be worse than no merge at all.
  */
 
 import { useEffect, useMemo, useState } from "react";
 
 import type { Author, Payload } from "../api/types";
 import { EmptyState } from "../components/Panel";
+import { RebuildRequired } from "./Rebuild";
 import { putIdentity, type MergeEntry } from "./api";
 import { Notice, SubSection } from "./shared";
 
@@ -35,10 +32,11 @@ function mergesFromPayload(payload: Payload | null): Merge[] {
 }
 
 /** The API stores the canonical account inside `accounts`; the cards do not. */
-function wireFrom(merges: Merge[]): MergeEntry[] {
+function wireFrom(merges: Merge[], pinned?: { canonical: string; name: string }): MergeEntry[] {
   return merges.map((merge) => ({
     canonical: merge.canonical,
     accounts: [merge.canonical, ...merge.members],
+    ...(pinned && pinned.canonical === merge.canonical ? { name: pinned.name } : {}),
   }));
 }
 
@@ -90,9 +88,15 @@ export function IdentityMerge({
 }) {
   const [merges, setMerges] = useState<Merge[]>(() => mergesFromPayload(payload));
   const [altFor, setAltFor] = useState<Record<string, string>>({});
+  const [pickA, setPickA] = useState("");
+  const [pickB, setPickB] = useState("");
+  const [nameChoice, setNameChoice] = useState<"a" | "b" | "custom" | null>(null);
+  const [customName, setCustomName] = useState("");
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [undoes, setUndoes] = useState<MergeEntry[] | null>(null);
+  const [applied, setApplied] = useState(false);
 
   useEffect(() => {
     setMerges(mergesFromPayload(payload));
@@ -116,6 +120,18 @@ export function IdentityMerge({
     }
     return map;
   }, [merges]);
+
+  /** The one person an account currently belongs to. */
+  const canonicalFor = (account: string) => mergedInto.get(account) ?? account;
+
+  /** Every raw account of the identity a canonical id names. */
+  const membersOf = (canonical: string): string[] => {
+    const found = merges.find((merge) => merge.canonical === canonical);
+    return found ? [found.canonical, ...found.members] : [canonical];
+  };
+
+  const messagesOf = (canonical: string) =>
+    identities.find((author) => author.id === canonical)?.msgs ?? 0;
 
   const suggestions = useMemo(() => {
     const found: { a: Author; b: Author }[] = [];
@@ -143,13 +159,26 @@ export function IdentityMerge({
     (account) => mergedInto.get(account) === undefined || mergedInto.get(account) === account,
   );
 
+  const identityA = pickA ? canonicalFor(pickA) : "";
+  const identityB = pickB ? canonicalFor(pickB) : "";
+  const alreadyOne = Boolean(identityA && identityA === identityB);
+  const heavier = messagesOf(identityA) >= messagesOf(identityB) ? identityA : identityB;
+  // Before the operator chooses, the busier account keeps its name — the same
+  // rule the old heuristic used, now only a default they can override.
+  const defaultChoice: "a" | "b" =
+    messagesOf(identityA) >= messagesOf(identityB) ? "a" : "b";
+  const choice = nameChoice ?? defaultChoice;
+  /** Which identity keeps its name: the operator's choice, or the busier one. */
+  const winner = choice === "a" ? identityA : choice === "b" ? identityB : heavier;
+  const winnerName = choice === "custom" ? customName.trim() : label(winner);
+
   /**
    * Writes the whole set, because the endpoint replaces rather than patches.
    * `next` is what the page will show if the call lands; `merges` itself is only
    * ever moved to what the server answered, so a failed call leaves the list
    * showing the server's last known state rather than a merge that is not there.
    */
-  async function persist(next: Merge[], message: string) {
+  async function persist(next: Merge[], message: string, pinned?: { canonical: string; name: string }) {
     setSaving(true);
     setNotice(null);
     setError(null);
@@ -157,15 +186,58 @@ export function IdentityMerge({
     // stale until a rebuild (§11.6).
     onDirty();
     try {
-      const written = await putIdentity(wireFrom(next));
+      const written = await putIdentity(wireFrom(next, pinned));
       if (written.cache_stale) onDirty();
       setMerges(mergesFromWire(written.merges));
-      setNotice(`${message} The cache is stale until you run Recalculate all.`);
+      setUndoes(written.previous.length ? written.previous : null);
+      setApplied(true);
+      setNotice(message);
     } catch (failure) {
       setError((failure as Error).message);
     } finally {
       setSaving(false);
     }
+  }
+
+  /** Puts the set back to what it was before the last write. */
+  async function undo() {
+    if (!undoes) return;
+    setSaving(true);
+    setNotice(null);
+    setError(null);
+    onDirty();
+    try {
+      const written = await putIdentity(undoes);
+      setUndoes(null);
+      setMerges(mergesFromWire(written.merges));
+      setNotice("Undone — the merge set is back to what it was before that change.");
+    } catch (failure) {
+      setError((failure as Error).message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function mergeSelected() {
+    if (!pickA || !pickB || pickA === pickB) return;
+    if (alreadyOne) {
+      setError("those two accounts are already the same person");
+      return;
+    }
+    const members = new Set<string>([...membersOf(identityA), ...membersOf(identityB)]);
+    members.delete(winner);
+    const next = [
+      ...merges.filter((merge) => merge.canonical !== identityA && merge.canonical !== identityB),
+      { canonical: winner, members: [...members].sort() },
+    ];
+    setPickA("");
+    setPickB("");
+    setCustomName("");
+    void persist(
+      next,
+      `Merged ${members.size + 1} accounts into ${winnerName}.`,
+      { canonical: winner, name: winnerName },
+    );
   }
 
   function addAlt(canonical: string) {
@@ -206,7 +278,10 @@ export function IdentityMerge({
       (merge) => merge.canonical !== keep.id && merge.canonical !== fold.id,
     );
     next.push({ canonical: keep.id, members: [...members].sort() });
-    void persist(next, `Merged ${fold.name} into ${keep.name}.`);
+    void persist(next, `Merged ${fold.name} into ${keep.name}.`, {
+      canonical: keep.id,
+      name: keep.name,
+    });
   }
 
   if (!payload) {
@@ -227,8 +302,12 @@ export function IdentityMerge({
           once the API is reachable.
         </Notice>
       ) : null}
-      {notice ? (
-        <Notice tone="ok">{notice}</Notice>
+      {notice ? <Notice tone="ok">{notice}</Notice> : null}
+      {applied ? (
+        <RebuildRequired
+          what="A rebuild is required to apply the merge."
+          onDirty={onDirty}
+        />
       ) : null}
 
       <div className="space-y-3">
@@ -300,12 +379,151 @@ export function IdentityMerge({
       </div>
 
       <section
+        aria-labelledby="admin-pick-heading"
+        className="rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] p-4"
+      >
+        <h4 id="admin-pick-heading" className="text-xs font-semibold">
+          Merge two accounts
+        </h4>
+        <p className="mt-1 text-xs text-[var(--color-muted)]">
+          Pick any two accounts — the suggestions below are only suggestions. The name you choose is
+          pinned to the merged person, so a later Discord rename or rebuild will not change it.
+        </p>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          <div>
+            <label htmlFor="admin-merge-a" className="block text-[11px] text-[var(--color-muted)]">
+              First account
+            </label>
+            <select
+              id="admin-merge-a"
+              value={pickA}
+              onChange={(event) => setPickA(event.target.value)}
+              className="mt-1 w-full rounded border border-[var(--color-line)] bg-[var(--color-ink)] px-2 py-1.5 text-xs"
+            >
+              <option value="">Choose an account…</option>
+              {everyAccount.map((account) => (
+                <option key={account} value={account}>
+                  {chipLabel(account)} ({account})
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label htmlFor="admin-merge-b" className="block text-[11px] text-[var(--color-muted)]">
+              Second account
+            </label>
+            <select
+              id="admin-merge-b"
+              value={pickB}
+              onChange={(event) => setPickB(event.target.value)}
+              className="mt-1 w-full rounded border border-[var(--color-line)] bg-[var(--color-ink)] px-2 py-1.5 text-xs"
+            >
+              <option value="">Choose an account…</option>
+              {everyAccount
+                .filter((account) => account !== pickA)
+                .map((account) => (
+                  <option key={account} value={account}>
+                    {chipLabel(account)} ({account})
+                  </option>
+                ))}
+            </select>
+          </div>
+        </div>
+
+        {pickA && pickB ? (
+          alreadyOne ? (
+            <div className="mt-3">
+              <Notice tone="warn">
+                {chipLabel(pickA)} and {chipLabel(pickB)} are already the same person.
+              </Notice>
+            </div>
+          ) : (
+            <fieldset className="mt-3">
+              <legend className="text-[11px] text-[var(--color-muted)]">
+                Which display name wins?
+              </legend>
+              <div className="mt-2 space-y-2">
+                {(
+                  [
+                    ["a", identityA],
+                    ["b", identityB],
+                  ] as const
+                ).map(([key, canonical]) => (
+                  <div key={key} className="flex items-center gap-2">
+                    <input
+                      id={`admin-merge-name-${key}`}
+                      type="radio"
+                      name="admin-merge-name"
+                      checked={choice === key}
+                      onChange={() => setNameChoice(key)}
+                      className="h-4 w-4"
+                    />
+                    <label htmlFor={`admin-merge-name-${key}`} className="text-xs">
+                      Keep the name <strong>{label(canonical)}</strong>{" "}
+                      <span className="text-[var(--color-muted)]">
+                        ({canonical} · {messagesOf(canonical).toLocaleString()} messages)
+                      </span>
+                    </label>
+                  </div>
+                ))}
+                <div className="flex items-center gap-2">
+                  <input
+                    id="admin-merge-name-custom"
+                    type="radio"
+                    name="admin-merge-name"
+                    checked={nameChoice === "custom"}
+                    onChange={() => setNameChoice("custom")}
+                    className="h-4 w-4"
+                  />
+                  <label htmlFor="admin-merge-name-custom" className="text-xs">
+                    Type a name
+                  </label>
+                </div>
+                <input
+                  id="admin-merge-name"
+                  aria-label="Or type a name"
+                  value={customName}
+                  onChange={(event) => {
+                    setCustomName(event.target.value);
+                    setNameChoice("custom");
+                  }}
+                  placeholder="A name for the merged person"
+                  className="ml-6 w-full max-w-xs rounded border border-[var(--color-line)] bg-[var(--color-ink)] px-2 py-1.5 text-xs"
+                />
+              </div>
+            </fieldset>
+          )
+        ) : null}
+
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={mergeSelected}
+            disabled={saving || !pickA || !pickB || pickA === pickB || alreadyOne}
+            className="rounded border border-[var(--color-line)] px-3 py-1.5 text-xs disabled:opacity-50"
+          >
+            Merge these accounts
+          </button>
+          {undoes ? (
+            <button
+              type="button"
+              onClick={undo}
+              disabled={saving}
+              className="rounded border border-[var(--color-line)] px-3 py-1.5 text-xs disabled:opacity-50"
+            >
+              Undo the last change
+            </button>
+          ) : null}
+        </div>
+      </section>
+
+      <section
         aria-labelledby="admin-suggestions-heading"
         className="rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] p-4"
       >
-        <h3 id="admin-suggestions-heading" className="text-sm font-semibold">
+        <h4 id="admin-suggestions-heading" className="text-xs font-semibold">
           Suggestions from the name heuristic
-        </h3>
+        </h4>
         <p className="mt-1 text-xs text-[var(--color-muted)]">
           Name containment (4+ characters) or a shared run of 5+ covering most of the shorter name
           (§5.5). Never merged automatically — short and common handles produce false positives.
