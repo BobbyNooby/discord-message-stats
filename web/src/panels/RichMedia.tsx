@@ -21,7 +21,7 @@ import { MediaView } from "./MediaView";
  * reference data — and counting it per author hides that. `payload.topMedia` is
  * one row per URL, so this panel shows the thing itself.
  *
- * Ten items in the card, with "Show top 50" opening the full ranking
+ * Ten items in the card, with "Browse all <total>" opening the full ranking
  * (§UI/UX rule 5): the card is a taste, the view is the answer, and the view's
  * provider filter asks the server rather than filtering a dozen payload rows.
  * The payload still ships `mediaByProvider`, which nothing reads any more — it

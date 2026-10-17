@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
- * The rich-media card and its "Show top 50" view.
+ * The rich-media card and its "Browse all" view.
  *
  * The card is the payload's own top ranking; the view asks the server, because
  * the payload only ships a dozen rows per provider (`/api/media` has the full
