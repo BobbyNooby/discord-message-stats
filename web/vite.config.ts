@@ -12,6 +12,9 @@ export default defineConfig({
   },
   build: { outDir: "dist", sourcemap: true },
   test: {
+    // Parallel agent runs share this machine; the default 5s turned real
+    // passes into timeouts while four of them ran together.
+    testTimeout: 15000,
     environment: "jsdom",
     globals: true,
     setupFiles: ["./src/test-setup.ts"],
