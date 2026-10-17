@@ -37,6 +37,27 @@ describe("<HealthBanner>", () => {
     expect(screen.getByRole("status")).toHaveTextContent(/as of the last rebuild/);
   });
 
+  it("says the data was never ingested rather than an unknown age", () => {
+    render(<HealthBanner banner="stale" lastIngestAt={null} />);
+    expect(screen.getByRole("status")).toHaveTextContent(/never been ingested/i);
+  });
+
+  it("keeps unknown age for a stamp it cannot read", () => {
+    render(<HealthBanner banner="stale" lastIngestAt="not-a-date" />);
+    expect(screen.getByRole("status")).toHaveTextContent(/unknown age/i);
+  });
+
+  it("states the ingest age and the rebuild when both are true", () => {
+    // The two facts have different fixes, so neither may hide the other.
+    render(
+      <HealthBanner banner="stale" lastIngestAt={daysAgo(5)} stale staleAt="2026-10-15T20:00:00Z" />,
+    );
+    const banner = screen.getByRole("status");
+    expect(banner).toHaveTextContent(/5 days old/);
+    expect(banner).toHaveTextContent(/configuration changed since the last rebuild/);
+    expect(banner).toHaveTextContent(/discord-scraper rollups rebuild/);
+  });
+
   it("a dead token outranks stale data", () => {
     render(<HealthBanner banner="token_dead" stale lastIngestAt={daysAgo(30)} />);
     expect(screen.getByRole("alert")).toBeInTheDocument();

@@ -90,6 +90,7 @@ function Dashboard() {
   // "off" while the charts still drew everybody.
   return (
     <DashboardBody payload={payload} banner={health.data?.banner ?? null}
+                   lastIngestAt={health.data?.last_ingest_at ?? null}
                    recent={recent.data} />
   );
 }
@@ -97,10 +98,13 @@ function Dashboard() {
 function DashboardBody({
   payload,
   banner,
+  lastIngestAt,
   recent,
 }: {
   payload: NonNullable<ReturnType<typeof useBootstrap>["data"]>;
   banner: "stale" | "token_dead" | null;
+  /** The worker's own stamp; null means it has never ingested anything. */
+  lastIngestAt?: string | null;
   recent?: { messages: { author: string; created_at: string; body: string }[]; truncated?: boolean };
 }) {
   const [{ filters, scopes, mode }, dispatch] = useReducer(
@@ -201,6 +205,7 @@ function DashboardBody({
     >
       <HealthBanner
         banner={banner}
+        lastIngestAt={lastIngestAt}
         stale={payload.meta.stale}
         staleAt={payload.meta.computed_at}
         timeFormat={timeFormatOf(payload.meta)}

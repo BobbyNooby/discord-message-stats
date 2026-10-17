@@ -69,3 +69,22 @@ def test_health_still_reports_liveness(client):
     body = client.get("/api/health").json()
     assert body["ok"] is True
     assert "checked_at" in body
+
+
+def test_health_carries_the_ingest_stamp_the_banner_needs(client, conn):
+    """The banner cannot say how old the data is unless health hands it the stamp."""
+    from discord_scraper.worker.state import set_worker_state
+
+    stamp = _stamp(hours=2)
+    set_worker_state(conn, "last_ingest_at", stamp)
+    assert client.get("/api/health").json()["last_ingest_at"] == stamp
+
+
+def test_health_reports_a_null_stamp_when_nothing_was_ever_ingested(client, conn):
+    """Never ingested is a fact, not a missing field — the banner says so."""
+    from discord_scraper.worker.state import set_worker_state
+
+    set_worker_state(conn, "token_status", "ok")
+    body = client.get("/api/health").json()
+    assert body["last_ingest_at"] is None
+    assert body["banner"] == "stale"

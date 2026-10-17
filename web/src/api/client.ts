@@ -45,7 +45,13 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 export const getBootstrap = () => request<import("./types").Payload>("/api/bootstrap");
 
 export const getHealth = () =>
-  request<{ ok: boolean; checked_at: string; banner: "stale" | "token_dead" | null }>("/api/health");
+  request<{
+    ok: boolean;
+    checked_at: string;
+    banner: "stale" | "token_dead" | null;
+    /** Null means the worker has never recorded an ingest — not a missing field. */
+    last_ingest_at: string | null;
+  }>("/api/health");
 
 export const getRecent = () =>
   request<{

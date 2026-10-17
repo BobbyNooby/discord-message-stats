@@ -267,7 +267,9 @@ def create_app(
         """Liveness plus the banner state (spec §11.7).
 
         Read from the database on every request, never cached in the process: a
-        restart must not reset the banner to healthy.
+        restart must not reset the banner to healthy. The raw ``last_ingest_at``
+        travels with the banner because "never ingested" and "ingested 30 days
+        ago" are different sentences, and only the client knows which to print.
         """
         from discord_scraper.worker.state import banner_for
 
@@ -280,7 +282,12 @@ def create_app(
                 stored = dict(conn.execute("SELECT key, value FROM worker_state"))
         finally:
             conn.close()
-        return {"ok": True, "checked_at": _now(), "banner": banner_for(stored)}
+        return {
+            "ok": True,
+            "checked_at": _now(),
+            "banner": banner_for(stored),
+            "last_ingest_at": stored.get("last_ingest_at"),
+        }
 
     @app.get("/auth/login")
     def login(request: Request):
