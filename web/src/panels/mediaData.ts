@@ -6,8 +6,8 @@
  * two doughnuts and the gauges read the filtered activity cells; the four
  * panels backed by `rollup_type`, `rollup_attachment`, `rollup_emoji` and
  * `rollup_reaction` have no date dimension and read the payload's global
- * arrays, which is why they carry a "global only" badge under a time filter
- * (§11.1, §11.2).
+ * arrays, so a time filter cannot move them — the Media section note says so
+ * once (§11.1, §11.2).
  */
 import type { EChartsOption } from "echarts";
 
@@ -157,8 +157,8 @@ export function mediaCells(
 /**
  * The panels with no date dimension still honour the author switch, because
  * showing global bars while every chip is off would be the silent-filter
- * failure §11.2 warns about. A time filter never empties them: they say
- * "global only" and keep their numbers.
+ * failure §11.2 warns about. A time filter never empties them: they keep their
+ * numbers, and the section note names them once.
  */
 export function globalEmpty(payload: Payload, filters: Filters): string | null {
   if (!payload.cells?.length) return EMPTY_DATABASE;
