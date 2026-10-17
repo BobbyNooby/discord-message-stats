@@ -52,6 +52,12 @@ export type RollupFamily = {
   rows: number;
   stale: boolean;
   computed_at: string | null;
+  /** What the build read, so "what changed since" is a subtraction, not a guess. */
+  built_from_rows: number | null;
+  built_from_newest: string | null;
+  built_in_timezone: string | null;
+  added_since: number | null;
+  config_changed: boolean;
 };
 
 export type WorkerView = {
@@ -73,7 +79,7 @@ export type AdminStatus = {
   cache_stale: boolean;
   database: { size_bytes: number; path: string };
   /** The id, never the token: the worker keeps the token in its environment. */
-  admin: { discord_id: string };
+  admin: { discord_id: string; known: boolean | null };
   config_hash: string;
   rollups: Record<string, RollupFamily>;
   worker: WorkerView;
@@ -83,10 +89,14 @@ export type AdminStatus = {
 };
 
 /** One merge as the API stores it: the canonical account is inside `accounts`. */
-export type MergeEntry = { canonical: string; accounts: string[] };
+export type MergeEntry = { canonical: string; accounts: string[]; name?: string };
 
-/** Every write answers with the same two things (§11.6). */
-export type MergeWrite = { merges: MergeEntry[]; cache_stale: boolean };
+/**
+ * Every write answers with the same two things (§11.6), and the identity write
+ * additionally answers with the state it replaced — that is what Undo writes
+ * back, since the endpoint replaces rather than patches.
+ */
+export type MergeWrite = { merges: MergeEntry[]; cache_stale: boolean; previous: MergeEntry[] };
 
 export type InclusionWrite = { included: Record<string, boolean>; cache_stale: boolean };
 
@@ -119,6 +129,13 @@ export type UploadPreview = {
   first: string | null;
   last: string | null;
   size_bytes: number;
+  channel_id: string;
+  timezone: string;
+  timezone_source: "database" | "config";
+  /** The dry run: rows the swap would bring, and rows it would take away. */
+  added: number | null;
+  lost: number | null;
+  disk: { free_bytes: number; required_bytes: number };
   replaces: UploadSide;
 };
 
@@ -126,8 +143,17 @@ export type UploadCommit = {
   rows: number;
   first: string | null;
   last: string | null;
-  backup: string;
+  /** Null only when there was no database to replace; the API always keeps one. */
+  backup: string | null;
   job: { id: number; channel_id: string; kind: string; status: string };
+};
+
+/** The zones the picker may offer, and the one in force right now. */
+export type TimezoneList = {
+  zones: string[];
+  configured: string;
+  effective: string;
+  auto_zone: string;
 };
 
 export type SearchResults = {
@@ -189,13 +215,17 @@ export const getStatus = () => request<AdminStatus>("/api/admin/status");
 
 export const getConfig = () => request<AdminConfig>("/api/admin/config");
 
+/** The real zones, and what "auto" resolves to on this host. */
+export const getTimezones = () => request<TimezoneList>("/api/admin/timezones");
+
 export const putConfig = (patch: ConfigPatch) =>
   request<AdminConfig>("/api/admin/config", json("PUT", patch));
 
 /**
  * Replaces the channel's merges outright: adding an alt and dropping one are
  * the same call, and `{ merges: [] }` unmerges everything. A duplicate account
- * inside one merge is a 400 from the server.
+ * inside one merge is a 400 from the server. A merge's `name` pins the display
+ * name that wins; the response's `previous` is what Undo writes back.
  */
 export const putIdentity = (merges: MergeEntry[]) =>
   request<MergeWrite>("/api/admin/identity", json("PUT", { merges }));

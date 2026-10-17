@@ -1,9 +1,11 @@
 /**
- * Data source (§11.6): what the database holds, the §10.6 upload flow, and the
- * channel/timezone pickers.
+ * "Replace the database" (§10.6): what the database holds, the upload flow, and
+ * the channel/timezone the rollups are keyed on.
  *
  * The upload is deliberately two steps — stage, then confirm — because the
- * operator has to see what they are replacing before anything is swapped.
+ * operator has to see what they are replacing before anything is swapped. The
+ * stage step is the dry run: row count, channel, zone, rows added, rows that
+ * would be lost, and the free disk the swap needs.
  */
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
@@ -20,22 +22,20 @@ import {
   type ConfigPatch,
   type UploadPreview,
 } from "./api";
-import { Def, DefList, Notice, SaveBar, Section, formatBytes, formatDay, formatStamp, type SaveMode } from "./shared";
+import {
+  Def,
+  DefList,
+  Notice,
+  SaveBar,
+  Section,
+  SubSection,
+  formatBytes,
+  formatDay,
+  formatStamp,
+  type SaveMode,
+} from "./shared";
 
-/** A short list for the datalist; the input accepts any IANA name. */
-const COMMON_ZONES = [
-  "UTC",
-  "Asia/Kuala_Lumpur",
-  "Asia/Singapore",
-  "Asia/Tokyo",
-  "Australia/Sydney",
-  "Europe/London",
-  "Europe/Berlin",
-  "America/New_York",
-  "America/Los_Angeles",
-];
-
-export function DataSource({
+export function ReplaceDatabase({
   status,
   config,
   payload,
@@ -122,7 +122,8 @@ export function DataSource({
       if (fileInput.current) fileInput.current.value = "";
       setUploadNotice(
         `Database replaced with ${done.rows} messages (${formatDay(done.first)} → ${formatDay(done.last)}). ` +
-          `The previous file is kept as ${done.backup}. Rebuild queued as job #${done.job.id}.`,
+          (done.backup ? `The previous file is kept as ${done.backup}. ` : "") +
+          `Rebuild queued as job #${done.job.id}.`,
       );
     } catch (error) {
       setUploadError((error as Error).message);
@@ -146,7 +147,7 @@ export function DataSource({
     : null;
 
   return (
-    <Section id="data-source" title="Data source">
+    <Section id="replace-database" title="Replace the database">
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
         <StatCard label="Messages" value={payload ? payload.meta.total.toLocaleString() : "—"} />
         <StatCard label="Identities" value={payload ? String(payload.authors.length) : "—"} />
@@ -162,21 +163,14 @@ export function DataSource({
           value={formatBytes(status.database.size_bytes)}
           sub={status.database.path}
         />
-        
       </div>
 
-      <section
-        aria-labelledby="admin-upload-heading"
-        className="rounded-lg border border-dashed border-[var(--color-line)] bg-[var(--color-surface)] p-4"
-      >
-        <h3 id="admin-upload-heading" className="text-sm font-semibold">
-          Replace the database
-        </h3>
-        <p className="mt-1 text-xs text-[var(--color-muted)]">
+      <SubSection id="admin-upload" title="Upload a database">
+        <p className="text-xs text-[var(--color-muted)]">
           A <code>messages.db</code> built elsewhere. It is integrity-checked and described before
           anything is swapped in; the current file survives as <code>.bak</code>.
         </p>
-        <form className="mt-3 space-y-2" onSubmit={stage}>
+        <form className="space-y-2" onSubmit={stage}>
           <label htmlFor="admin-upload-file" className="block text-xs font-medium">
             Database file
           </label>
@@ -199,26 +193,20 @@ export function DataSource({
             disabled={uploading || !file}
             className="rounded border border-[var(--color-line)] px-3 py-1.5 text-xs disabled:opacity-50"
           >
-            {uploading ? "Checking…" : "Upload and preview"}
+            {uploading ? "Checking…" : "Upload and dry-run"}
           </button>
         </form>
 
         {jobRunning ? (
-          <div className="mt-3">
-            <Notice tone="warn">
-              A job is running — wait for the running job to finish, then upload again. An upload
-              replaces a file the worker may be reading.
-            </Notice>
-          </div>
+          <Notice tone="warn">
+            A job is running — wait for the running job to finish, then upload again. An upload
+            replaces a file the worker may be reading.
+          </Notice>
         ) : null}
-        {uploadError ? (
-          <div className="mt-3">
-            <Notice tone="error">{uploadError}</Notice>
-          </div>
-        ) : null}
+        {uploadError ? <Notice tone="error">{uploadError}</Notice> : null}
 
         {preview ? (
-          <div className="mt-3 space-y-3 rounded border border-[var(--color-line)] bg-[var(--color-surface-2)] p-3">
+          <div className="space-y-3 rounded border border-[var(--color-line)] bg-[var(--color-surface-2)] p-3">
             <h4 className="text-xs font-semibold uppercase tracking-wider text-[var(--color-muted)]">
               Nothing has been replaced yet
             </h4>
@@ -229,6 +217,11 @@ export function DataSource({
                   {formatDay(preview.first)} → {formatDay(preview.last)}
                 </Def>
                 <Def label="Uploaded size">{formatBytes(preview.size_bytes)}</Def>
+                <Def label="Channel">{preview.channel_id}</Def>
+                <Def label="Timezone">
+                  {preview.timezone}
+                  {preview.timezone_source === "config" ? " (from the server)" : " (from the file)"}
+                </Def>
               </DefList>
               <DefList>
                 <Def label="Current rows">{preview.replaces.rows.toLocaleString()}</Def>
@@ -236,6 +229,14 @@ export function DataSource({
                   {formatDay(preview.replaces.first)} → {formatDay(preview.replaces.last)}
                 </Def>
                 <Def label="Current size">{formatBytes(preview.replaces.size_bytes)}</Def>
+                <Def label="Rows added">{preview.added === null ? "unknown" : preview.added.toLocaleString()}</Def>
+                <Def label="Rows that would be lost">
+                  {preview.lost === null ? "unknown" : preview.lost.toLocaleString()}
+                </Def>
+                <Def label="Free disk">
+                  {formatBytes(preview.disk.free_bytes)} free · {formatBytes(preview.disk.required_bytes)}{" "}
+                  needed
+                </Def>
               </DefList>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -256,27 +257,21 @@ export function DataSource({
                 Discard this upload
               </button>
             </div>
+            <p className="text-[11px] text-[var(--color-muted)]">
+              Confirming backs the current file up first, prepares the uploaded one, and swaps it in
+              with a single rename. If any step fails, nothing is replaced.
+            </p>
           </div>
         ) : null}
-        {uploadNotice ? (
-          <div className="mt-3">
-            <Notice tone="ok">{uploadNotice}</Notice>
-          </div>
-        ) : null}
-      </section>
+        {uploadNotice ? <Notice tone="ok">{uploadNotice}</Notice> : null}
+      </SubSection>
 
-      <section
-        aria-labelledby="admin-scope-heading"
-        className="rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] p-4"
-      >
-        <h3 id="admin-scope-heading" className="text-sm font-semibold">
-          Channel and timezone
-        </h3>
-        <p className="mt-1 text-xs text-[var(--color-muted)]">
+      <SubSection id="admin-scope" title="Channel and timezone">
+        <p className="text-xs text-[var(--color-muted)]">
           Both are overrides; the effective values are what the rollups are keyed on. A timezone
           change moves messages between calendar days, so it needs a rebuild.
         </p>
-        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-3 sm:grid-cols-2">
           <div>
             <label htmlFor="admin-channel" className="block text-xs font-medium">
               Channel ID
@@ -294,40 +289,20 @@ export function DataSource({
             </label>
             <input
               id="admin-timezone"
-              list="admin-timezones"
               value={timezone}
               onChange={(event) => setTimezone(event.target.value)}
               className="mt-1 w-full rounded border border-[var(--color-line)] bg-[var(--color-ink)] px-2 py-1.5 text-xs"
             />
-            <datalist id="admin-timezones">
-              {COMMON_ZONES.map((zone) => (
-                <option key={zone} value={zone} />
-              ))}
-            </datalist>
           </div>
         </div>
-        <p className="mt-2 text-[11px] text-[var(--color-muted)]">
+        <p className="text-[11px] text-[var(--color-muted)]">
           Server side now: channel <code>{status.channel_id}</code>, zone{" "}
           <code>{status.timezone}</code> · status as of {formatStamp(status.checked_at)}
         </p>
-        <div className="mt-3">
-          <SaveBar
-            onSave={save}
-            busy={saving}
-            disabled={!config}
-          />
-        </div>
-        {saveError ? (
-          <div className="mt-2">
-            <Notice tone="error">{saveError}</Notice>
-          </div>
-        ) : null}
-        {saveNotice ? (
-          <div className="mt-2">
-            <Notice tone="ok">{saveNotice}</Notice>
-          </div>
-        ) : null}
-      </section>
+        <SaveBar onSave={save} busy={saving} disabled={!config} />
+        {saveError ? <Notice tone="error">{saveError}</Notice> : null}
+        {saveNotice ? <Notice tone="ok">{saveNotice}</Notice> : null}
+      </SubSection>
     </Section>
   );
 }

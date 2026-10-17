@@ -1,6 +1,6 @@
 /**
- * Bits shared by the six admin sections: the section frame, the two save
- * buttons, notices, and the small formatters.
+ * Bits shared by the admin tasks: the section frames, the two save buttons,
+ * notices, and the small formatters.
  *
  * The two save buttons are deliberately one component. §11.6's rule is that
  * **saving always marks the cache stale, even when it does not rebuild** — a
@@ -12,7 +12,7 @@ import type { ReactNode } from "react";
 
 export type SaveMode = "only" | "recalculate";
 
-/** A section with a real heading, so every one of the six is announced (§11.6). */
+/** A task's own heading: the four things the board is for (§11.6). */
 export function Section({
   id,
   title,
@@ -28,6 +28,27 @@ export function Section({
       <h2 id={headingId} className="text-base font-semibold">
         {title}
       </h2>
+      {children}
+    </section>
+  );
+}
+
+/** A card inside a task: merge, search, worker health, and so on. */
+export function SubSection({
+  id,
+  title,
+  children,
+}: {
+  id: string;
+  title: string;
+  children: ReactNode;
+}) {
+  const headingId = `${id}-heading`;
+  return (
+    <section aria-labelledby={headingId} className="space-y-3">
+      <h3 id={headingId} className="text-sm font-semibold">
+        {title}
+      </h3>
       {children}
     </section>
   );
