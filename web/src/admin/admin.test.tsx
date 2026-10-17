@@ -411,6 +411,32 @@ describe("<Admin>", () => {
     expect(screen.queryByRole("button", { name: /undo the last change/i })).not.toBeInTheDocument();
   });
 
+  it("offers undo even when the merge set was empty before", async () => {
+    // The first merge on a database with no merges is exactly when undo matters
+    // most, and the state it replaced is an empty list, not an absent one.
+    identityState = [];
+    handlers["GET /api/bootstrap"] = () => response(200, { ...PAYLOAD, identities: [] });
+
+    const user = userEvent.setup();
+    renderAdmin();
+
+    await openTask(user, "Fix the data");
+    await user.selectOptions(await screen.findByLabelText("First account"), "3");
+    await user.selectOptions(screen.getByLabelText("Second account"), "2");
+    await user.click(screen.getByRole("button", { name: /merge these accounts/i }));
+
+    const undo = await screen.findByRole("button", { name: /undo the last change/i });
+    await user.click(undo);
+
+    const writes = calls.filter(
+      (call) => call.method === "PUT" && call.url === "/api/admin/identity",
+    );
+    expect(writes[0].body).toEqual({
+      merges: [{ canonical: "3", accounts: ["3", "2"], name: "vei" }],
+    });
+    expect(writes[1].body).toEqual({ merges: [] });
+  });
+
   it("says a rebuild is required after a merge and puts the button beside it", async () => {
     const user = userEvent.setup();
     renderAdmin();

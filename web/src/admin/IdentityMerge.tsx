@@ -211,7 +211,9 @@ export function IdentityMerge({
       const written = await putIdentity(wireFrom(next, pinned));
       if (written.cache_stale) onDirty();
       setMerges(mergesFromWire(written.merges));
-      setUndoes(written.previous.length ? written.previous : null);
+      // `previous: []` is a real state — "there were no merges before this one" —
+      // so undo stays offered; only a page with no write yet has nothing to undo.
+      setUndoes(written.previous);
       setApplied(true);
       setNotice(message);
     } catch (failure) {
