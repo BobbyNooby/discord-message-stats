@@ -15,6 +15,8 @@ import {
   type PanelProps,
   type Slice,
 } from "./timeAggregates";
+import type { WithPanelId } from "./panelScope";
+import { usePanelFilters } from "./panelScope";
 
 /** Radius that keeps seven doughnuts legible on one row without a width probe. */
 function radiusFor(count: number): number {
@@ -28,7 +30,8 @@ function radiusFor(count: number): number {
  * Share of voice, year by year — `drawSovYear`: one small-multiple doughnut per
  * year, so the mix shifting over time is visible at a glance.
  */
-export function ShareOfVoiceByYear({ payload, filters }: PanelProps) {
+export function ShareOfVoiceByYear({ payload, filters: fallbackFilters }: PanelProps & WithPanelId) {
+  const filters = usePanelFilters("share-of-voice-year-by-year", fallbackFilters);
   const byYear = new Map<number, Map<number, number>>();
   let total = 0;
   for (const cell of selectVisibleCells(payload, filters)) {

@@ -1,12 +1,15 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import type { ComponentType } from "react";
 import { describe, expect, it } from "vitest";
 
 import type { Action, Filters } from "../filters/reducer";
+import { initialFilters } from "../filters/reducer";
 
 import type { Payload } from "../api/types";
-import { initialFilters } from "../filters/reducer";
+import { Leaderboard } from "./Leaderboard";
+import { PanelScopeProvider } from "./panelScope";
+import { ReplyMatrix } from "./ReplyMatrix";
 import { LinksSection } from "./LinksSection";
 import { MediaSection } from "./MediaSection";
 import { OverviewSection } from "./OverviewSection";
@@ -83,5 +86,72 @@ describe("the six sections", () => {
   it("renders every section's panels, not just its heading", () => {
     const { container } = renderSection(PeopleSection);
     expect(container.querySelectorAll("section").length).toBeGreaterThan(5);
+  });
+});
+
+describe("a card's own filters", () => {
+  /** The two cards under test, one scoped and one not. */
+  const people = {
+    days: ["2024-01-01", "2024-01-02"],
+    authors: [
+      { id: "u1", name: "Alice", msgs: 20 },
+      { id: "u2", name: "Bob", msgs: 12 },
+    ],
+    cells: [
+      [0, 0, 10, 50, 2, 1, 1],
+      [1, 0, 6, 30, 1, 0, 0],
+      [0, 1, 8, 40, 3, 2, 0],
+      [1, 1, 2, 10, 1, 1, 0],
+    ],
+    edges: [
+      [0, 1, 5],
+      [1, 0, 3],
+    ],
+    response: [
+      [0, 120, 5],
+      [1, 60, 3],
+    ],
+    starters: [
+      [0, 4],
+      [1, 2],
+    ],
+    editSpeed: [
+      [0, 90, 2],
+      [1, 45, 2],
+    ],
+    authorDistinct: [40, 25],
+  } as unknown as Payload;
+
+  function renderCards(scopes: Record<string, { active: boolean[] }>) {
+    const base = initialFilters(people);
+    render(
+      <>
+        <PanelScopeProvider filters={base} scopes={scopes}>
+          <Leaderboard payload={people} filters={base} />
+        </PanelScopeProvider>
+        <PanelScopeProvider filters={base} scopes={scopes}>
+          <ReplyMatrix payload={people} filters={base} />
+        </PanelScopeProvider>
+      </>,
+    );
+    return {
+      leader: screen.getByText(/messages across/).textContent,
+      neighbour: screen.getByText(/cells · .* replies/).textContent,
+    };
+  }
+
+  it("moves the scoped card's numbers and leaves its neighbour's alone", () => {
+    // Both cards honour the author selection, so only the scope separates them.
+    const global = renderCards({});
+    expect(global.leader).toContain("26 messages across 2 authors");
+
+    cleanup();
+    const scoped = renderCards({ "who-talks-the-most": { active: [true, false] } });
+
+    // The scoped card now reads Alice alone…
+    expect(scoped.leader).toContain("16 messages across 1 authors");
+    // …and the card beside it never moved.
+    expect(scoped.neighbour).toBe(global.neighbour);
+    expect(scoped.neighbour).toContain("4 cells");
   });
 });

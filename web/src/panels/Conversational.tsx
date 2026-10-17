@@ -5,13 +5,16 @@ import { EmptyState, Panel } from "../components/Panel";
 import { bucketOf, selectVisibleCells } from "../filters/selectors";
 import { EChart } from "../lib/echart";
 import { AXIS, TOOLTIP, bucketCountLabel, emptyLabel, fmt, pct, type PanelProps } from "./timeAggregates";
+import type { WithPanelId } from "./panelScope";
+import { usePanelFilters } from "./panelScope";
 
 /**
  * How conversational — `drawConvo`: replies as a percentage of messages, with
  * the mean marked. A line, not a bar, because the interesting thing is the
  * trend in the ratio, not any single month's height.
  */
-export function Conversational({ payload, filters }: PanelProps) {
+export function Conversational({ payload, filters: fallbackFilters }: PanelProps & WithPanelId) {
+  const filters = usePanelFilters("how-conversational", fallbackFilters);
   const sums = new Map<string, number>();
   const replies = new Map<string, number>();
   const order: string[] = [];

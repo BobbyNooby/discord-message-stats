@@ -3,6 +3,8 @@ import type { EChartsOption } from "echarts";
 import { EmptyState, Panel } from "../components/Panel";
 import { EChart } from "../lib/echart";
 import { DOW, TOOLTIP, clock, emptyLabel, fmt, heatGrid, type PanelProps } from "./timeAggregates";
+import type { WithPanelId } from "./panelScope";
+import { usePanelFilters } from "./panelScope";
 
 const HOURS = Array.from({ length: 24 }, (_, hour) => hour);
 
@@ -13,7 +15,8 @@ const HOURS = Array.from({ length: 24 }, (_, hour) => hour);
  * The map is the mockup's: dark = quiet to light = busy, monotonically, so a
  * busy hour can never render darker than a quiet one (§11.4's second finding).
  */
-export function Heat({ payload, filters }: PanelProps) {
+export function Heat({ payload, filters: fallbackFilters }: PanelProps & WithPanelId) {
+  const filters = usePanelFilters("when-the-chat-comes-alive", fallbackFilters);
   const heat = heatGrid(payload, filters);
   const subtitle = `${fmt(heat.total)} messages · ${payload.tz.label} · busiest ${
     DOW[heat.peakDow]

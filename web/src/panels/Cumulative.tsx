@@ -14,6 +14,8 @@ import {
   kfmt,
   type PanelProps,
 } from "./timeAggregates";
+import type { WithPanelId } from "./panelScope";
+import { usePanelFilters } from "./panelScope";
 
 /**
  * Cumulative growth — `drawCumulative`: each author's running total, stacked,
@@ -22,7 +24,8 @@ import {
  * Stacked and cumulative is the honest form here: the bands are shares of a
  * whole that only grows, so the top edge really is "messages so far".
  */
-export function Cumulative({ payload, filters }: PanelProps) {
+export function Cumulative({ payload, filters: fallbackFilters }: PanelProps & WithPanelId) {
+  const filters = usePanelFilters("cumulative-growth", fallbackFilters);
   const buckets = bucketSeries(payload, filters);
   const authors = activeAuthorIndices(payload, filters);
   const nothing = buckets.order.length === 0;

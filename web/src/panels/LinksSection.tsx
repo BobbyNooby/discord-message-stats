@@ -17,13 +17,13 @@ export function LinksSection({ payload, filters }: { payload: Payload; filters: 
         <LinkDomains payload={payload} filters={filters} />
       </div>
       <div>
-        <Providers payload={payload} filters={filters} />
+        <Providers payload={payload} />
       </div>
       <div className="lg:col-span-1 xl:col-span-2">
-        <TopLinks payload={payload} filters={filters} />
+        <TopLinks payload={payload} />
       </div>
       <div>
-        <EmbedTypes payload={payload} filters={filters} />
+        <EmbedTypes payload={payload} />
       </div>
     </section>
   );

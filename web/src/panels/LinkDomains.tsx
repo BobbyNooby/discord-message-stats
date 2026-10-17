@@ -6,6 +6,7 @@ import { EmptyState, Panel } from "../components/Panel";
 import type { Filters } from "../filters/reducer";
 import { inRange } from "../filters/selectors";
 import { EChart } from "../lib/echart";
+import { usePanelFilters } from "./panelScope";
 
 /**
  * "Where the chat lives" — the mockup's `drawDomains`. The one Links panel that
@@ -49,7 +50,8 @@ export function domainRows(
     .slice(0, top);
 }
 
-export function LinkDomains({ payload, filters }: { payload: Payload; filters: Filters }) {
+export function LinkDomains({ payload, filters: fallbackFilters }: { panelId?: string; payload: Payload; filters?: Filters }) {
+  const filters = usePanelFilters("where-the-chat-lives", fallbackFilters);
   const rows = useMemo(() => domainRows(payload, filters), [payload, filters]);
   const allOff =
     payload.authors.length > 0 && filters.active.length > 0 && !filters.active.some(Boolean);

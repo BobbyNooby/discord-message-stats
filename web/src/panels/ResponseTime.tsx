@@ -1,14 +1,15 @@
 import type { Payload } from "../api/types";
 import { EmptyState, GlobalOnlyBadge, Panel } from "../components/Panel";
 import type { Filters } from "../filters/reducer";
-import { hasTimeFilter } from "../filters/selectors";
 import { EChart } from "../lib/echart";
 import { dur, fmt, hbarOption, responseRows, weightedAverage } from "./people";
+import { usePanelFilters } from "./panelScope";
 
 /** "How fast people reply" — `rollup_response`, so the time filter cannot apply. */
-export function ResponseTime({ payload, filters }: { payload: Payload; filters: Filters }) {
+export function ResponseTime({ payload, filters: fallbackFilters }: { panelId?: string; payload: Payload; filters?: Filters }) {
+  const filters = usePanelFilters("how-fast-people-reply", fallbackFilters);
   const rows = responseRows(payload, filters);
-  const badge = hasTimeFilter(filters) ? <GlobalOnlyBadge what="Reply latency" /> : null;
+  const badge = true ? <GlobalOnlyBadge what="Reply latency" /> : null;
 
   if (!rows.length) {
     return (

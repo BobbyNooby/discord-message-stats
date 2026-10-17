@@ -5,6 +5,7 @@ import type { Payload } from "../api/types";
 import { EmptyState, Panel } from "../components/Panel";
 import type { Filters } from "../filters/reducer";
 import { EChart } from "../lib/echart";
+import { usePanelFilters } from "./panelScope";
 
 /**
  * "Whose word is it" — the mockup's `drawLift`, ported as a pure function of
@@ -47,7 +48,8 @@ export function liftGrid(payload: Payload, filters: Filters, top = TOP_WORDS): L
   return { names: active.map((index) => payload.authors[index].name), words: words.map((w) => w[0]), cells };
 }
 
-export function WordLift({ payload, filters }: { payload: Payload; filters: Filters }) {
+export function WordLift({ payload, filters: fallbackFilters }: { panelId?: string; payload: Payload; filters?: Filters }) {
+  const filters = usePanelFilters("word-lift", fallbackFilters);
   const grid = useMemo(() => liftGrid(payload, filters), [payload, filters]);
   const anyActive = payload.authors.some((_, index) => filters.active[index] !== false);
 

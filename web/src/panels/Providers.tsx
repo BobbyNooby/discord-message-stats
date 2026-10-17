@@ -3,9 +3,8 @@ import { useMemo } from "react";
 
 import type { Payload } from "../api/types";
 import { EmptyState, GlobalOnlyBadge, Panel } from "../components/Panel";
-import type { Filters } from "../filters/reducer";
-import { hasTimeFilter } from "../filters/selectors";
 import { EChart } from "../lib/echart";
+import type { Filters } from "../filters/reducer";
 
 /**
  * "Embed providers" — the mockup's `drawProviders`.
@@ -33,7 +32,7 @@ export function foldEmbeds(rows: [string, number][], max = MAX_SLICES): EmbedsSl
   return [...head, { name: "Others", value: tail, index: -1 }];
 }
 
-export function Providers({ payload, filters }: { payload: Payload; filters: Filters }) {
+export function Providers({ payload, }: { panelId?: string; payload: Payload; filters?: Filters }) {
   const slices = useMemo(() => foldEmbeds(payload.providers ?? []), [payload]);
   const total = useMemo(() => slices.reduce((sum, slice) => sum + slice.value, 0), [slices]);
   const folded = slices.length < (payload.providers ?? []).length;
@@ -81,12 +80,10 @@ export function Providers({ payload, filters }: { payload: Payload; filters: Fil
     [slices],
   );
 
-  const narrowed = hasTimeFilter(filters) || filters.active.some((on) => !on);
-
   return (
     <Panel
       title="Embed providers"
-      badge={narrowed ? <GlobalOnlyBadge what="The provider rollup" /> : undefined}
+      badge={<GlobalOnlyBadge what="The provider rollup" />}
       subtitle={`who Discord unfurled · ${fmt(total)} embeds${
         folded ? ` · top ${MAX_SLICES - 1}, rest as Others` : ""
       }`}

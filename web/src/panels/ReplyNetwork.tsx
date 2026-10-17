@@ -3,17 +3,18 @@ import type { EChartsOption } from "echarts";
 import type { Payload } from "../api/types";
 import { EmptyState, GlobalOnlyBadge, Panel } from "../components/Panel";
 import type { Filters } from "../filters/reducer";
-import { hasTimeFilter } from "../filters/selectors";
 import { EChart } from "../lib/echart";
 import { swatch } from "../lib/palette";
 import { activeEdges, authorName, fmt, globalTotals, TOOLTIP } from "./people";
+import { usePanelFilters } from "./panelScope";
 
 /**
  * "Who replies to whom" — `rollup_reply`, which has no date column. Node sizes
  * come from the author-filtered global totals, not from the visible cells, so
  * the picture does not move when the time filter does (§11.2).
  */
-export function ReplyNetwork({ payload, filters }: { payload: Payload; filters: Filters }) {
+export function ReplyNetwork({ payload, filters: fallbackFilters }: { panelId?: string; payload: Payload; filters?: Filters }) {
+  const filters = usePanelFilters("who-replies-to-whom", fallbackFilters);
   const edges = activeEdges(payload, filters);
   const totals = globalTotals(payload, filters);
   const nodes = payload.authors
@@ -24,7 +25,7 @@ export function ReplyNetwork({ payload, filters }: { payload: Payload; filters: 
     return (
       <Panel
         title="Who replies to whom"
-        badge={hasTimeFilter(filters) ? <GlobalOnlyBadge what="Reply pairs" /> : null}
+        badge={true ? <GlobalOnlyBadge what="Reply pairs" /> : null}
       >
         <EmptyState>No authors selected.</EmptyState>
       </Panel>
@@ -74,7 +75,7 @@ export function ReplyNetwork({ payload, filters }: { payload: Payload; filters: 
     <Panel
       title="Who replies to whom"
       subtitle={`${nodes.length} authors · ${links.length} reply pairs · ${fmt(replies)} replies`}
-      badge={hasTimeFilter(filters) ? <GlobalOnlyBadge what="Reply pairs" /> : null}
+      badge={true ? <GlobalOnlyBadge what="Reply pairs" /> : null}
     >
       <EChart option={option} height={320} />
     </Panel>

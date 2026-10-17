@@ -5,13 +5,16 @@ import { EmptyState, Panel } from "../components/Panel";
 import { selectVisibleCells, yearOf } from "../filters/selectors";
 import { EChart } from "../lib/echart";
 import { AXIS, TOOLTIP, emptyLabel, fmt, kfmt, yearCountLabel, type PanelProps } from "./timeAggregates";
+import type { WithPanelId } from "./panelScope";
+import { usePanelFilters } from "./panelScope";
 
 /**
  * Messages per year — `drawYearBar`. Counts, not shares: this is the same data
  * as the doughnuts above it, in the form that answers "which year was biggest?"
  * without making the reader compare arc lengths.
  */
-export function MessagesPerYear({ payload, filters }: PanelProps) {
+export function MessagesPerYear({ payload, filters: fallbackFilters }: PanelProps & WithPanelId) {
+  const filters = usePanelFilters("messages-per-year", fallbackFilters);
   const byYear = new Map<number, number>();
   for (const cell of selectVisibleCells(payload, filters)) {
     const day = payload.days[cell[C_DAY]];

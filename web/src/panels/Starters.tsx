@@ -1,14 +1,15 @@
 import type { Payload } from "../api/types";
 import { EmptyState, GlobalOnlyBadge, Panel } from "../components/Panel";
 import type { Filters } from "../filters/reducer";
-import { hasTimeFilter } from "../filters/selectors";
 import { EChart } from "../lib/echart";
 import { fmt, hbarOption, kfmt, starterRows } from "./people";
+import { usePanelFilters } from "./panelScope";
 
 /** "Who starts conversations" — `rollup_starter`, so the time filter cannot apply. */
-export function Starters({ payload, filters }: { payload: Payload; filters: Filters }) {
+export function Starters({ payload, filters: fallbackFilters }: { panelId?: string; payload: Payload; filters?: Filters }) {
+  const filters = usePanelFilters("who-starts-conversations", fallbackFilters);
   const rows = starterRows(payload, filters);
-  const badge = hasTimeFilter(filters) ? <GlobalOnlyBadge what="Conversation starters" /> : null;
+  const badge = true ? <GlobalOnlyBadge what="Conversation starters" /> : null;
 
   if (!rows.length) {
     return (

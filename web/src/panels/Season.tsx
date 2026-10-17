@@ -5,12 +5,15 @@ import { EmptyState, Panel } from "../components/Panel";
 import { selectVisibleCells } from "../filters/selectors";
 import { EChart } from "../lib/echart";
 import { AXIS, MON, TOOLTIP, emptyLabel, fmt, kfmt, type PanelProps } from "./timeAggregates";
+import type { WithPanelId } from "./panelScope";
+import { usePanelFilters } from "./panelScope";
 
 /**
  * Which month of the year — `drawSeason`: every year pooled into twelve bars,
  * which is the only way a seasonal habit shows through six years of drift.
  */
-export function Season({ payload, filters }: PanelProps) {
+export function Season({ payload, filters: fallbackFilters }: PanelProps & WithPanelId) {
+  const filters = usePanelFilters("which-month-of-the-year", fallbackFilters);
   const months = new Array<number>(12).fill(0);
   const years = new Set<string>();
   let total = 0;

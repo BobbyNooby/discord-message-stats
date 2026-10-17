@@ -17,6 +17,8 @@ import {
   kfmt,
   type PanelProps,
 } from "./timeAggregates";
+import type { WithPanelId } from "./panelScope";
+import { usePanelFilters } from "./panelScope";
 
 type Mode = "stacked" | "lines" | "total";
 
@@ -33,7 +35,8 @@ const MODES: { id: Mode; label: string }[] = [
  * answers their question without leaving the panel. The TOTAL line is always
  * drawn so a mode switch never hides the headline number.
  */
-export function Activity({ payload, filters }: PanelProps) {
+export function Activity({ payload, filters: fallbackFilters }: PanelProps & WithPanelId) {
+  const filters = usePanelFilters("messages-over-time", fallbackFilters);
   const [mode, setMode] = useState<Mode>("stacked");
   const buckets = bucketSeries(payload, filters);
   const authors = activeAuthorIndices(payload, filters);

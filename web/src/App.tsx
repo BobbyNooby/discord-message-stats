@@ -5,7 +5,6 @@ import { useBootstrap, useHealth, useRecent } from "./api/queries";
 import { AppShell } from "./components/AppShell";
 import { FilterSidebar } from "./components/FilterSidebar";
 import { HealthBanner } from "./components/HealthBanner";
-import { PanelScopeProvider } from "./components/Panel";
 import { RecentStrip } from "./components/RecentStrip";
 import { dashboardReducer, initialDashboardState } from "./filters/reducer";
 import {
@@ -18,6 +17,7 @@ import {
   writeUrlState,
   type Charts,
 } from "./filters/persist";
+import { PanelScopeProvider } from "./panels/panelScope";
 import { PANELS, type PanelId } from "./panels/registry";
 import { Calendar } from "./panels/Calendar";
 import { LinksSection } from "./panels/LinksSection";
@@ -162,13 +162,13 @@ function DashboardBody({
       {/* Six sections in the spec's order; the calendar sits inside Time &
           rhythm where §11.1 puts it. Every card inside can hand its id to the
           sidebar, which is how a card's "…" swaps what the sidebar edits. */}
-      <PanelScopeProvider onOpenScope={openScope}>
+      <PanelScopeProvider filters={filters} scopes={scopes} onOpenScope={openScope}>
         <OverviewSection payload={payload} filters={filters} />
         <TimeSection payload={payload} filters={filters} calendar={<Calendar payload={payload} filters={filters} />} />
         <PeopleSection payload={payload} filters={filters} />
         <WordsSection payload={payload} filters={filters} dispatch={dispatch} />
         <LinksSection payload={payload} filters={filters} />
-        <RichMediaSection payload={payload} filters={filters} />
+        <RichMediaSection payload={payload} />
         <MediaSection payload={payload} filters={filters} />
       </PanelScopeProvider>
       <footer className="pb-8 text-[11px] text-[var(--color-muted)]">

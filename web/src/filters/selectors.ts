@@ -109,8 +109,3 @@ export function selectAuthors(payload: Payload, filters: Filters): (Author & Tot
   }
   return payload.authors.map((author, index) => ({ ...author, ...(per.get(index) ?? { ...ZERO }) }));
 }
-
-/** Panels with no date dimension must say so rather than ignore the filter. */
-export function hasTimeFilter(filters: Filters): boolean {
-  return Boolean(filters.from || filters.to || filters.years.length);
-}

@@ -2,6 +2,8 @@ import { EmptyState, Panel } from "../components/Panel";
 import { StatCard } from "../components/StatCard";
 import { selectTotals, selectVisibleCells } from "../filters/selectors";
 import { emptyLabel, fmt, kfmt, type PanelProps } from "./timeAggregates";
+import type { WithPanelId } from "./panelScope";
+import { usePanelFilters } from "./panelScope";
 
 const DASH = "—";
 
@@ -13,7 +15,8 @@ const DASH = "—";
  * matched this filter" are different sentences, and a dash never lies (§5,
  * Review Focus 1). No card ever prints NaN.
  */
-export function StatCards({ payload, filters }: PanelProps) {
+export function StatCards({ payload, filters: fallbackFilters }: PanelProps & WithPanelId) {
+  const filters = usePanelFilters("stat-cards", fallbackFilters);
   const cells = selectVisibleCells(payload, filters);
   const totals = selectTotals(payload, filters);
   const nothing = cells.length === 0;

@@ -3,9 +3,8 @@ import { useMemo } from "react";
 
 import type { Payload } from "../api/types";
 import { EmptyState, GlobalOnlyBadge, Panel } from "../components/Panel";
-import type { Filters } from "../filters/reducer";
-import { hasTimeFilter } from "../filters/selectors";
 import { EChart } from "../lib/echart";
+import type { Filters } from "../filters/reducer";
 
 /**
  * "Most reposted links" — the mockup's `drawTopLinks`.
@@ -26,12 +25,7 @@ const kfmt = (n: number) => {
   return String(value);
 };
 
-/** True when a filter is set that this panel's payload cannot re-aggregate. */
-export function narrowed(filters: Filters): boolean {
-  return hasTimeFilter(filters) || filters.active.some((on) => !on);
-}
-
-export function TopLinks({ payload, filters }: { payload: Payload; filters: Filters }) {
+export function TopLinks({ payload, }: { panelId?: string; payload: Payload; filters?: Filters }) {
   const rows = useMemo(
     () => (payload.topLinks ?? []).slice(0, TOP_LINKS).sort((a, b) => b[1] - a[1]),
     [payload],
@@ -83,7 +77,7 @@ export function TopLinks({ payload, filters }: { payload: Payload; filters: Filt
   return (
     <Panel
       title="Most reposted links"
-      badge={narrowed(filters) ? <GlobalOnlyBadge what="The normalised link list" /> : undefined}
+      badge={<GlobalOnlyBadge what="The normalised link list" />}
       subtitle="normalised · query strings and fragments stripped"
     >
       {!rows.length ? (

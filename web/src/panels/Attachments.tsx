@@ -1,5 +1,4 @@
 import { EmptyState, GlobalOnlyBadge, Panel } from "../components/Panel";
-import { hasTimeFilter } from "../filters/selectors";
 import { EChart } from "../lib/echart";
 import {
   ATTACH_COLOR,
@@ -11,11 +10,14 @@ import {
   pairTotal,
   type MediaPanelProps,
 } from "./mediaData";
+import type { WithPanelId } from "./panelScope";
+import { usePanelFilters } from "./panelScope";
 
 const TITLE = "What gets attached";
 
 /** Mime types from the raw JSON. Global only: `rollup_attachment` has no date. */
-export function Attachments({ payload, filters }: MediaPanelProps) {
+export function Attachments({ payload, filters: fallbackFilters }: MediaPanelProps & WithPanelId) {
+  const filters = usePanelFilters("what-gets-attached", fallbackFilters);
   const rows = pairRows(payload.attachments, 8);
   const blank = globalEmpty(payload, filters) ?? (rows.length ? null : "No attachment data.");
 
@@ -25,7 +27,7 @@ export function Attachments({ payload, filters }: MediaPanelProps) {
       subtitle={`mime types from the raw JSON · ${fmt(pairTotal(payload.attachments))} attachments across ${pairCount(
         payload.attachments,
       )} mime types`}
-      badge={hasTimeFilter(filters) ? <GlobalOnlyBadge what={TITLE} /> : null}
+      badge={<GlobalOnlyBadge what={TITLE} />}
     >
       {blank ? (
         <EmptyState>{blank}</EmptyState>

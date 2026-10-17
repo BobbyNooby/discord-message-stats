@@ -1,5 +1,4 @@
 import { EmptyState, GlobalOnlyBadge, Panel } from "../components/Panel";
-import { hasTimeFilter } from "../filters/selectors";
 import { EChart } from "../lib/echart";
 import {
   REACTION_COLOR,
@@ -11,11 +10,14 @@ import {
   pairTotal,
   type MediaPanelProps,
 } from "./mediaData";
+import type { WithPanelId } from "./panelScope";
+import { usePanelFilters } from "./panelScope";
 
 const TITLE = "Reactions";
 
 /** Reactions from the raw JSON column. Global only: `rollup_reaction` has no date. */
-export function Reactions({ payload, filters }: MediaPanelProps) {
+export function Reactions({ payload, filters: fallbackFilters }: MediaPanelProps & WithPanelId) {
+  const filters = usePanelFilters("reactions", fallbackFilters);
   const rows = pairRows(payload.reactions, 14);
   const blank = globalEmpty(payload, filters) ?? (rows.length ? null : "No reaction data.");
 
@@ -25,7 +27,7 @@ export function Reactions({ payload, filters }: MediaPanelProps) {
       subtitle={`from the raw JSON column · ${fmt(pairTotal(payload.reactions))} reactions across ${pairCount(
         payload.reactions,
       )} emoji`}
-      badge={hasTimeFilter(filters) ? <GlobalOnlyBadge what={TITLE} /> : null}
+      badge={<GlobalOnlyBadge what={TITLE} />}
     >
       {blank ? (
         <EmptyState>{blank}</EmptyState>

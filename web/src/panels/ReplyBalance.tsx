@@ -3,19 +3,20 @@ import type { EChartsOption } from "echarts";
 import type { Payload } from "../api/types";
 import { EmptyState, GlobalOnlyBadge, Panel } from "../components/Panel";
 import type { Filters } from "../filters/reducer";
-import { hasTimeFilter } from "../filters/selectors";
 import { EChart } from "../lib/echart";
 import { swatch } from "../lib/palette";
 import { AXIS_TEXT, fmt, globalTotals, kfmt, sendRecv, SPLIT_LINE, TOOLTIP } from "./people";
+import { usePanelFilters } from "./panelScope";
 
 /**
  * "Reply balance" — sent versus received from `rollup_reply`. Above the diagonal
  * a person is replied to more than they reply; on it, they are even.
  */
-export function ReplyBalance({ payload, filters }: { payload: Payload; filters: Filters }) {
+export function ReplyBalance({ payload, filters: fallbackFilters }: { panelId?: string; payload: Payload; filters?: Filters }) {
+  const filters = usePanelFilters("reply-balance", fallbackFilters);
   const balance = sendRecv(payload, filters);
   const totals = globalTotals(payload, filters);
-  const badge = hasTimeFilter(filters) ? <GlobalOnlyBadge what="Reply pairs" /> : null;
+  const badge = true ? <GlobalOnlyBadge what="Reply pairs" /> : null;
 
   const points = payload.authors
     .map((author, index) => ({

@@ -4,7 +4,6 @@ import type { Payload } from "../api/types";
 import { Chip } from "../components/AppShell";
 import { EmptyState, GlobalOnlyBadge, Panel } from "../components/Panel";
 import type { Filters } from "../filters/reducer";
-import { hasTimeFilter } from "../filters/selectors";
 import { EChart } from "../lib/echart";
 import {
   AXIS_TEXT,
@@ -18,6 +17,7 @@ import {
   weightedAverage,
   type EditMetric,
 } from "./people";
+import { usePanelFilters } from "./panelScope";
 
 const METRICS: { key: EditMetric; label: string }[] = [
   { key: "rate", label: "edited %" },
@@ -30,7 +30,8 @@ const METRICS: { key: EditMetric; label: string }[] = [
  * and therefore gets the badge when a time filter is on (§11.2). The trend line
  * under the bars is always the filtered edit share per bucket (§5.12).
  */
-export function EditRate({ payload, filters }: { payload: Payload; filters: Filters }) {
+export function EditRate({ payload, filters: fallbackFilters }: { panelId?: string; payload: Payload; filters?: Filters }) {
+  const filters = usePanelFilters("who-proofreads", fallbackFilters);
   const [metric, setMetric] = useState<EditMetric>("rate");
   const rows = editRateRows(payload, filters, metric);
   const trend = editTrend(payload, filters);
@@ -39,7 +40,7 @@ export function EditRate({ payload, filters }: { payload: Payload; filters: Filt
 
   const badge = (
     <div className="flex items-center gap-2">
-      {speed && hasTimeFilter(filters) ? <GlobalOnlyBadge what="Time to edit" /> : null}
+      {speed ? <GlobalOnlyBadge what="Time to edit" /> : null}
       <div className="flex gap-1">
         {METRICS.map((entry) => (
           <Chip

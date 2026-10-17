@@ -118,10 +118,12 @@ beforeEach(() => {
 
 describe("global-only panels (§11.2)", () => {
   it("badges the reply matrix and holds its cell count still, while the leaderboard moves", () => {
+    // The registry lists no time dimension for this card, so the badge is a
+    // property of the card, not of whichever filter happens to be on.
     const matrix = render(<ReplyMatrix payload={payload} filters={withFilters()} />);
     const unfiltered = screen.getByText(/cells · .* replies/).textContent;
     expect(unfiltered).toContain("4 cells"); // 2 visible authors
-    expect(screen.queryByText("global only")).not.toBeInTheDocument();
+    expect(screen.getByText("global only")).toBeInTheDocument();
     matrix.unmount();
 
     render(<ReplyMatrix payload={payload} filters={withFilters({ years: [2025] })} />);

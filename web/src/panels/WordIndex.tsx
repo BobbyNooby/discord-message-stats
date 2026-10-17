@@ -4,6 +4,7 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { useWords } from "../api/queries";
 import { EmptyState, Panel } from "../components/Panel";
 import { EChart } from "../lib/echart";
+import { usePanelFilters } from "./panelScope";
 
 /**
  * "Word index" — the mockup's `drawWords` plus the search box.
@@ -35,6 +36,10 @@ export type WordIndexProps = {
 };
 
 export function WordIndex({ words, selected, onSelect }: WordIndexProps) {
+  // The card declares `word` and `author` in the registry, so it reads the
+  // filters it is actually under rather than assuming the global ones.
+  const filters = usePanelFilters("word-index");
+  const shownWord = filters.word ?? selected;
   const [query, setQuery] = useState("");
   const [highlight, setHighlight] = useState(0);
   const needle = query.trim().toLowerCase();
@@ -103,7 +108,7 @@ export function WordIndex({ words, selected, onSelect }: WordIndexProps) {
             data: rows.map(([word, uses]) => ({
               value: uses,
               itemStyle: {
-                color: word === selected ? "#eb459e" : word === shown[cursor]?.[0] ? "#c9cdfc" : "#5865f2",
+                color: word === shownWord ? "#eb459e" : word === shown[cursor]?.[0] ? "#c9cdfc" : "#5865f2",
                 borderRadius: [0, 4, 4, 0] as [number, number, number, number],
               },
             })),
@@ -118,7 +123,7 @@ export function WordIndex({ words, selected, onSelect }: WordIndexProps) {
         ],
       };
     },
-    [shown, selected, cursor],
+    [shown, shownWord, cursor],
   );
 
   // ECharts is imperative: wire the click once, and always to the current

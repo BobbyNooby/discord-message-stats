@@ -6,9 +6,11 @@ import type { Filters } from "../filters/reducer";
 import { EChart } from "../lib/echart";
 import { swatch } from "../lib/palette";
 import { fmt, tint, TOOLTIP, treemapData } from "./people";
+import { usePanelFilters } from "./panelScope";
 
 /** "Volume by author and year" — activity cells, so both filters apply. */
-export function Treemap({ payload, filters }: { payload: Payload; filters: Filters }) {
+export function Treemap({ payload, filters: fallbackFilters }: { panelId?: string; payload: Payload; filters?: Filters }) {
+  const filters = usePanelFilters("volume-by-author-and-year", fallbackFilters);
   const nodes = treemapData(payload, filters);
 
   if (!nodes.length) {

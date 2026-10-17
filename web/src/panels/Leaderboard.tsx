@@ -3,9 +3,11 @@ import { EmptyState, Panel } from "../components/Panel";
 import type { Filters } from "../filters/reducer";
 import { EChart } from "../lib/echart";
 import { fmt, hbarOption, kfmt, leaderRows, rankLabel } from "./people";
+import { usePanelFilters } from "./panelScope";
 
 /** "Who talks the most" — cells, so it honours the time filter and `rankBy` (§11.1). */
-export function Leaderboard({ payload, filters }: { payload: Payload; filters: Filters }) {
+export function Leaderboard({ payload, filters: fallbackFilters }: { panelId?: string; payload: Payload; filters?: Filters }) {
+  const filters = usePanelFilters("who-talks-the-most", fallbackFilters);
   const rows = leaderRows(payload, filters);
   const label = `by ${rankLabel(filters.rankBy)}`;
 

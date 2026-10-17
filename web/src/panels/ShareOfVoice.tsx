@@ -14,6 +14,8 @@ import {
   type PanelProps,
   type Slice,
 } from "./timeAggregates";
+import type { WithPanelId } from "./panelScope";
+import { usePanelFilters } from "./panelScope";
 
 /**
  * Share of voice — `drawSov` from the mockup: one wedge per author, coloured by
@@ -22,7 +24,8 @@ import {
  * §11.5 caps a doughnut at "few categories", so authors past the fifth fold into
  * one "Others" wedge; the total and the tooltip still carry them.
  */
-export function ShareOfVoice({ payload, filters }: PanelProps) {
+export function ShareOfVoice({ payload, filters: fallbackFilters }: PanelProps & WithPanelId) {
+  const filters = usePanelFilters("share-of-voice", fallbackFilters);
   const rows: Slice[] = selectAuthors(payload, filters)
     .map((author, index) => ({ name: author.name, value: author.msgs, index }))
     .filter((row) => row.value > 0)
