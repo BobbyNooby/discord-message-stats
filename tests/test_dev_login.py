@@ -4,12 +4,36 @@ Discord OAuth needs a registered redirect URI and a client secret; when those
 are not configured there is no way to reach the dashboard at all. This exists so
 a developer can look at the real UI on a phone — and it is a flag, not a
 default, so a deployed server cannot sign anybody in by accident.
+
+`--dev-login` is the **only** way in while OAuth is unconfigured: the
+`--dev-auto-login` shim that made every visitor an admin without a cookie was
+removed, because it left no login screen at all.
 """
 
+import inspect
+
+import pytest
 from fastapi.testclient import TestClient
 
 from discord_scraper.api.app import create_app
+from discord_scraper.cli import build_parser
 from tests.conftest import cfg_fixture
+
+
+def test_the_auto_login_shim_is_gone_from_the_parser():
+    parser = build_parser()
+    with pytest.raises(SystemExit):
+        parser.parse_args(["serve", "--dev-auto-login", "admin"])
+
+
+def test_create_app_has_no_auto_login_switch():
+    assert "dev_auto_login" not in inspect.signature(create_app).parameters
+
+
+def test_an_anonymous_visitor_is_refused(seeded_db_path, tmp_path):
+    client = TestClient(create_app(cfg_fixture(tmp_path), seeded_db_path))
+    assert client.get("/api/bootstrap").status_code == 401
+    assert client.get("/api/admin/status").status_code == 401
 
 
 def test_dev_login_is_absent_without_the_flag(seeded_db_path, tmp_path):
