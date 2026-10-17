@@ -1,9 +1,9 @@
-import { Ellipsis } from "lucide-react";
+import { ChartColumn, ChartPie, Ellipsis } from "lucide-react";
 import type { ReactNode } from "react";
 
-import { usePanelScopeTarget } from "../panels/panelScope";
+import { useChartShape, usePanelScopeTarget, useShapeChange } from "../panels/panelScope";
 import { specFor, specForLabel, type PanelId } from "../panels/registry";
-import { IconButton } from "./ui";
+import { IconButton, Toggle } from "./ui";
 
 /**
  * Sections lay their cards out in columns, not grid rows.
@@ -37,6 +37,11 @@ export function Panel({
   // dynamic title names its card explicitly; a static one is looked up by title.
   const spec = panelId ? specFor(panelId) : specForLabel(title);
   const target = spec && spec.honours.length > 0 ? spec : null;
+  // The switch exists iff the card declares both shapes (§UI/UX rule 4): the
+  // registry, not the panel, is where "a pie is honest here" is decided.
+  const switchable = spec && spec.shapes.length > 1 ? spec : null;
+  const shape = useChartShape(switchable?.id ?? "");
+  const onShapeChange = useShapeChange();
 
   return (
     <section
@@ -50,6 +55,19 @@ export function Panel({
             the "…" trigger, which is wider than a 390px card on its own. */}
         <span className="flex min-w-0 flex-wrap items-center justify-end gap-1">
           {badge}
+          {switchable && onShapeChange ? (
+            <Toggle
+              pressed={shape === "pie"}
+              onPressedChange={(pie) => onShapeChange(switchable.id, pie ? "pie" : "bar")}
+              icons={[
+                <ChartColumn key="bar" size={16} aria-hidden />,
+                <ChartPie key="pie" size={16} aria-hidden />,
+              ]}
+              // Naming the state, not the action, is this primitive's rule: the
+              // card's own label is in the name so 39 cards' switches differ.
+              labels={[`${switchable.label} as bars`, `${switchable.label} as pie`]}
+            />
+          ) : null}
           {onOpenScope && target ? (
             <IconButton
               label={`Filter ${target.label}`}
