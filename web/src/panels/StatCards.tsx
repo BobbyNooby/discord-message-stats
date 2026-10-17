@@ -64,6 +64,10 @@ export function StatCards({ payload, filters: fallbackFilters }: PanelProps & Wi
       title="Stat cards"
       subtitle={`${fmt(totals.msgs)} messages · ${totals.authors} authors · ${totals.days} active days`}
       className="xl:col-span-3"
+      csv={{
+        name: "Stat cards",
+        rows: [["figure", "value", "note"], ...cards.map((card) => [card.label, card.value, card.sub])],
+      }}
     >
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
         {cards.map((card) => (

@@ -87,6 +87,16 @@ describe("the six sections", () => {
     const { container } = renderSection(PeopleSection);
     expect(container.querySelectorAll("section").length).toBeGreaterThan(5);
   });
+
+  it("offers each chart card an export built from the chart's own rows", () => {
+    renderSection(TimeSection);
+
+    // No panel passes a csv prop: the card reads the table back out of the
+    // option its chart drew, so an export cannot drift from the picture.
+    expect(screen.getByRole("button", { name: "Export Messages over time as CSV" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Export Cumulative growth as CSV" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Export When the chat comes alive as CSV" })).toBeInTheDocument();
+  });
 });
 
 describe("a card's own filters", () => {

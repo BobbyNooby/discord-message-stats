@@ -1,9 +1,12 @@
+import { Download } from "lucide-react";
 import { useState } from "react";
 
 import { useMedia } from "../api/queries";
 import type { Payload } from "../api/types";
 import { Chip, NARROW, useNarrow } from "../components/AppShell";
+import { useNotice } from "../components/Notice";
 import { Dialog, Sheet } from "../components/ui";
+import { csvFilename, downloadCsv } from "../lib/csv";
 import { kindLabel, providerLabel } from "../lib/mediaLabels";
 import { MediaTile } from "./MediaTile";
 
@@ -41,6 +44,7 @@ export function MediaView({
   payload: Payload;
 }) {
   const narrow = useNarrow(NARROW);
+  const notify = useNotice();
   const [provider, setProvider] = useState<string | null>(null);
   const [kind, setKind] = useState<string | null>(null);
   const query = useMedia(provider, open);
@@ -56,19 +60,48 @@ export function MediaView({
   const body = (
     <div className="space-y-3">
       <div className="space-y-2">
-        <div className="flex flex-wrap gap-1" role="group" aria-label="Filter by provider">
-          <Chip active={provider === null} onClick={() => setProvider(null)}>
-            All providers
-          </Chip>
-          {providers.map((choice) => (
-            <Chip
-              key={choice.value}
-              active={provider === choice.value}
-              onClick={() => setProvider(provider === choice.value ? null : choice.value)}
-            >
-              {choice.label}
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div className="flex flex-wrap gap-1" role="group" aria-label="Filter by provider">
+            <Chip active={provider === null} onClick={() => setProvider(null)}>
+              All providers
             </Chip>
-          ))}
+            {providers.map((choice) => (
+              <Chip
+                key={choice.value}
+                active={provider === choice.value}
+                onClick={() => setProvider(provider === choice.value ? null : choice.value)}
+              >
+                {choice.label}
+              </Chip>
+            ))}
+          </div>
+          {/* The list is the aggregate here, so the export is the list. */}
+          <button
+            type="button"
+            disabled={shown.length === 0}
+            onClick={() => {
+              const file = "top-media";
+              try {
+                const written = downloadCsv(file, [
+                  ["url", "provider", "kind", "title", "uses"],
+                  ...shown.map((row) => [row[0], row[1], row[2], row[3], row[6]]),
+                ]);
+                notify({
+                  tone: "success",
+                  message: `Exported ${csvFilename(file)} — ${written} rows of the ranking on screen.`,
+                });
+              } catch (failure) {
+                notify({
+                  tone: "danger",
+                  message: `Could not export ${csvFilename(file)} (${(failure as Error).message}). Try again, or copy the links by hand.`,
+                });
+              }
+            }}
+            className="flex shrink-0 items-center gap-1 rounded border border-[var(--color-line)] px-2 py-0.5 text-[11px] text-[var(--color-muted)] disabled:opacity-50"
+          >
+            <Download size={12} aria-hidden />
+            Export CSV
+          </button>
         </div>
         {kinds.length > 1 ? (
           <div className="flex flex-wrap gap-1" role="group" aria-label="Filter by kind">
