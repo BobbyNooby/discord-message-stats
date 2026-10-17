@@ -1,4 +1,4 @@
-import { EmptyState, GlobalOnlyBadge, Panel } from "../components/Panel";
+import { EmptyState, Panel } from "../components/Panel";
 import { EChart } from "../lib/echart";
 import { PALETTE } from "../lib/palette";
 import { foldPie, pieNote, pieOption } from "./chartShape";
@@ -17,7 +17,8 @@ const TITLE = "Message types";
 
 /**
  * Calls, pins, polls, joins… The payload keeps one row per type with no date
- * or author column, so a time filter cannot change it — it says so instead.
+ * or author column, so a time filter cannot change it; the Media section note
+ * names it once.
  *
  * Both shapes read the same rows: the bar draws every type, the pie folds the
  * tail into "Other" and says how much of the list that is (`pieNote`), because
@@ -39,7 +40,6 @@ export function MessageTypes({ payload, filters: fallbackFilters }: MediaPanelPr
           ? `calls, pins, polls, joins… · ${pieNote(rows, "types")} · ${fmt(total)} messages`
           : `calls, pins, polls, joins… · ${fmt(total)} messages across ${rows.length} types`
       }
-      badge={<GlobalOnlyBadge what={TITLE} />}
     >
       {blank ? (
         <EmptyState>{blank}</EmptyState>

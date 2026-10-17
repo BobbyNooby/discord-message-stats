@@ -1,7 +1,7 @@
 import type { EChartsOption } from "echarts";
 
 import type { Payload } from "../api/types";
-import { EmptyState, GlobalOnlyBadge, Panel } from "../components/Panel";
+import { EmptyState, Panel } from "../components/Panel";
 import type { Filters } from "../filters/reducer";
 import { EChart } from "../lib/echart";
 import { AXIS_LINE, AXIS_TEXT, fmt, matrixData, TOOLTIP } from "./people";
@@ -19,7 +19,7 @@ const PIECES = [
 /**
  * A k×k heatmap over the *visible* authors. `rollup_reply` carries no date, so
  * the axes, the cells and the totals are identical with or without a time
- * filter — and the badge says so rather than leaving the reader to wonder why.
+ * filter — the People section note says so once.
  */
 export function ReplyMatrix({
   payload,
@@ -32,11 +32,10 @@ export function ReplyMatrix({
 }) {
   const filters = usePanelFilters("reply-matrix", fallbackFilters);
   const matrix = matrixData(payload, filters);
-  const badge = true ? <GlobalOnlyBadge what="Reply pairs" /> : null;
 
   if (!matrix.k) {
     return (
-      <Panel title="Reply matrix" badge={badge} className={className}>
+      <Panel title="Reply matrix" className={className}>
         <EmptyState>No authors selected — switch one back on in the filters.</EmptyState>
       </Panel>
     );
@@ -90,7 +89,6 @@ export function ReplyMatrix({
     <Panel
       title="Reply matrix"
       subtitle={`${matrix.k} authors · ${matrix.k * matrix.k} cells · ${fmt(matrix.total)} replies`}
-      badge={badge}
       className={className}
     >
       <EChart option={option} height={Math.max(260, matrix.k * 22 + 90)} />

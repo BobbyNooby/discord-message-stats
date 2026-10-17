@@ -119,18 +119,18 @@ beforeEach(() => {
   options.length = 0;
 });
 
-describe("global-only panels (§11.2)", () => {
-  it("badges the reply matrix and holds its cell count still, while the leaderboard moves", () => {
-    // The registry lists no time dimension for this card, so the badge is a
-    // property of the card, not of whichever filter happens to be on.
+describe("the date-less People cards", () => {
+  it("holds the reply matrix's cell count still, while the leaderboard moves", () => {
+    // `rollup_reply` has no date column, so the card is unchanged by a time
+    // filter; the People section note says so once instead of badging the card.
     const matrix = render(<ReplyMatrix payload={payload} filters={withFilters()} />);
     const unfiltered = screen.getByText(/cells · .* replies/).textContent;
     expect(unfiltered).toContain("4 cells"); // 2 visible authors
-    expect(screen.getByText("global only")).toBeInTheDocument();
+    expect(screen.queryByText("global only")).not.toBeInTheDocument();
     matrix.unmount();
 
     render(<ReplyMatrix payload={payload} filters={withFilters({ years: [2025] })} />);
-    expect(screen.getByText("global only")).toBeInTheDocument();
+    expect(screen.queryByText("global only")).not.toBeInTheDocument();
     expect(screen.getByText(/cells · .* replies/).textContent).toBe(unfiltered);
   });
 
@@ -144,11 +144,15 @@ describe("global-only panels (§11.2)", () => {
     expect(screen.queryByText("global only")).not.toBeInTheDocument();
   });
 
-  it("badges the other rollups with no date column under a time filter", () => {
+  it("names the date-less cards once in the section note, not on every card", () => {
     const filters = withFilters({ years: [2024] });
     render(<PeopleSection payload={payload} filters={filters} />);
-    // Reply pairs ×3 (network, matrix, balance), response, starter, edit speed.
-    expect(screen.getAllByText("global only")).toHaveLength(5);
+    // Reply pairs ×3 (network, matrix, balance), response and starter are the
+    // five cards a date filter cannot move.
+    expect(screen.queryAllByText("global only")).toHaveLength(0);
+    const note = screen.getByText(/5 of these 11 cards/);
+    expect(note).toHaveTextContent("Reply matrix");
+    expect(note).toHaveTextContent("How fast people reply");
   });
 
   it("only badges the edit panel in the measure that has no date column", async () => {

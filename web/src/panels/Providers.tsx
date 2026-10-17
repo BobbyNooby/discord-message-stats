@@ -1,4 +1,4 @@
-import { EmptyState, GlobalOnlyBadge, Panel } from "../components/Panel";
+import { EmptyState, Panel } from "../components/Panel";
 import { EChart } from "../lib/echart";
 import { providerLabel } from "../lib/mediaLabels";
 import { PALETTE } from "../lib/palette";
@@ -48,7 +48,6 @@ export function Providers({ payload, filters }: { panelId?: string; payload: Pay
   return (
     <Panel
       title="Embed providers"
-      badge={<GlobalOnlyBadge what="The provider rollup" />}
       subtitle={`who Discord unfurled · ${fmt(total)} embeds from ${scope}`}
     >
       {!rows.length ? (

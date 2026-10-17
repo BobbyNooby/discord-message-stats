@@ -1,4 +1,4 @@
-import { EmptyState, GlobalOnlyBadge, Panel } from "../components/Panel";
+import { EmptyState, Panel } from "../components/Panel";
 import { EChart } from "../lib/echart";
 import {
   EMOJI_COLOR,
@@ -27,7 +27,6 @@ export function Emoji({ payload, filters: fallbackFilters }: MediaPanelProps & W
       subtitle={`counted from message bodies · ${fmt(pairTotal(payload.emoji))} uses across ${pairCount(
         payload.emoji,
       )} emoji`}
-      badge={<GlobalOnlyBadge what={TITLE} />}
     >
       {blank ? (
         <EmptyState>{blank}</EmptyState>

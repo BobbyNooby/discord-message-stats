@@ -6,9 +6,9 @@
  * Four of the rollups behind these panels — `rollup_reply`, `rollup_response`,
  * `rollup_starter`, `rollup_edit_speed` — have no date column. They are read
  * through `activeEdges`/`globalTotals`, which honour the author filter and
- * deliberately ignore the time filter, and the panels that use them wear a
- * `<GlobalOnlyBadge>` so a filtered page never shows an unfiltered number
- * without saying so.
+ * deliberately ignore the time filter; the People section note names those
+ * cards once so a filtered page never shows an unfiltered number without saying
+ * so.
  */
 import type { EChartsOption } from "echarts";
 

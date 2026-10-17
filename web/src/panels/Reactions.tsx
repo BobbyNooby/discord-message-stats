@@ -1,4 +1,4 @@
-import { EmptyState, GlobalOnlyBadge, Panel } from "../components/Panel";
+import { EmptyState, Panel } from "../components/Panel";
 import { EChart } from "../lib/echart";
 import {
   REACTION_COLOR,
@@ -27,7 +27,6 @@ export function Reactions({ payload, filters: fallbackFilters }: MediaPanelProps
       subtitle={`from the raw JSON column · ${fmt(pairTotal(payload.reactions))} reactions across ${pairCount(
         payload.reactions,
       )} emoji`}
-      badge={<GlobalOnlyBadge what={TITLE} />}
     >
       {blank ? (
         <EmptyState>{blank}</EmptyState>

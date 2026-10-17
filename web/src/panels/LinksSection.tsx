@@ -1,4 +1,5 @@
 import { CARD_COLUMNS, SectionHeading } from "../components/Panel";
+import { SectionScopeNote } from "../components/SectionScopeNote";
 import type { Payload } from "../api/types";
 import type { Filters } from "../filters/reducer";
 import { EmbedTypes } from "./EmbedTypes";
@@ -11,6 +12,7 @@ export function LinksSection({ payload, filters }: { payload: Payload; filters: 
   return (
     <section aria-labelledby="sec-links" className="space-y-4">
       <SectionHeading id="sec-links">Links &amp; embeds</SectionHeading>
+      <SectionScopeNote section="links" />
       <div className={CARD_COLUMNS}>
         <LinkDomains payload={payload} filters={filters} />
         <Providers payload={payload} filters={filters} />

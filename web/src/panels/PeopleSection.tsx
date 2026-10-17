@@ -1,4 +1,5 @@
 import { CARD_COLUMNS, SectionHeading } from "../components/Panel";
+import { SectionScopeNote } from "../components/SectionScopeNote";
 import type { Payload } from "../api/types";
 import type { Filters } from "../filters/reducer";
 import { AuthorRadar } from "./AuthorRadar";
@@ -18,6 +19,7 @@ export function PeopleSection({ payload, filters }: { payload: Payload; filters:
   return (
     <section aria-labelledby="sec-people" className="space-y-4">
       <SectionHeading id="sec-people">People</SectionHeading>
+      <SectionScopeNote section="people" />
       <div className={CARD_COLUMNS}>
         <Leaderboard payload={payload} filters={filters} />
         <WhoWrites payload={payload} filters={filters} />

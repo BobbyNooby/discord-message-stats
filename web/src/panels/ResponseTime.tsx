@@ -1,5 +1,5 @@
 import type { Payload } from "../api/types";
-import { EmptyState, GlobalOnlyBadge, Panel } from "../components/Panel";
+import { EmptyState, Panel } from "../components/Panel";
 import type { Filters } from "../filters/reducer";
 import { TERMS } from "../lib/glossary";
 import { EChart } from "../lib/echart";
@@ -10,11 +10,10 @@ import { usePanelFilters } from "./panelScope";
 export function ResponseTime({ payload, filters: fallbackFilters }: { panelId?: string; payload: Payload; filters?: Filters }) {
   const filters = usePanelFilters("how-fast-people-reply", fallbackFilters);
   const rows = responseRows(payload, filters);
-  const badge = true ? <GlobalOnlyBadge what="Reply latency" /> : null;
 
   if (!rows.length) {
     return (
-      <Panel title="How fast people reply" badge={badge}>
+      <Panel title="How fast people reply">
         <EmptyState>No reply latencies yet — ingest, or upload a database from the Admin board.</EmptyState>
       </Panel>
     );
@@ -25,7 +24,6 @@ export function ResponseTime({ payload, filters: fallbackFilters }: { panelId?: 
     <Panel
       title="How fast people reply"
       subtitle={`${fmt(replies)} replies · ${dur(weightedAverage(rows))} average wait across ${rows.length} authors`}
-      badge={badge}
       help={TERMS.averageWait}
     >
       <EChart
