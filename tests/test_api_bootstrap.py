@@ -122,6 +122,38 @@ def test_words_are_a_slice_and_word_authors_is_keyed_by_word(client):
     assert len(body["authorDistinct"]) == len(body["authors"])
 
 
+def test_media_endpoint_filters_by_kind_across_the_whole_ranking(client, conn):
+    """A kind chip must search the rollup, not the page of rows already fetched.
+
+    Two GIFs and one video, with a limit of two: the default page is all GIFs, so
+    a client-side filter would find no video at all. The endpoint has to answer
+    from the whole table, and it has to say which kinds exist.
+    """
+    conn.execute("DELETE FROM rollup_media WHERE channel_id = ?", ("c1",))
+    conn.executemany(
+        "INSERT INTO rollup_media (channel_id, url, provider, kind, uses)"
+        " VALUES (?, ?, ?, ?, ?)",
+        [
+            ("c1", "https://tenor.com/a", "Tenor", "gifv", 50),
+            ("c1", "https://tenor.com/b", "Tenor", "gifv", 40),
+            ("c1", "https://youtu.be/c", "YouTube", "video", 5),
+        ],
+    )
+    conn.commit()
+
+    page = client.get("/api/media?limit=2").json()
+    assert [item[2] for item in page["items"]] == ["gifv", "gifv"]
+
+    filtered = client.get("/api/media?kind=video&limit=2").json()
+    assert filtered["kind"] == "video"
+    assert [item[2] for item in filtered["items"]] == ["video"]
+    assert filtered["kinds"] == ["gifv", "video"]
+
+
+def test_media_endpoint_rejects_a_blank_kind(client):
+    assert client.get("/api/media?kind=").status_code == 422
+
+
 def test_words_endpoint_searches_the_full_index(client):
     body = client.get("/api/words?q=abc").json()
     assert body["word"] == "abc"

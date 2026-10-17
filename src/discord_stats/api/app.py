@@ -459,12 +459,16 @@ def create_app(
 
     @app.get("/api/media")
     def media(provider: str | None = Query(None, max_length=64),
+              kind: str | None = Query(None, min_length=1, max_length=32),
               limit: int = Query(12, ge=1, le=100),
               _level: Level = Depends(require_viewer)) -> dict:
-        """Top reposted media, optionally for one provider.
+        """Top reposted media, optionally for one provider and one kind.
 
         The dashboard's payload ranks everything together, where a GIF beats a
         video link every time; this is how "top YouTube links" becomes visible.
+        `kind` is a WHERE clause, not a filter over the page: narrowing to one
+        kind has to search the whole rollup, or a chip would only ever reorder
+        the fifty rows the limit returned. `kinds` is the set the chips offer.
         """
         conn = connection()
         try:
@@ -472,7 +476,10 @@ def create_app(
             effective = admin.effective_for(conn, cfg)
             return {
                 "provider": provider,
-                "items": query.top_media(conn, effective.channel_id, limit, provider=provider),
+                "kind": kind,
+                "kinds": query.media_kinds(conn, effective.channel_id, provider=provider),
+                "items": query.top_media(conn, effective.channel_id, limit,
+                                         provider=provider, kind=kind),
             }
         finally:
             conn.close()

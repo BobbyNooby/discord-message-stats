@@ -142,12 +142,12 @@ describe("<RichMedia>", () => {
   });
 
   it("opens the server's top 50 in a labelled dialog", async () => {
-    server.getMedia.mockResolvedValue({ provider: null, items: many(50) });
+    server.getMedia.mockResolvedValue({ provider: null, kinds: [], items: many(50) });
     renderCard();
     await openView();
 
     const dialog = await screen.findByRole("dialog", { name: /top 50/i });
-    expect(server.getMedia).toHaveBeenCalledWith(undefined, 50);
+    expect(server.getMedia).toHaveBeenCalledWith(undefined, undefined, 50);
     expect(within(dialog).getAllByRole("listitem")).toHaveLength(50);
   });
 
@@ -156,26 +156,29 @@ describe("<RichMedia>", () => {
     await openView();
     await screen.findByRole("dialog", { name: /top 50/i });
 
-    server.getMedia.mockResolvedValue({ provider: "Tenor", items: [cat] });
+    server.getMedia.mockResolvedValue({ provider: "Tenor", kinds: [], items: [cat] });
     await userEvent.click(screen.getByRole("button", { name: "Tenor" }));
 
-    await waitFor(() => expect(server.getMedia).toHaveBeenCalledWith("Tenor", 50));
+    await waitFor(() => expect(server.getMedia).toHaveBeenCalledWith("Tenor", undefined, 50));
     const dialog = await screen.findByRole("dialog", { name: /top 50/i });
     expect(within(dialog).getByText(/posted 63 times · Tenor GIF/)).toBeInTheDocument();
   });
 
-  it("filters the opened list by kind without asking the server again", async () => {
+  it("filters the whole set by kind through the api, not the page in hand", async () => {
     const video: MediaRow = ["https://youtu.be/abc", "YouTube", "video", "A video", "", "", 9];
-    server.getMedia.mockResolvedValue({ provider: null, items: [cat, video] });
+    server.getMedia.mockResolvedValue({ provider: null, kinds: ["gifv", "video"], items: [cat, video] });
     renderCard();
     await openView();
     const dialog = await screen.findByRole("dialog", { name: /top 50/i });
     expect(within(dialog).getAllByRole("listitem")).toHaveLength(2);
 
+    // The server is the one that can see past the fifty-row page, so choosing a
+    // kind is another request — not a filter over what already arrived.
+    server.getMedia.mockResolvedValue({ provider: null, kinds: ["gifv", "video"], items: [video] });
     await userEvent.click(screen.getByRole("button", { name: "video" }));
 
+    await waitFor(() => expect(server.getMedia).toHaveBeenCalledWith(undefined, "video", 50));
     expect(within(dialog).getAllByRole("listitem")).toHaveLength(1);
-    expect(server.getMedia).toHaveBeenCalledTimes(1);
   });
 
   it("offers the opened ranking as a csv, from the rows on screen", async () => {

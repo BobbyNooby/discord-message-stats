@@ -60,11 +60,20 @@ export const getWords = (query: string, limit = 50) =>
     authors: { id: string; name: string; count: number }[];
   }>(`/api/words?q=${encodeURIComponent(query)}&limit=${limit}`);
 
-/** The full media ranking, optionally for one provider (`/api/media`). */
-export const getMedia = (provider?: string, limit = 50) => {
+/**
+ * The full media ranking, optionally for one provider and one kind
+ * (`/api/media`). Both are query parameters, so a kind chip narrows the whole
+ * rollup rather than the page of rows already fetched.
+ */
+export const getMedia = (provider?: string, kind?: string, limit = 50) => {
   const params = new URLSearchParams({ limit: String(limit) });
   if (provider) params.set("provider", provider);
-  return request<{ provider: string | null; items: import("./types").MediaRow[] }>(
-    `/api/media?${params.toString()}`,
-  );
+  if (kind) params.set("kind", kind);
+  return request<{
+    provider: string | null;
+    kind: string | null;
+    /** Every kind present for this provider, so the chips cover the whole set. */
+    kinds: string[];
+    items: import("./types").MediaRow[];
+  }>(`/api/media?${params.toString()}`);
 };

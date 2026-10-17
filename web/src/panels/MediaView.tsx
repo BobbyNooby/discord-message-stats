@@ -47,14 +47,13 @@ export function MediaView({
   const notify = useNotice();
   const [provider, setProvider] = useState<string | null>(null);
   const [kind, setKind] = useState<string | null>(null);
-  const query = useMedia(provider, open);
+  const query = useMedia(provider, kind, open);
   const mode = payload.mediaThumbnails ?? "proxy";
 
-  const items = query.data?.items ?? [];
-  // Kinds come from the rows actually loaded, so no chip can filter the list to
-  // nothing the server just sent.
-  const kinds = [...new Set(items.map((row) => row[2]).filter(Boolean))];
-  const shown = kind ? items.filter((row) => row[2] === kind) : items;
+  const shown = query.data?.items ?? [];
+  // The kinds come from the server, which counts them across the whole rollup:
+  // deriving them from the fifty rows in hand hid every kind below the limit.
+  const kinds = query.data?.kinds ?? [];
   const providers = providerChoices(payload);
 
   const body = (
@@ -62,14 +61,26 @@ export function MediaView({
       <div className="space-y-2">
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div className="flex flex-wrap gap-1" role="group" aria-label="Filter by provider">
-            <Chip active={provider === null} onClick={() => setProvider(null)}>
+            <Chip
+              active={provider === null}
+              onClick={() => {
+                setProvider(null);
+                setKind(null);
+              }}
+            >
               All providers
             </Chip>
             {providers.map((choice) => (
               <Chip
                 key={choice.value}
                 active={provider === choice.value}
-                onClick={() => setProvider(provider === choice.value ? null : choice.value)}
+                // A kind that exists for Tenor need not exist for YouTube, so
+                // changing provider clears the kind rather than leaving an
+                // invisible filter switched on.
+                onClick={() => {
+                  setProvider(provider === choice.value ? null : choice.value);
+                  setKind(null);
+                }}
               >
                 {choice.label}
               </Chip>
