@@ -62,7 +62,6 @@ export function Stream({ payload, filters: fallbackFilters }: PanelProps & WithP
         buckets.order.length,
         filters.bucket,
       )} · ${authors.length} authors`}
-      className="lg:col-span-2 xl:col-span-3"
     >
       {nothing ? (
         <EmptyState>{emptyLabel(payload, filters)}</EmptyState>

@@ -1,6 +1,6 @@
 import type { Dispatch } from "react";
 
-import { CARD_COLUMNS } from "../components/Panel";
+import { CARD_COLUMNS, SectionHeading } from "../components/Panel";
 
 import type { Payload } from "../api/types";
 import type { Action, Filters } from "../filters/reducer";
@@ -9,7 +9,7 @@ import { WordCloud } from "./WordCloud";
 import { WordIndex } from "./WordIndex";
 import { WordLift } from "./WordLift";
 
-/** The Words section (§11.1) with the mockup's 3-column rhythm: w3, w2, 1, w3. */
+/** The Words section (§11.1). The heading spans the width, outside the column flow. */
 export function WordsSection({
   payload,
   filters,
@@ -20,24 +20,16 @@ export function WordsSection({
   dispatch: Dispatch<Action>;
 }) {
   return (
-    <section aria-labelledby="sec-words" className={CARD_COLUMNS}>
-      <h2 id="sec-words" className="text-base font-semibold text-[var(--color-text)] lg:col-span-2 xl:col-span-3">
-        Words
-      </h2>
-      <div className="lg:col-span-2 xl:col-span-3">
+    <section aria-labelledby="sec-words" className="space-y-4">
+      <SectionHeading id="sec-words">Words</SectionHeading>
+      <div className={CARD_COLUMNS}>
         <WordLift payload={payload} filters={filters} />
-      </div>
-      <div className="lg:col-span-1 xl:col-span-2">
         <WordIndex
           words={payload.words}
           selected={filters.word}
           onSelect={(word) => dispatch({ type: "setWord", word })}
         />
-      </div>
-      <div>
         <WhoSaysIt payload={payload} filters={filters} word={filters.word} />
-      </div>
-      <div className="lg:col-span-2 xl:col-span-3">
         <WordCloud payload={payload} filters={filters} />
       </div>
     </section>

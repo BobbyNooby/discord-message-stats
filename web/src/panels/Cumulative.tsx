@@ -81,7 +81,6 @@ export function Cumulative({ payload, filters: fallbackFilters }: PanelProps & W
         buckets.order.length,
         filters.bucket,
       )}`}
-      className="lg:col-span-2"
     >
       {nothing ? (
         <EmptyState>{emptyLabel(payload, filters)}</EmptyState>

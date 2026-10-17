@@ -1,3 +1,4 @@
+import { SectionHeading } from "../components/Panel";
 import { MessagesPerYear } from "./MessagesPerYear";
 import { ShareOfVoice } from "./ShareOfVoice";
 import { ShareOfVoiceByYear } from "./ShareOfVoiceByYear";
@@ -8,12 +9,7 @@ import type { PanelProps } from "./timeAggregates";
 export function OverviewSection({ payload, filters }: PanelProps) {
   return (
     <section aria-labelledby="sec-overview" className="space-y-4">
-      <h2
-        id="sec-overview"
-        className="text-base font-semibold text-[var(--color-text)]"
-      >
-        Overview
-      </h2>
+      <SectionHeading id="sec-overview">Overview</SectionHeading>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <StatCards payload={payload} filters={filters} />
         <ShareOfVoice payload={payload} filters={filters} />

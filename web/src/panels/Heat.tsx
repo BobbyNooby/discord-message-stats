@@ -28,7 +28,7 @@ export function Heat({ payload, filters: fallbackFilters }: PanelProps & WithPan
 
   if (!heat.total) {
     return (
-      <Panel title="When the chat comes alive" subtitle={subtitle} className="lg:col-span-2 xl:col-span-3">
+      <Panel title="When the chat comes alive" subtitle={subtitle}>
         <EmptyState>{emptyLabel(payload, filters)}</EmptyState>
       </Panel>
     );
@@ -82,11 +82,7 @@ export function Heat({ payload, filters: fallbackFilters }: PanelProps & WithPan
   };
 
   return (
-    <Panel
-      title="When the chat comes alive"
-      subtitle={subtitle}
-      className="lg:col-span-2 xl:col-span-3"
-    >
+    <Panel title="When the chat comes alive" subtitle={subtitle}>
       <EChart option={option} height={280} />
     </Panel>
   );
