@@ -116,7 +116,7 @@ export function IdentityMerge({
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [undoes, setUndoes] = useState<MergeEntry[] | null>(null);
-  const [applied, setApplied] = useState(false);
+  const [rebuildWhy, setRebuildWhy] = useState<string | null>(null);
 
   useEffect(() => {
     setMerges(mergesFromPayload(payload));
@@ -200,7 +200,12 @@ export function IdentityMerge({
    * ever moved to what the server answered, so a failed call leaves the list
    * showing the server's last known state rather than a merge that is not there.
    */
-  async function persist(next: Merge[], message: string, pinned?: { canonical: string; name: string }) {
+  async function persist(
+    next: Merge[],
+    message: string,
+    pinned?: { canonical: string; name: string },
+    rebuildWhy = "A rebuild is required to apply this change.",
+  ) {
     setSaving(true);
     setNotice(null);
     setError(null);
@@ -214,7 +219,7 @@ export function IdentityMerge({
       // `previous: []` is a real state — "there were no merges before this one" —
       // so undo stays offered; only a page with no write yet has nothing to undo.
       setUndoes(written.previous);
-      setApplied(true);
+      setRebuildWhy(rebuildWhy);
       setNotice(message);
     } catch (failure) {
       setError((failure as Error).message);
@@ -234,6 +239,7 @@ export function IdentityMerge({
       const written = await putIdentity(undoes);
       setUndoes(null);
       setMerges(mergesFromWire(written.merges));
+      setRebuildWhy("A rebuild is required to apply the undo.");
       setNotice("Undone — the merge set is back to what it was before that change.");
     } catch (failure) {
       setError((failure as Error).message);
@@ -261,6 +267,7 @@ export function IdentityMerge({
       next,
       `Merged ${members.size + 1} accounts into ${winnerName}.`,
       { canonical: winner, name: winnerName },
+      "A rebuild is required to apply the merge.",
     );
   }
 
@@ -327,12 +334,7 @@ export function IdentityMerge({
         </Notice>
       ) : null}
       {notice ? <Notice tone="ok">{notice}</Notice> : null}
-      {applied ? (
-        <RebuildRequired
-          what="A rebuild is required to apply the merge."
-          onDirty={onDirty}
-        />
-      ) : null}
+      {rebuildWhy ? <RebuildRequired what={rebuildWhy} onDirty={onDirty} /> : null}
 
       <div className="space-y-3">
         {merges.length === 0 ? (
