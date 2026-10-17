@@ -1,11 +1,13 @@
 import type { Dispatch, ReactNode } from "react";
 
 import type { Payload } from "../api/types";
+import type { Charts } from "../filters/persist";
 import type { DashboardAction, FilterPatch, Filters, Scopes, SidebarMode } from "../filters/reducer";
 import { effective } from "../filters/selectors";
 import { specFor, type Dimension, type PanelId } from "../panels/registry";
 import { AuthorFilterList } from "./AuthorFilterList";
 import { Chip, FilterGroup } from "./AppShell";
+import { ResetView } from "./ResetView";
 import { ScopeBanner } from "./ScopeBanner";
 import { ScopeChips } from "./ScopeChips";
 import { TimeRangePicker } from "./TimeRangePicker";
@@ -47,6 +49,9 @@ export function FilterSidebar({
   dispatch,
   years,
   onExitScope,
+  pruned,
+  charts = {},
+  onResetView = () => {},
 }: {
   payload: Payload;
   filters: Filters;
@@ -56,6 +61,11 @@ export function FilterSidebar({
   dispatch: Dispatch<DashboardAction>;
   years: number[];
   onExitScope?: () => void;
+  /** What was dropped from saved filters because the payload no longer has it. */
+  pruned?: string;
+  /** Chart shapes are stored beside the scopes, so the reset control owns both. */
+  charts?: Charts;
+  onResetView?: () => void;
 }) {
   const scoped = mode.kind === "scoped" ? mode : null;
   const spec = scoped ? specFor(scoped.panelId) : null;
@@ -173,6 +183,7 @@ export function FilterSidebar({
             dirty={JSON.stringify(scoped.draft) !== JSON.stringify(applied)}
             onApply={() => dispatch({ type: "applyScope", panelId: scoped.panelId })}
             onBack={() => onExitScope?.()}
+            pruned={pruned}
           />
         </div>
       ) : null}
@@ -226,6 +237,7 @@ export function FilterSidebar({
           >
             Reset all filters
           </button>
+          <ResetView scopes={scopes} charts={charts} onReset={onResetView} />
         </>
       )}
     </div>

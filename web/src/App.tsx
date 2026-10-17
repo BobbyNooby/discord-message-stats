@@ -1,4 +1,4 @@
-import { useCallback, useReducer } from "react";
+import { useCallback, useEffect, useReducer, useState } from "react";
 
 import { Unauthorized } from "./api/client";
 import { useBootstrap, useHealth, useRecent } from "./api/queries";
@@ -8,7 +8,17 @@ import { HealthBanner } from "./components/HealthBanner";
 import { PanelScopeProvider } from "./components/Panel";
 import { RecentStrip } from "./components/RecentStrip";
 import { dashboardReducer, initialDashboardState } from "./filters/reducer";
-import type { PanelId } from "./panels/registry";
+import {
+  describeDropped,
+  loadCharts,
+  loadScopes,
+  readUrlState,
+  saveCharts,
+  saveScopes,
+  writeUrlState,
+  type Charts,
+} from "./filters/persist";
+import { PANELS, type PanelId } from "./panels/registry";
 import { Calendar } from "./panels/Calendar";
 import { LinksSection } from "./panels/LinksSection";
 import { MediaSection } from "./panels/MediaSection";
@@ -78,6 +88,41 @@ function DashboardBody({
     [dispatch],
   );
 
+  // Saved scopes are read from the URL first (one entry per dimension, names
+  // not indices) and the storage key second, then pruned against the payload
+  // that is actually loaded.
+  const [saved] = useState(() => {
+    const fromUrl = readUrlState(payload);
+    const loaded = loadScopes(payload);
+    return {
+      scopes: { ...loaded.scopes, ...fromUrl.scopes },
+      dropped: loaded.dropped,
+    };
+  });
+  const [charts, setCharts] = useState<Charts>(() => loadCharts());
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- Reset view writes this back (Task 7)
+
+  useEffect(() => {
+    for (const [panelId, patch] of Object.entries(saved.scopes)) {
+      dispatch({ type: "replaceScope", panelId: panelId as PanelId, patch });
+    }
+  }, [dispatch, saved.scopes]);
+
+  // Scopes are the one piece of state worth surviving a reload, and the URL is
+  // what makes that work on a phone: it is the same view, not a re-typed one.
+  useEffect(() => {
+    saveScopes(scopes, payload.authors.map((author) => author.name));
+    writeUrlState({ scopes, authors: payload.authors.map((author) => author.name) });
+  }, [payload, scopes]);
+
+  useEffect(() => {
+    saveCharts(charts);
+  }, [charts]);
+
+  const pruned = describeDropped(saved.dropped, (panelId) =>
+    panelId in PANELS ? PANELS[panelId as PanelId].label : panelId,
+  );
+
   return (
     <AppShell
       canAdmin={payload.meta.can_admin}
@@ -89,7 +134,13 @@ function DashboardBody({
           mode={mode}
           dispatch={dispatch}
           years={years}
+          pruned={pruned}
+          charts={charts}
           onExitScope={() => dispatch({ type: "closeScope" })}
+          onResetView={() => {
+            dispatch({ type: "clearScopes" });
+            setCharts({});
+          }}
         />
       }
       header={
