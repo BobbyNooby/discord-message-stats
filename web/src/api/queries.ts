@@ -43,13 +43,15 @@ export function useWords(query: string, enabled: boolean) {
 }
 
 /**
- * One provider's (or everyone's) top media, fetched only while the top-50 view
- * is open: the payload's own ranking is enough for the ten items in the card.
+ * One provider's and one kind's (or everyone's) top media, fetched only while
+ * the top-50 view is open: the payload's own ranking is enough for the ten
+ * items in the card. Both filters are the server's, so a chip narrows the whole
+ * rollup rather than the fifty rows in hand.
  */
-export function useMedia(provider: string | null, enabled: boolean) {
+export function useMedia(provider: string | null, kind: string | null, enabled: boolean) {
   return useQuery({
-    queryKey: ["media", provider ?? "all"],
-    queryFn: () => getMedia(provider ?? undefined, 50),
+    queryKey: ["media", provider ?? "all", kind ?? "all"],
+    queryFn: () => getMedia(provider ?? undefined, kind ?? undefined, 50),
     enabled,
   });
 }
