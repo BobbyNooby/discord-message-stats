@@ -11,7 +11,7 @@ import { kindLabel, providerChoices } from "../lib/mediaLabels";
 import { MediaTile } from "./MediaTile";
 
 /**
- * "Show top 50": the card's ten items, opened up (§UI/UX rule 5).
+ * "Browse all": the card's ten items, opened up (§UI/UX rule 5).
  *
  * The ranking comes from `/api/media`, not from the payload: the payload ships
  * a dozen rows per provider, and this view is where "top YouTube links" becomes

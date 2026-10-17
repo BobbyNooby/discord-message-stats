@@ -309,7 +309,7 @@ export function readUrlState(payload?: Payload, search?: string): UrlState {
 /* ---------- the media view ---------- */
 
 /**
- * "Show top 50" is a state of the view, so it lives in the URL beside the
+ * "Browse all" is a state of the view, so it lives in the URL beside the
  * scopes: Back closes it, and the link is the view (§UI/UX rule 5).
  */
 export function readMediaOpen(search?: string): boolean {
