@@ -178,21 +178,22 @@ def test_authorize_url_asks_for_identify_and_carries_state():
 
 
 def test_exchange_code_posts_the_code_and_returns_the_token(monkeypatch):
-    seen = {}
-
-    class Response:
-        status_code = 200
-
-        def json(self):
-            return {"access_token": "an-access-token", "token_type": "Bearer"}
-
-    def fake_post(url, data=None, headers=None, timeout=None):
-        seen.update({"url": url, "data": data})
-        return Response()
+    """Intercepted at the transport, not at ``httpx.post`` — authlib drives an
+    ``httpx.Client`` instance, so the module function is never the seam."""
+    from urllib.parse import parse_qs
 
     import httpx
 
-    monkeypatch.setattr(httpx, "post", fake_post)
+    seen = {}
+
+    def fake_handle_request(self, request):
+        seen.update({"url": str(request.url),
+                     "data": {k: v[0] for k, v in parse_qs(request.content.decode()).items()}})
+        return httpx.Response(
+            200, json={"access_token": "an-access-token", "token_type": "Bearer"}, request=request
+        )
+
+    monkeypatch.setattr(httpx.HTTPTransport, "handle_request", fake_handle_request)
     token = exchange_code("client-1", "secret", "code-1", "https://stats.example/auth/callback")
     assert token == "an-access-token"
     assert seen["data"]["grant_type"] == "authorization_code"
@@ -201,16 +202,59 @@ def test_exchange_code_posts_the_code_and_returns_the_token(monkeypatch):
 
 
 def test_exchange_code_rejects_a_failed_response(monkeypatch):
-    class Response:
-        status_code = 400
-
-        def json(self):
-            return {"error": "invalid_grant"}
-
     import httpx
 
-    monkeypatch.setattr(httpx, "post", lambda *a, **k: Response())
+    def fake_handle_request(self, request):
+        return httpx.Response(400, json={"error": "invalid_grant"}, request=request)
+
+    monkeypatch.setattr(httpx.HTTPTransport, "handle_request", fake_handle_request)
     assert exchange_code("c", "s", "bad", "https://x/auth/callback") is None
+
+
+def test_the_token_exchange_is_made_by_authlib(monkeypatch):
+    """The code is traded by ``authlib``'s client, and its POST carries the
+    code, the grant and the credentials Discord expects in the body."""
+    from urllib.parse import parse_qs
+
+    import httpx
+    from authlib.integrations.httpx_client import OAuth2Client
+
+    seen = {}
+    real_fetch_token = OAuth2Client.fetch_token
+
+    def spy_fetch_token(self, url=None, **kwargs):
+        seen["client"] = type(self)
+        seen["endpoint"] = url
+        return real_fetch_token(self, url, **kwargs)
+
+    def fake_handle_request(self, request):
+        seen["body"] = {k: v[0] for k, v in parse_qs(request.content.decode()).items()}
+        return httpx.Response(200, json={"access_token": "authlib-token"}, request=request)
+
+    monkeypatch.setattr(OAuth2Client, "fetch_token", spy_fetch_token)
+    monkeypatch.setattr(httpx.HTTPTransport, "handle_request", fake_handle_request)
+
+    token = exchange_code("client-1", "secret", "code-1", "https://stats.example/auth/callback")
+    assert token == "authlib-token"
+    assert issubclass(seen["client"], OAuth2Client)
+    assert seen["endpoint"] == "https://discord.com/api/oauth2/token"
+    assert seen["body"]["grant_type"] == "authorization_code"
+    assert seen["body"]["code"] == "code-1"
+    assert seen["body"]["client_id"] == "client-1"
+
+
+def test_the_authorize_url_still_carries_the_five_oauth_fields(db_cfg):
+    from fastapi.testclient import TestClient
+
+    from discord_scraper.api.app import create_app
+
+    cfg, path = db_cfg
+    client = TestClient(create_app(cfg, path), base_url="https://stats.example")
+    location = client.get("/auth/login", follow_redirects=False).headers["location"]
+    for field in ("client_id=test-client", "response_type=code", "scope=identify",
+                  "redirect_uri=https%3A%2F%2Fstats.example%2Fauth%2Fcallback"):
+        assert field in location, field
+    assert "state=" in location
 
 
 # --- the login round trip ----------------------------------------------------
@@ -250,3 +294,57 @@ def test_callback_rejects_a_missing_state(db_cfg):
     cfg, path = db_cfg
     client = TestClient(create_app(cfg, path), base_url="https://stats.example")
     assert client.get("/auth/callback?code=x").status_code == 400
+
+
+def test_a_state_cookie_signed_with_another_secret_is_rejected(db_cfg):
+    """The cookie is not trusted on its own: the HMAC has to verify with the
+    server's ``SESSION_SECRET``, so a forged pair is still a mismatch."""
+    from dataclasses import replace
+
+    from fastapi.testclient import TestClient
+
+    from discord_scraper.api.app import create_app
+    from discord_scraper.auth import oauth
+
+    cfg, path = db_cfg
+    signed = replace(cfg, secrets=replace(cfg.secrets, session_secret="the-real-key"))
+    client = TestClient(create_app(signed, path), base_url="https://stats.example")
+    forged = oauth.new_state("a-different-key")
+    client.cookies.set("dsh_oauth_state", forged)
+    response = client.get(f"/auth/callback?code=x&state={forged}")
+    assert response.status_code == 400
+
+
+def test_a_valid_signed_state_round_trips_into_a_session(db_cfg, conn, monkeypatch):
+    """The state ``/auth/login`` mints and signs is the one the callback
+    accepts, and the fake token the provider hands back still ends in a
+    revocable session row."""
+    from dataclasses import replace
+    from urllib.parse import parse_qs, urlparse
+
+    import httpx
+    from fastapi.testclient import TestClient
+
+    from discord_scraper.api.app import create_app
+    from discord_scraper.auth import oauth
+
+    cfg, path = db_cfg
+    signed = replace(cfg, secrets=replace(cfg.secrets, session_secret="a-signing-key"))
+
+    def fake_handle_request(self, request):
+        return httpx.Response(200, json={"access_token": "fake-token"}, request=request)
+
+    monkeypatch.setattr(httpx.HTTPTransport, "handle_request", fake_handle_request)
+    monkeypatch.setattr(oauth, "fetch_identity",
+                        lambda token: {"id": "u1", "username": "u1handle"})
+
+    client = TestClient(create_app(signed, path), base_url="https://stats.example")
+    login = client.get("/auth/login", follow_redirects=False)
+    state = parse_qs(urlparse(login.headers["location"]).query)["state"][0]
+    assert state == client.cookies.get("dsh_oauth_state")   # signed, and the same one
+
+    response = client.get(f"/auth/callback?code=code-1&state={state}", follow_redirects=False)
+    assert response.status_code in (302, 307)
+    token = client.cookies.get(SESSION_COOKIE)
+    assert token
+    assert session_level(conn, token) is Level.VIEWER

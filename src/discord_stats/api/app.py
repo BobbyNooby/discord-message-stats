@@ -12,8 +12,6 @@ import threading
 import urllib.parse
 from pathlib import Path
 
-import secrets
-
 from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response
 from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.middleware.gzip import GZipMiddleware
@@ -253,7 +251,7 @@ def create_app(
                 status_code=503,
                 detail="OAuth is not configured — set access.client_id and access.redirect_uri",
             )
-        state = secrets.token_urlsafe(24)
+        state = oauth.new_state(cfg.session_secret)
         response = RedirectResponse(oauth.authorize_url(cfg.client_id, cfg.redirect_uri, state))
         response.set_cookie(STATE_COOKIE, state, max_age=600, httponly=True, samesite="lax",
                             secure=True)
@@ -263,7 +261,7 @@ def create_app(
     def callback(request: Request, code: str = "", state: str = ""):
         ip = request.client.host if request.client else "unknown"
         expected = request.cookies.get(STATE_COOKIE, "")
-        if not state or not expected or not secrets.compare_digest(state, expected):
+        if not oauth.state_is_valid(state, expected, cfg.session_secret):
             raise HTTPException(status_code=400, detail="state mismatch")
         token = oauth.exchange_code(cfg.client_id, cfg.client_secret or "", code, cfg.redirect_uri)
         identity = oauth.fetch_identity(token) if token else None
