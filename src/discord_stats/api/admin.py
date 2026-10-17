@@ -414,6 +414,7 @@ def upload_database(request: Request, file: UploadFile = File(...)) -> dict:
     conn = _conn(request)
     try:
         running = _running_jobs(conn)
+        cfg = _effective_for(request, conn)
     finally:
         conn.close()
     if running:
@@ -437,37 +438,43 @@ def upload_database(request: Request, file: UploadFile = File(...)) -> dict:
         "first": staged.first,
         "last": staged.last,
         "size_bytes": staged.size_bytes,
+        # The channel and the zone the file's buckets were built in. A file that
+        # records no zone is labelled with the server's own, and `timezone_source`
+        # says which of the two the operator is looking at.
+        "channel_id": staged.channel_id or cfg.channel_id,
+        "timezone": staged.timezone or cfg.timezone,
+        "timezone_source": "database" if staged.timezone else "config",
+        # The dry run: what the swap would take away as well as bring (§10.6).
+        "added": staged.added,
+        "lost": staged.lost,
+        "disk": {
+            "free_bytes": staged.free_bytes,
+            "required_bytes": staged.size_bytes * staging.DISK_FLOOR_FACTOR,
+        },
         "replaces": _describe_existing(target),
     }
 
 
 @router.post("/upload/{upload_id}/commit", status_code=202)
 def commit_upload(request: Request, upload_id: str) -> dict:
-    """Swap the staged file in, keep a `.bak`, and queue a rebuild."""
+    """Swap the staged file in, keep a `.bak`, and queue a rebuild.
+
+    ``upload.commit`` prepares the staged file and backs the current one up
+    before the single replace, so a failure here leaves the live database as it
+    was rather than half-replaced.
+    """
     from discord_scraper.api import upload as staging
-    from discord_scraper.rollups.schema import create_control_tables, create_rollup_tables
 
     staged = PENDING_UPLOADS.pop(upload_id, None)
     if staged is None:
         raise HTTPException(status_code=404, detail="no such upload — stage it again")
     backup = staging.commit(staged)
-
-    # A database built elsewhere has messages and meta but neither the rollups
-    # nor the control plane; the rebuild about to be queued needs both.
-    conn = _conn(request)
-    try:
-        create_rollup_tables(conn)
-        create_control_tables(conn)
-        conn.commit()
-    finally:
-        conn.close()
-
     job = create_job(request, JobRequest(kind="rebuild_rollups"))
     return {
         "rows": staged.rows,
         "first": staged.first,
         "last": staged.last,
-        "backup": str(backup),
+        "backup": str(backup) if backup else None,
         "job": job,
     }
 
