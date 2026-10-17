@@ -16,8 +16,15 @@ export const CHARTS_KEY = "dash.charts.v1";
 export type ChartKind = "bar" | "pie";
 export type Charts = Record<string, ChartKind>;
 
-/** One thing a scope named that the payload no longer has, for the banner. */
-export type DroppedScope = { panelId: string; dimension: Dimension; key: string };
+/**
+ * One thing a scope named that the payload no longer has, for the banner. A
+ * dropped value still has a dimension and a key ("author “Bob”"); a scope for a
+ * card this build does not have has neither, so it says so rather than
+ * inventing a dimension to hang the news on.
+ */
+export type DroppedScope =
+  | { panelId: string; dimension: Dimension; key: string }
+  | { panelId: string; card: true };
 
 export type LoadedScopes = { scopes: Scopes; dropped: DroppedScope[] };
 
@@ -78,7 +85,7 @@ export function loadScopes(payload: Payload, raw?: string | null): LoadedScopes 
     for (const [panelId, patchValue] of Object.entries(parsed.scopes)) {
       if (!isRecord(patchValue)) continue;
       if (!isPanelId(panelId)) {
-        dropped.push({ panelId, dimension: "kind", key: "scope" });
+        dropped.push({ panelId, card: true });
         continue;
       }
 
@@ -293,9 +300,13 @@ export function writeMediaState(open: boolean, url?: URL): string {
   return target.toString();
 }
 
-/** One line the banner can show: "author “Bob” from Share of voice, word “cat”". */export function describeDropped(dropped: DroppedScope[], labelFor: (panelId: string) => string): string {
+/** One line the banner can show: "author “Bob” from Share of voice, word “cat”". */
+export function describeDropped(dropped: DroppedScope[], labelFor: (panelId: string) => string): string {
   return dropped
     .map((entry) => {
+      if ("card" in entry) {
+        return `a filter for “${entry.panelId}”, a card this build no longer has`;
+      }
       const label = isPanelId(entry.panelId) ? labelFor(entry.panelId) : entry.panelId;
       return `${entry.dimension} “${entry.key}” from ${label}`;
     })

@@ -4,6 +4,7 @@ import type { Payload } from "../api/types";
 import {
   CHARTS_KEY,
   SCOPES_KEY,
+  describeDropped,
   loadCharts,
   loadScopes,
   readMediaOpen,
@@ -92,7 +93,12 @@ describe("scope storage", () => {
     saveScopes({ "no-such-card": { word: "cat" } });
     const { scopes, dropped } = loadScopes(payload);
     expect(scopes).toEqual({});
-    expect(dropped).toEqual([{ panelId: "no-such-card", dimension: "kind", key: "scope" }]);
+    expect(dropped).toEqual([{ panelId: "no-such-card", card: true }]);
+    // The banner names the card, not a dimension it never had: "kind “scope”"
+    // told a reader nothing about what was dropped.
+    expect(describeDropped(dropped, () => "unused")).toBe(
+      "a filter for “no-such-card”, a card this build no longer has",
+    );
   });
 
   it("never half-reads a payload written by another version", () => {
