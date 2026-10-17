@@ -18,6 +18,9 @@ from fastapi import HTTPException, Request
 SESSION_COOKIE = "dsh_session"
 SESSION_DAYS = 30
 TOKEN_BYTES = 32
+# How many rows one identity may hold. A login loop otherwise grows the table
+# without bound, and the admin board lists every row.
+SESSION_LIMIT = 20
 
 
 class Level(IntEnum):
@@ -57,6 +60,22 @@ def establish_session(
             created.isoformat(timespec="seconds"),
             (created + timedelta(days=ttl_days)).isoformat(timespec="seconds"),
         ),
+    )
+    # Keep only the newest rows for this identity. `created_at` has second
+    # resolution, so `rowid` breaks the tie and the row just inserted is always
+    # among the survivors.
+    conn.execute(
+        """
+        DELETE FROM sessions
+         WHERE discord_id = ?
+           AND id NOT IN (
+                 SELECT id FROM sessions
+                  WHERE discord_id = ?
+                  ORDER BY created_at DESC, rowid DESC
+                  LIMIT ?
+               )
+        """,
+        (str(discord_id), str(discord_id), SESSION_LIMIT),
     )
     conn.commit()
     return token
