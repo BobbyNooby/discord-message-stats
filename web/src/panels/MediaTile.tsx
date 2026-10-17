@@ -1,7 +1,9 @@
-import { useState } from "react";
+import { Play } from "lucide-react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 
 import type { MediaRow } from "../api/types";
 import { kindLabel, postedLabel, providerLabel } from "../lib/mediaLabels";
+import { useReducedMotion } from "../lib/motion";
 
 /**
  * One media item, as the card and the top-50 view both draw it: a thumbnail
@@ -35,18 +37,57 @@ export function thumbnailSrc(url: string, mode: string): string | null {
   return `/api/thumb?u=${encodeURIComponent(url)}`;
 }
 
-function Thumbnail({ src, animated, provider }: {
+/**
+ * An autoplaying tile is a video nobody asked for: when it scrolls out of view
+ * it keeps decoding, which costs battery on the phone this dashboard is read on
+ * most. Pausing is not a nicety here, it is the same mobile-data decision as
+ * `prefers-reduced-motion`.
+ */
+function usePauseOffscreen(video: RefObject<HTMLVideoElement | null>, enabled: boolean): void {
+  useEffect(() => {
+    const element = video.current;
+    if (!element || !enabled) return;
+    // jsdom (and any browser without the API) keeps the plain autoplay path.
+    if (typeof IntersectionObserver !== "function") return;
+
+    const observer = new IntersectionObserver((entries) => {
+      for (const entry of entries) {
+        if (entry.isIntersecting) void element.play().catch(() => {});
+        else element.pause();
+      }
+    });
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [video, enabled]);
+}
+
+function Thumbnail({
+  src,
+  animated,
+  provider,
+  url,
+}: {
   src: string | null;
   animated: string | null;
   provider: string;
+  url: string;
 }) {
+  const reduced = useReducedMotion();
   const [failed, setFailed] = useState(false);
-  if (animated && isPlayable(animated) && !failed) {
+  // Reduced motion shows the poster with a play control; pressing it is the
+  // reader asking for this one animation, so it may then autoplay.
+  const [activated, setActivated] = useState(false);
+  const video = useRef<HTMLVideoElement>(null);
+  const playable = Boolean(animated && isPlayable(animated) && !failed);
+  usePauseOffscreen(video, playable && !reduced);
+
+  if (playable && (!reduced || activated)) {
     // A gifv's playable asset is an mp4: it animates (the thumbnail is often a
     // static poster) and it is usually much smaller than the GIF.
     return (
       <video
-        src={animated}
+        ref={video}
+        src={animated as string}
         poster={src ?? undefined}
         autoPlay
         muted
@@ -57,21 +98,48 @@ function Thumbnail({ src, animated, provider }: {
       />
     );
   }
-  if (!src || failed) {
-    return (
+
+  const poster =
+    src && !failed ? (
+      <img
+        src={src}
+        alt=""
+        loading="lazy"
+        onError={() => setFailed(true)}
+        className="h-24 w-full bg-[var(--color-surface)] object-cover"
+      />
+    ) : (
       <div className="flex h-24 w-full items-center justify-center bg-[var(--color-surface)] text-xs text-[var(--color-muted)]">
         {provider}
       </div>
     );
+
+  if (playable && reduced) {
+    // The button is a sibling of the link, not a child: a control inside an
+    // anchor is invalid HTML and clicking it would follow the link.
+    return (
+      <div className="relative">
+        <a href={url} target="_blank" rel="noreferrer noopener" className="block">
+          {poster}
+        </a>
+        <button
+          type="button"
+          aria-label={`Play ${provider} animation`}
+          onClick={() => setActivated(true)}
+          className="absolute inset-0 flex items-center justify-center"
+        >
+          <span className="flex h-9 w-9 items-center justify-center rounded-full border border-[var(--color-line)] bg-[var(--color-ink)]/80 text-[var(--color-text)]">
+            <Play size={16} aria-hidden />
+          </span>
+        </button>
+      </div>
+    );
   }
+
   return (
-    <img
-      src={src}
-      alt=""
-      loading="lazy"
-      onError={() => setFailed(true)}
-      className="h-24 w-full bg-[var(--color-surface)] object-cover"
-    />
+    <a href={url} target="_blank" rel="noreferrer noopener" className="block">
+      {poster}
+    </a>
   );
 }
 
@@ -84,8 +152,8 @@ export function MediaTile({ row, mode }: { row: MediaRow; mode: string }) {
 
   return (
     <li className="overflow-hidden rounded border border-[var(--color-line)]">
+      <Thumbnail src={src} animated={animatedSrc} provider={name} url={url} />
       <a href={url} target="_blank" rel="noreferrer noopener" className="block">
-        <Thumbnail src={src} animated={animatedSrc} provider={name} />
         <div className="space-y-1 p-2">
           <p className="truncate text-xs text-[var(--color-text)]" title={mediaName(url, title)}>
             {mediaName(url, title)}

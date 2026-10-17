@@ -66,4 +66,21 @@ describe("<EChart>", () => {
     rerender(<EChart option={{ series: [{ type: "pie", data: [1, 2] }] }} />);
     expect(screen.getByRole("img", { name: "chart" })).toHaveAttribute("data-points", "2");
   });
+
+  it("draws without animation when the reader asked for less motion", () => {
+    window.matchMedia = ((query: string) => ({
+      matches: query.includes("reduced-motion"),
+      media: query,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    })) as unknown as typeof window.matchMedia;
+
+    render(<EChart option={{ series: [{ type: "bar", data: [1] }] }} />);
+
+    expect(instance.setOption).toHaveBeenCalledWith(
+      expect.objectContaining({ animation: false }),
+      true,
+    );
+    delete (window as { matchMedia?: unknown }).matchMedia;
+  });
 });
