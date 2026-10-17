@@ -348,3 +348,17 @@ def test_a_valid_signed_state_round_trips_into_a_session(db_cfg, conn, monkeypat
     token = client.cookies.get(SESSION_COOKIE)
     assert token
     assert session_level(conn, token) is Level.VIEWER
+
+
+# --- the state guard ---------------------------------------------------------
+
+def test_a_whitespace_only_state_is_never_valid():
+    """Blank-looking values used to satisfy the constant-time compare.
+
+    Nothing mints an all-space cookie today, but whitespace must not pass as a
+    state in any secret combination.
+    """
+    from discord_scraper.auth.oauth import state_is_valid
+
+    for secret in (None, "a-signing-key"):
+        assert state_is_valid("   ", "   ", secret) is False
