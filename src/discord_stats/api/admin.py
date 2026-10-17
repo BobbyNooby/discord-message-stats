@@ -129,6 +129,14 @@ def status(request: Request) -> dict:
     try:
         cfg = _effective_for(request, conn)
         digest = config_digest(cfg, conn)
+        # One count for the whole board: "how much has arrived since the build"
+        # is the same source figure for every family.
+        try:
+            source_now = int(conn.execute(
+                "SELECT COUNT(*) FROM messages WHERE channel_id = ?", (cfg.channel_id,)
+            ).fetchone()[0] or 0)
+        except sqlite3.OperationalError:
+            source_now = 0
         rollups: dict[str, Any] = {}
         stale = False
         for family in FAMILIES:
@@ -139,10 +147,18 @@ def status(request: Request) -> dict:
             meta = query.provenance_row(conn, cfg.channel_id, family)
             family_stale = is_stale(conn, cfg.channel_id, family, config_hash=digest, cheap=True)
             stale = stale or family_stale
+            built_from = int(meta["source_count"]) if meta else None
             rollups[family] = {
                 "rows": int(count),
                 "stale": family_stale,
                 "computed_at": meta["computed_at"] if meta else None,
+                # What the family was built from, so the board can say what has
+                # changed since rather than only that something has (§11.6).
+                "built_from_rows": built_from,
+                "built_from_newest": meta["source_max_message_id"] if meta else None,
+                "built_in_timezone": meta["timezone"] if meta else None,
+                "added_since": None if built_from is None else max(0, source_now - built_from),
+                "config_changed": bool(meta and meta["config_hash"] != digest),
             }
         active_sessions = conn.execute(
             "SELECT COUNT(*) FROM sessions WHERE revoked = 0 AND expires_at > ?", (_now(),)
