@@ -49,6 +49,28 @@ def test_revoke_session(conn):
     assert session_level(conn, sid) is None
 
 
+def test_a_login_loop_keeps_at_most_twenty_sessions_per_identity(conn):
+    """Nothing else evicts, so 25 logins used to mean 25 rows and 25 live tokens."""
+    tokens = [establish_session(conn, "u1", Level.VIEWER) for _ in range(25)]
+
+    kept = conn.execute(
+        "SELECT COUNT(*) FROM sessions WHERE discord_id = 'u1'"
+    ).fetchone()[0]
+    assert kept == 20
+    assert session_level(conn, tokens[-1]) is Level.VIEWER   # the newest still works
+    assert session_level(conn, tokens[0]) is None            # the oldest is gone
+
+
+def test_the_session_cap_is_per_identity(conn):
+    old = establish_session(conn, "u1", Level.VIEWER)
+    for _ in range(25):
+        establish_session(conn, "u2", Level.VIEWER)
+    assert session_level(conn, old) is Level.VIEWER
+    assert conn.execute(
+        "SELECT COUNT(*) FROM sessions WHERE discord_id = 'u1'"
+    ).fetchone()[0] == 1
+
+
 def test_session_levels_compare_by_privilege():
     assert Level.ADMIN > Level.VIEWER
 
