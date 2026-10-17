@@ -5,10 +5,10 @@ import type { SidebarMode } from "../filters/reducer";
 import { IconButton, Sheet } from "./ui";
 
 /** The width at which the sidebar stops fitting beside the charts. */
-const NARROW = "(max-width: 860px)";
+export const NARROW = "(max-width: 860px)";
 
 /** `matchMedia` in an effect, so a resize (or a rotation) swaps the drawer in. */
-function useNarrow(breakpoint: string): boolean {
+export function useNarrow(breakpoint: string): boolean {
   const [narrow, setNarrow] = useState(
     () => typeof window.matchMedia === "function" && window.matchMedia(breakpoint).matches,
   );

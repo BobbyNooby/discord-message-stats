@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 
-import { getBootstrap, getHealth, getRecent, getWords, Unauthorized } from "./client";
+import { getBootstrap, getHealth, getMedia, getRecent, getWords, Unauthorized } from "./client";
 
 /**
  * The bootstrap payload is a build artefact, not a live feed: it only changes
@@ -28,6 +28,18 @@ export function useWords(query: string, enabled: boolean) {
     queryKey: ["words", query],
     queryFn: () => getWords(query),
     enabled: enabled && query.trim().length > 0,
+  });
+}
+
+/**
+ * One provider's (or everyone's) top media, fetched only while the top-50 view
+ * is open: the payload's own ranking is enough for the ten items in the card.
+ */
+export function useMedia(provider: string | null, enabled: boolean) {
+  return useQuery({
+    queryKey: ["media", provider ?? "all"],
+    queryFn: () => getMedia(provider ?? undefined, 50),
+    enabled,
   });
 }
 
