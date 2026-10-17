@@ -219,3 +219,22 @@ def test_a_merge_reports_the_state_it_replaced_so_it_can_be_undone(admin_client)
     ).json()
     assert restored["merges"] == [{"canonical": "u1", "accounts": ["u1", "u2"]}]
     assert restored["previous"] == []
+
+
+def test_the_board_refuses_a_stopword_list_that_is_not_words(admin_client, conn):
+    """The config file refuses this; the board wrote the same setting and took
+    anything. text.py then died on `w.strip()` — a value that only fails later,
+    saved by the UI that was supposed to prevent it."""
+    response = admin_client.put("/api/admin/config", json={"ignore_words": ["ok", 1]})
+
+    assert response.status_code == 400
+    assert "ignore_words" in response.json()["detail"]
+
+
+def test_the_board_refuses_a_channel_id_that_is_not_an_id(admin_client, conn):
+    """A list became the string "['a']", passed the non-empty check, and left the
+    dashboard reading a channel that cannot exist."""
+    response = admin_client.put("/api/admin/config", json={"channel_id": ["a", "b"]})
+
+    assert response.status_code == 400
+    assert "channel_id" in response.json()["detail"]

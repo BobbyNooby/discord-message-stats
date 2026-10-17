@@ -290,10 +290,17 @@ def _validate(key: str, value: Any) -> None:
             status_code=400,
             detail=f"allowlist_policy must be one of {', '.join(ALLOWLIST_POLICIES)}",
         )
-    elif key == "ignore_words" and not isinstance(value, list):
-        raise HTTPException(status_code=400, detail="ignore_words must be a list")
-    elif key == "channel_id" and not str(value).strip():
-        raise HTTPException(status_code=400, detail="channel_id cannot be empty")
+    elif key == "ignore_words":
+        # The loader refuses a stopword list that is not words for the same
+        # reason: `text.py` calls `.strip()` on every entry, so anything else
+        # takes the next rebuild down instead of the save that caused it.
+        if not isinstance(value, list) or not all(isinstance(word, str) for word in value):
+            raise HTTPException(status_code=400, detail="ignore_words must be a list of words")
+    elif key == "channel_id":
+        # A list stringifies to "['a']" and reads as non-empty, which is how a
+        # wrong type used to reach the channel the whole dashboard queries.
+        if not isinstance(value, str) or not value.strip():
+            raise HTTPException(status_code=400, detail="channel_id must be a channel id")
     elif key == "cron_hours":
         try:
             hours = int(value)
