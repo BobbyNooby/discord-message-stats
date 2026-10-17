@@ -6,9 +6,11 @@ import {
   SCOPES_KEY,
   loadCharts,
   loadScopes,
+  readMediaOpen,
   readUrlState,
   saveCharts,
   saveScopes,
+  writeMediaState,
   writeUrlState,
 } from "./persist";
 
@@ -142,5 +144,23 @@ describe("the url mirror", () => {
   it("returns nothing when the url names a card the registry does not have", () => {
     writeUrlState({ scopes: { "not-a-card": { word: "cat" } } });
     expect(readUrlState(payload).scopes).toEqual({});
+  });
+});
+
+describe("the media view's url state", () => {
+  it("reads ?media=1 as open, and anything else as closed", () => {
+    expect(readMediaOpen("?media=1")).toBe(true);
+    expect(readMediaOpen("?media=1&scope=x")).toBe(true);
+    expect(readMediaOpen("?media=0")).toBe(false);
+    expect(readMediaOpen("?scope=x")).toBe(false);
+    expect(readMediaOpen("")).toBe(false);
+  });
+
+  it("sets and clears the flag without disturbing the rest of the view", () => {
+    const url = new URL("https://example.test/?scope=foo");
+    expect(writeMediaState(true, url)).toBe("https://example.test/?scope=foo&media=1");
+    expect(writeMediaState(false, new URL("https://example.test/?scope=foo&media=1"))).toBe(
+      "https://example.test/?scope=foo",
+    );
   });
 });
