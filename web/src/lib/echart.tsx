@@ -68,6 +68,17 @@ export function EChart({
       style={{ width: "100%", height: height ?? 260 }}
       role="img"
       aria-label={label}
+      // How many points were actually drawn. A canvas cannot be read back, and
+      // a pie's honesty rule is a statement about that count (eight slices plus
+      // "Other"), so it sits on the element a browser test can see.
+      data-points={pointCount(option)}
     />
   );
+}
+
+/** The drawn length of the first series, which is the one every panel fills. */
+function pointCount(option: EChartsOption): number | undefined {
+  const series = Array.isArray(option.series) ? option.series[0] : option.series;
+  const data = series && "data" in series ? series.data : undefined;
+  return Array.isArray(data) ? data.length : undefined;
 }
