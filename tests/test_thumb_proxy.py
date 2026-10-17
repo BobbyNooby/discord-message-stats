@@ -152,6 +152,110 @@ def test_a_refused_oversized_image_never_takes_a_cache_slot(client, monkeypatch)
     assert seen["calls"] == 2, "a refused image must not be cached"
 
 
+def _thumb_cache(app):
+    """The endpoint's live closure: its cache dict and its byte counter.
+
+    Read-only introspection, so the assertion is about the real structures the
+    endpoint uses and not about a stub that happens to agree with itself.
+    """
+    for route in app.routes:
+        endpoint = getattr(route, "endpoint", None)
+        if getattr(endpoint, "__name__", "") == "thumb":
+            cells = dict(zip(endpoint.__code__.co_freevars, endpoint.__closure__))
+            return cells["thumb_cache"], cells["thumb_cache_bytes"]
+    raise AssertionError("no /api/thumb route")
+
+
+def test_concurrent_stores_leave_the_counter_equal_to_the_bytes_held(db_cfg, conn, monkeypatch):
+    """The semaphore bounds fetches; it does not bound the store.
+
+    A store is a read-modify-write of the cache and its running total, so stores
+    landing together can evict the same entry twice, drop one of the
+    subtractions, or blow the ceiling. The counter must still equal the bytes
+    actually held, and the ceiling must still hold.
+    """
+    import sys
+    import threading
+    import types
+
+    import discord_scraper.api.app as app_module
+    from discord_scraper.auth.session import SESSION_COOKIE, Level, establish_session
+
+    class NoopSemaphore:
+        """All the fetches at once: the fetch cap is not what guards the store."""
+
+        def __init__(self, value):
+            pass
+
+        def acquire(self):
+            pass
+
+        def release(self):
+            pass
+
+    monkeypatch.setattr(app_module, "threading", types.SimpleNamespace(
+        Semaphore=NoopSemaphore, Thread=threading.Thread, Lock=threading.Lock))
+    body = b"x" * 100
+    monkeypatch.setattr(app_module, "THUMB_CACHE_BYTES", 100 * len(body) * 100, raising=False)
+    use(monkeypatch, chunks=[body])
+
+    cfg, path = db_cfg
+    app = create_app(cfg, path)
+    # An exception mid-store has to surface as a 500 the assertion can count,
+    # not be re-raised in a worker thread where nobody sees it.
+    client = TestClient(app, raise_server_exceptions=False)
+    client.cookies.set(SESSION_COOKIE, establish_session(conn, "u1", Level.VIEWER))
+    cache, total = _thumb_cache(app)
+
+    # The default 5 ms switch interval is far longer than this critical section,
+    # so a test has to make preemption land inside it to see the interleaving.
+    interval = sys.getswitchinterval()
+    sys.setswitchinterval(1e-5)
+    try:
+        for burst in range(3):
+            # A cache filled to a hundred entries, then squeezed: every store
+            # below has to evict most of it, which is the window that races.
+            use(monkeypatch, chunks=[body])
+            monkeypatch.setattr(app_module, "THUMB_CACHE_BYTES", 100 * len(body) * 100)
+            for n in range(100):
+                warm = _urls(f"warm-{burst}-{n}")[0]
+                assert client.get("/api/thumb", params={"u": warm}).status_code == 200
+            monkeypatch.setattr(app_module, "THUMB_CACHE_BYTES", 10 * len(body))
+
+            urls = _urls(*[f"cold-{burst}-{n}" for n in range(12)])
+            ready = threading.Barrier(len(urls))
+            failures = []
+
+            def fetch(method, url, **opts):
+                ready.wait(timeout=10)   # every store arrives at once
+                return FakeStream(chunks=[body])
+
+            monkeypatch.setattr(httpx, "stream", fetch)
+
+            def store(url):
+                response = client.get("/api/thumb", params={"u": url})
+                if response.status_code != 200:
+                    failures.append(response.status_code)
+
+            threads = [threading.Thread(target=store, args=(url,)) for url in urls]
+            for thread in threads:
+                thread.start()
+            for thread in threads:
+                thread.join(timeout=30)
+
+            held = sum(len(entry[1]) for entry in cache.cell_contents.values())
+            assert failures == [], f"burst {burst}: a concurrent store failed: {failures}"
+            assert total.cell_contents == held, (
+                f"burst {burst}: the counter says {total.cell_contents} bytes, "
+                f"the cache holds {held}"
+            )
+            assert held <= 10 * len(body), (
+                f"burst {burst}: the byte ceiling was blown: {held} bytes held"
+            )
+    finally:
+        sys.setswitchinterval(interval)
+
+
 def test_at_most_four_fetches_run_at_once_and_a_slot_is_always_freed(db_cfg, conn, monkeypatch):
     """N parallel requests must not each hold a 25 MB body at the same time."""
     import threading
@@ -178,7 +282,7 @@ def test_at_most_four_fetches_run_at_once_and_a_slot_is_always_freed(db_cfg, con
     # Replace only how app.py sees `threading`: patching the real module would
     # hand the fake to every library the test client uses.
     monkeypatch.setattr(app_module, "threading", types.SimpleNamespace(
-        Semaphore=RecordingSemaphore, Thread=threading.Thread))
+        Semaphore=RecordingSemaphore, Thread=threading.Thread, Lock=threading.Lock))
     use(monkeypatch, headers={"content-type": "image/gif",
                               "content-length": str(26 * 1024 * 1024)})
     cfg, path = db_cfg
