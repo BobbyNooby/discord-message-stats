@@ -30,6 +30,13 @@ router = APIRouter(prefix="/api/admin", dependencies=[Depends(require_admin)])
 # The client asks for what is new; this bounds what a first load can return.
 LOG_CAP = 200
 
+# A `run/started` older than this with no finish is treated as a run whose
+# process died. A rebuild is minutes of work even on the reference database
+# (the prelude alone measured 43 s cold), so two hours is far above any real
+# run yet short enough that a crashed one stops claiming "running" the same
+# working session. Past it the endpoint reports `abandoned: true`.
+ABANDONED_AFTER_SECONDS = 2 * 60 * 60
+
 
 @router.get("/progress")
 def progress(request: Request, since: int = Query(0, ge=0)) -> dict:
@@ -55,7 +62,7 @@ def build_progress(conn: sqlite3.Connection, cfg: Config, *,
     if not _has_table(conn, "rebuild_events"):
         families = _families(conn, 0, None, fresh["families"])
         return {
-            "running": False, "started_at": None, "phase": None,
+            "running": False, "abandoned": False, "started_at": None, "phase": None,
             "families": families, "log": [], "totals": _totals(families, None),
             "latest_id": 0, "last": None, "freshness": view,
         }
@@ -82,7 +89,17 @@ def build_progress(conn: sqlite3.Connection, cfg: Config, *,
         "WHERE kind = 'run' AND phase = 'started'").fetchone()[0])
     run_phase = str(latest["phase"]) if latest is not None else None
     running = run_phase == "started"
-    families = _families(conn, run_start_id, run_phase, fresh["families"])
+    # A process killed between `started` and any finish leaves the start row
+    # forever; past the threshold the run is reported as abandoned instead of
+    # still running, and its family rows fall back to `pending`.
+    abandoned = running and _abandoned(latest["started_at"])
+    if abandoned:
+        running = False
+        run_phase = None
+    # An abandoned run's family rows belong to a process that is gone, so read
+    # none of them: the families fall back to `pending` rather than `running`.
+    families = _families(conn, 0 if abandoned else run_start_id, run_phase,
+                         fresh["families"])
 
     phase = None
     started_at = None
@@ -110,6 +127,7 @@ def build_progress(conn: sqlite3.Connection, cfg: Config, *,
 
     return {
         "running": running,
+        "abandoned": abandoned,
         "started_at": started_at,
         "phase": phase,
         "families": families,
@@ -297,3 +315,9 @@ def _elapsed(started_at: str | None) -> float | None:
         return None
     now = datetime.now(then.tzinfo) if then.tzinfo else datetime.now()
     return max(0.0, round((now - then).total_seconds(), 1))
+
+
+def _abandoned(started_at: str | None) -> bool:
+    """True when a started run has outlived the threshold — its process died."""
+    elapsed = _elapsed(started_at)
+    return elapsed is not None and elapsed > ABANDONED_AFTER_SECONDS
