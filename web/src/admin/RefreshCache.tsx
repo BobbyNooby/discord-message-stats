@@ -105,12 +105,15 @@ export function RefreshCache({
   stale,
   config,
   onDirty,
+  onRebuilt,
   onSave,
 }: {
   status: AdminStatus;
   stale: boolean;
   config: AdminConfig | null;
   onDirty: () => void;
+  /** The run finished clean, so any locally-marked staleness is settled. */
+  onRebuilt?: () => void;
   onSave: (patch: ConfigPatch, mode: SaveMode) => Promise<AdminConfig>;
 }) {
   const queryClient = useQueryClient();
@@ -146,16 +149,19 @@ export function RefreshCache({
 
   // One refetch when a run ends: /status carries the new rollup rows and the
   // worker heartbeat written as the job finished, and the job that was just
-  // "queued" in the history below is now done.
+  // "queued" in the history below is now done. A clean finish is also the only
+  // evidence that the cache is no longer stale, so it clears the local marking
+  // too; a failed run leaves it up.
   const wasRunning = useRef(false);
   useEffect(() => {
     const running = feed.data?.running ?? false;
     if (wasRunning.current && !running) {
       void queryClient.invalidateQueries({ queryKey: ["admin", "status"] });
       void queryClient.invalidateQueries({ queryKey: ["admin", "jobs"] });
+      if (feed.data?.last?.status === "finished") onRebuilt?.();
     }
     wasRunning.current = running;
-  }, [feed.data?.running, queryClient]);
+  }, [feed.data?.running, feed.data?.last?.status, onRebuilt, queryClient]);
 
   async function run() {
     setBusy(true);
