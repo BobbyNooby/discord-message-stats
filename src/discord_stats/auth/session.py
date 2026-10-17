@@ -119,12 +119,10 @@ def revoke_session(conn: sqlite3.Connection, sid: str) -> None:
 def _current_level(request: Request) -> Level | None:
     token = request.cookies.get(SESSION_COOKIE)
     if not token:
-        # Development shim, off unless `--dev-auto-login` was passed: no session,
-        # no cookie, no row in `sessions` — the visitor is simply treated as the
-        # configured level. It exists so a phone can open the site without the
-        # login screen; it is a flag and never a default.
-        shim = getattr(request.app.state, "dev_auto_login", None)
-        return Level[shim.upper()] if shim else None
+        # No cookie, no session, no level. The `--dev-auto-login` shim that
+        # treated every visitor as a level was removed: an unauthenticated
+        # request must be refused, always.
+        return None
     from discord_scraper.api.deps import connect_writable
 
     conn = connect_writable(request.app.state.db_path)

@@ -78,7 +78,6 @@ def create_app(
     db_path: str | Path,
     static_dir: str | Path | None = None,
     dev_login: bool = False,
-    dev_auto_login: str | None = None,
 ) -> FastAPI:
     app = FastAPI(title=cfg.app_name, docs_url=None, redoc_url=None)
     # 544 KB of JSON per dashboard load, every load. Gzip takes it to ~140 KB.
@@ -88,8 +87,6 @@ def create_app(
     app.state.payload_cache: dict[str, dict] = {}
     app.state.cfg = cfg
     app.state.db_path = str(db_path)
-    # "viewer" or "admin", or None. Set by `serve --dev-auto-login`.
-    app.state.dev_auto_login = dev_auto_login
     app.include_router(admin.router)
 
     # Bring the database up to shape once, at boot. `CREATE TABLE IF NOT EXISTS`
