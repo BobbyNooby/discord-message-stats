@@ -140,4 +140,25 @@ describe("<GlobalSearch>", () => {
     await userEvent.type(screen.getByRole("combobox"), "zzzz");
     expect(screen.getByRole("status")).toHaveTextContent(/nothing matches/i);
   });
+
+  it("keys two media rows with the same title apart", async () => {
+    // Two reposted items can share a title; their URLs are what tells them
+    // apart. Keying on the label made React see one option twice.
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    const twins = {
+      authors: [],
+      words: [],
+      topMedia: [
+        ["https://example.test/a.gif", "Tenor", "gifv", "Same title", "", 1, 3],
+        ["https://example.test/b.gif", "Tenor", "gifv", "Same title", "", 1, 2],
+      ],
+    } as unknown as Payload;
+
+    render(<GlobalSearch payload={twins} dispatch={vi.fn()} />);
+    await userEvent.type(screen.getByRole("combobox"), "same");
+
+    expect(screen.getAllByRole("option")).toHaveLength(2);
+    expect(error.mock.calls.flat().join(" ")).not.toMatch(/same key/i);
+    error.mockRestore();
+  });
 });
