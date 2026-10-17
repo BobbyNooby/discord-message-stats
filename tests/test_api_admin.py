@@ -116,3 +116,30 @@ def test_the_picker_shows_what_auto_resolves_to(admin_client):
     body = admin_client.get("/api/admin/timezones").json()
     assert body["configured"] == "auto"
     assert body["effective"] == body["auto_zone"]
+
+
+def test_status_says_what_changed_since_each_family_was_built(admin_client, conn):
+    """§5.2 stores what a build read; the board turns that back into "3 messages
+    have arrived since", which is what the operator acts on."""
+    family = admin_client.get("/api/admin/status").json()["rollups"]["activity"]
+    assert family["built_from_rows"] == 7
+    assert family["built_from_newest"] == "m7"
+    assert family["added_since"] == 0
+    assert family["config_changed"] is False
+
+    conn.execute(
+        "INSERT INTO messages (id, channel_id, author_id, content, created_at, type) "
+        "VALUES ('m8', 'c1', 'u1', 'new', '2026-01-05T10:00:00+00:00', 0)"
+    )
+    conn.commit()
+
+    family = admin_client.get("/api/admin/status").json()["rollups"]["activity"]
+    assert family["added_since"] == 1
+    assert family["stale"] is True
+
+
+def test_status_blames_the_config_when_it_changed_after_a_build(admin_client):
+    admin_client.put("/api/admin/config", json={"timezone": "Asia/Kuala_Lumpur"})
+    body = admin_client.get("/api/admin/status").json()
+    assert body["rollups"]["activity"]["config_changed"] is True
+    assert body["cache_stale"] is True
