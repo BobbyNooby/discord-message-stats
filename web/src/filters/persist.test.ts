@@ -198,6 +198,58 @@ describe("the url mirror", () => {
       kind: "gifv",
     });
   });
+
+  it("keeps a comma inside an author name from splitting the scope in two", () => {
+    // "Smith, John" is one person. The URL joined names with a comma after
+    // escaping, so the name's own comma looked like the separator and the card
+    // silently narrowed to two people who do not exist.
+    const withComma = {
+      ...payload,
+      authors: [
+        { id: "u1", name: "Alice", msgs: 10 },
+        { id: "u2", name: "Smith, John", msgs: 4 },
+        { id: "u3", name: "Carol", msgs: 2 },
+      ],
+    } as unknown as Payload;
+
+    writeUrlState({
+      scopes: { "who-talks-the-most": { active: [true, true, false] } },
+      authors: withComma.authors.map((author) => author.name),
+    });
+
+    expect(readUrlState(withComma).scopes["who-talks-the-most"].active).toEqual([true, true, false]);
+  });
+
+  it("round-trips a lone author whose name has a comma", () => {
+    const withComma = {
+      ...payload,
+      authors: [
+        { id: "u1", name: "Alice", msgs: 10 },
+        { id: "u2", name: "Smith, John", msgs: 4 },
+      ],
+    } as unknown as Payload;
+
+    writeUrlState({
+      scopes: { "who-talks-the-most": { active: [false, true] } },
+      authors: withComma.authors.map((author) => author.name),
+    });
+
+    expect(readUrlState(withComma).scopes["who-talks-the-most"].active).toEqual([false, true]);
+  });
+
+  it("still reads a link the old encoding wrote", () => {
+    // Before names were escaped one at a time the whole list was encoded with
+    // the comma still as its separator, which surfaces here as %2C.
+    const old = new URLSearchParams({
+      scope: `who-talks-the-most:author=${encodeURIComponent(["Alice", "Carol"].join(","))}`,
+    }).toString();
+
+    expect(readUrlState(payload, `?${old}`).scopes["who-talks-the-most"].active).toEqual([
+      true,
+      false,
+      true,
+    ]);
+  });
 });
 
 describe("the media view's url state", () => {

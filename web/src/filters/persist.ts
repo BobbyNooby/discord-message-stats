@@ -224,6 +224,29 @@ function decodeValue(value: string): string {
   return decodeURIComponent(value.replace(/%(2C|3B|3D|3A)/gi, (match) => DECODE[match.toUpperCase()]));
 }
 
+/**
+ * Author names joined for the URL. A name may hold a comma ("Smith, John"), so
+ * a comma cannot also be the separator: each name is escaped on its own and the
+ * pieces are joined with `|`, which `encodeValue` never leaves literal. The
+ * `2|` prefix marks the layout — a link from the old comma-joined encoding has
+ * no `|` and is still read the old way.
+ */
+function encodeAuthors(names: string[]): string {
+  if (!names.length) return "none";
+  return `2|${names.map(encodeValue).join("|")}`;
+}
+
+/** The names in a new-layout value, or null for a link written before it. */
+function readAuthors(rawValue: string): string[] | null {
+  if (rawValue === "none") return [];
+  if (!rawValue.startsWith("2|")) return null;
+  return rawValue
+    .slice(2)
+    .split("|")
+    .filter(Boolean)
+    .map(decodeValue);
+}
+
 /** `active` is a bitmask in state and a list of names here, so a rebuild holds. */
 function encodePatch(panelId: string, patch: FilterPatch, authors: string[]): string[] {
   const parts: string[] = [];
@@ -236,7 +259,7 @@ function encodePatch(panelId: string, patch: FilterPatch, authors: string[]): st
     const names = patch.active
       .map((on, index) => (on ? authors[index] : null))
       .filter((name): name is string => Boolean(name));
-    parts.push(`${panelId}:author=${encodeValue(names.length ? names.join(",") : "none")}`);
+    parts.push(`${panelId}:author=${encodeAuthors(names)}`);
   }
   if (patch.word) parts.push(`${panelId}:word=${encodeValue(patch.word)}`);
   if (patch.provider) parts.push(`${panelId}:provider=${encodeValue(patch.provider)}`);
@@ -279,9 +302,16 @@ export function readUrlState(payload?: Payload, search?: string): UrlState {
 
     const patch: FilterPatch = scopes[panelId] ?? {};
     if (dimension === "author") {
-      if (value === "none") patch.active = authors.map(() => false);
-      else {
-        const named = new Set(value.split(",").filter(Boolean));
+      const names = readAuthors(entry.slice(eq + 1));
+      if (names === null) {
+        // Old layout: the commas are the separator, and a comma inside a name
+        // was never recoverable, so decoding then splitting is all there is.
+        const named = new Set(decodeValue(entry.slice(eq + 1)).split(",").filter(Boolean));
+        patch.active = authors.map((name) => named.has(name));
+      } else if (!names.length) {
+        patch.active = authors.map(() => false);
+      } else {
+        const named = new Set(names);
         patch.active = authors.map((name) => named.has(name));
       }
     } else if (dimension === "word") {
