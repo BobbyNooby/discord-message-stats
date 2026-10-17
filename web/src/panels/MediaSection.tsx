@@ -1,4 +1,4 @@
-import { CARD_COLUMNS } from "../components/Panel";
+import { CARD_COLUMNS, SectionHeading } from "../components/Panel";
 import { Attachments } from "./Attachments";
 import { ChatHealth } from "./ChatHealth";
 import { Emoji } from "./Emoji";
@@ -16,9 +16,7 @@ import type { MediaPanelProps } from "./mediaData";
 export function MediaSection({ payload, filters }: MediaPanelProps) {
   return (
     <section aria-labelledby="sec-media" className="space-y-4">
-      <h2 id="sec-media" className="text-base font-semibold text-[var(--color-text)]">
-        Media &amp; reactions
-      </h2>
+      <SectionHeading id="sec-media">Media &amp; reactions</SectionHeading>
       <div className={CARD_COLUMNS}>
         <TextVsMedia payload={payload} filters={filters} />
         <RepliesVsStandalone payload={payload} filters={filters} />

@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-import { CARD_COLUMNS } from "../components/Panel";
+import { CARD_COLUMNS, SectionHeading } from "../components/Panel";
 
 import { Activity } from "./Activity";
 import { Conversational } from "./Conversational";
@@ -25,17 +25,12 @@ export function TimeSection({
 }: PanelProps & { calendar?: ReactNode }) {
   return (
     <section aria-labelledby="sec-time" className="space-y-4">
-      <h2
-        id="sec-time"
-        className="text-base font-semibold text-[var(--color-text)]"
-      >
-        Time &amp; rhythm
-      </h2>
+      <SectionHeading id="sec-time">Time &amp; rhythm</SectionHeading>
       <div className={CARD_COLUMNS}>
         <Activity payload={payload} filters={filters} />
         <Cumulative payload={payload} filters={filters} />
         <Conversational payload={payload} filters={filters} />
-        <div className="lg:col-span-2 xl:col-span-3">{calendar}</div>
+        <div>{calendar}</div>
         <Heat payload={payload} filters={filters} />
         <TimeOfDay payload={payload} filters={filters} />
         <Season payload={payload} filters={filters} />

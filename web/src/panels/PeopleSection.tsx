@@ -1,4 +1,4 @@
-import { CARD_COLUMNS } from "../components/Panel";
+import { CARD_COLUMNS, SectionHeading } from "../components/Panel";
 import type { Payload } from "../api/types";
 import type { Filters } from "../filters/reducer";
 import { AuthorRadar } from "./AuthorRadar";
@@ -17,9 +17,7 @@ import { WhoWrites } from "./WhoWrites";
 export function PeopleSection({ payload, filters }: { payload: Payload; filters: Filters }) {
   return (
     <section aria-labelledby="sec-people" className="space-y-4">
-      <h2 id="sec-people" className="text-base font-semibold text-[var(--color-text)]">
-        People
-      </h2>
+      <SectionHeading id="sec-people">People</SectionHeading>
       <div className={CARD_COLUMNS}>
         <Leaderboard payload={payload} filters={filters} />
         <WhoWrites payload={payload} filters={filters} />
@@ -28,7 +26,7 @@ export function PeopleSection({ payload, filters }: { payload: Payload; filters:
         <ReplyBalance payload={payload} filters={filters} />
         <Starters payload={payload} filters={filters} />
         <AuthorRadar payload={payload} filters={filters} />
-        <ReplyMatrix payload={payload} filters={filters} className="xl:col-span-2" />
+        <ReplyMatrix payload={payload} filters={filters} />
         <Treemap payload={payload} filters={filters} />
         <Burstiness payload={payload} filters={filters} />
         <EditRate payload={payload} filters={filters} />

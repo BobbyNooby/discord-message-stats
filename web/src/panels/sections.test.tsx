@@ -14,6 +14,7 @@ import { LinksSection } from "./LinksSection";
 import { MediaSection } from "./MediaSection";
 import { OverviewSection } from "./OverviewSection";
 import { PeopleSection } from "./PeopleSection";
+import { RichMediaSection } from "./RichMedia";
 import { TimeSection } from "./TimeSection";
 import { WordsSection } from "./WordsSection";
 
@@ -70,6 +71,7 @@ const SECTIONS: [string, string, ComponentType<SectionProps>][] = [
   ["sec-people", "People", PeopleSection],
   ["sec-words", "Words", WordsSection],
   ["sec-links", "Links & embeds", LinksSection],
+  ["sec-media-rich", "Rich media", RichMediaSection],
   ["sec-media", "Media & reactions", MediaSection],
 ];
 
@@ -82,6 +84,21 @@ describe("the six sections", () => {
       expect(container.querySelector(`#${id}`)?.textContent?.trim()).toBe(heading);
     });
   }
+
+  it("keeps every heading out of the column flow, with a rule under it", () => {
+    // A heading inside the columns container is laid into the first column and
+    // cards pack beside it. The heading is always a direct child of its section,
+    // and it carries the border that separates one section from the next.
+    for (const [id, , Component] of SECTIONS) {
+      const { container, unmount } = renderSection(Component);
+      const heading = container.querySelector(`#${id}`)!;
+      expect(heading.tagName, `${id} heading`).toBe("H2");
+      expect(heading.parentElement?.tagName, `${id} heading parent`).toBe("SECTION");
+      expect(heading.className, `${id} separator`).toContain("border-b");
+      expect(heading.nextElementSibling, `${id} has no cards container`).not.toBeNull();
+      unmount();
+    }
+  });
 
   it("renders every section's panels, not just its heading", () => {
     const { container } = renderSection(PeopleSection);

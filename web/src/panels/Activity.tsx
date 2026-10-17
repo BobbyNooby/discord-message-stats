@@ -95,7 +95,6 @@ export function Activity({ payload, filters: fallbackFilters }: PanelProps & Wit
         buckets.order.length,
         filters.bucket,
       )} · ${authors.length} authors`}
-      className="lg:col-span-2 xl:col-span-3"
       badge={
         <div className="flex gap-1">
           {MODES.map((entry) => (

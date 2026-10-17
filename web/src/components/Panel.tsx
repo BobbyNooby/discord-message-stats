@@ -18,6 +18,23 @@ import { IconButton, Toggle } from "./ui";
  */
 export const CARD_COLUMNS = "columns-1 gap-4 md:columns-2";
 
+/**
+ * One heading for every section (§UI/UX rule 6). It is bigger than a card title
+ * and carries a rule underneath, so where a section starts is unmistakable; it
+ * lives *outside* the columns container, or multi-column would lay it into the
+ * first column and pack cards beside it.
+ */
+export function SectionHeading({ id, children }: { id: string; children: ReactNode }) {
+  return (
+    <h2
+      id={id}
+      className="border-b border-[var(--color-line)] pb-2 text-xl font-bold tracking-tight text-[var(--color-text)]"
+    >
+      {children}
+    </h2>
+  );
+}
+
 /** The card + header + subtitle + badge wrapper every chart sits in (§11.0). */
 export function Panel({
   title,

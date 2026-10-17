@@ -4,7 +4,7 @@ import type { EChartsOption } from "echarts";
 
 import type { MediaRow, Payload } from "../api/types";
 import { useMedia } from "../api/queries";
-import { EmptyState, GlobalOnlyBadge, Panel, CARD_COLUMNS } from "../components/Panel";
+import { EmptyState, GlobalOnlyBadge, Panel, CARD_COLUMNS, SectionHeading } from "../components/Panel";
 import { EChart } from "../lib/echart";
 import { kindLabel, providerChoices, providerLabel } from "../lib/mediaLabels";
 import type { Filters } from "../filters/reducer";
@@ -256,9 +256,7 @@ export function RichMedia({ payload, filters }: { panelId?: string; payload: Pay
 export function RichMediaSection({ payload, filters }: { payload: Payload; filters?: Filters }) {
   return (
     <section aria-labelledby="sec-media-rich" className="space-y-4">
-      <h2 id="sec-media-rich" className="text-base font-semibold text-[var(--color-text)]">
-        Rich media
-      </h2>
+      <SectionHeading id="sec-media-rich">Rich media</SectionHeading>
       <RichMedia payload={payload} filters={filters} />
     </section>
   );
