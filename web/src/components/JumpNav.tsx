@@ -33,31 +33,41 @@ export function JumpNav() {
   const reduced = useReducedMotion();
 
   return (
-    <nav
-      aria-label="Sections"
-      className="sticky top-0 z-20 flex items-center gap-1 overflow-x-auto rounded-lg border border-[var(--color-line)] bg-[var(--color-ink)]/95 px-1 py-1 pr-14 text-xs backdrop-blur md:pr-1"
+    // The bar floats clear of the very top of the viewport: the wrapper is
+    // sticky, and its padding-top is the offset. The wrapper wears the page
+    // background, so the gap is page surface, not content scrolling through.
+    // `top: 0` (not `top: offset`) is what puts the background above the bar
+    // rather than letting content show in the gap.
+    <div
+      className="sticky top-0 z-20 bg-[var(--color-ink)]"
+      style={{ paddingTop: "max(0.75rem, env(safe-area-inset-top))" }}
     >
-      {SECTIONS.map((section) => {
-        const Icon = section.icon;
-        return (
-          <a
-            key={section.id}
-            href={`#${section.id}`}
-            className="flex shrink-0 items-center gap-1 rounded px-2 py-1 text-[var(--color-muted)] hover:text-[var(--color-text)]"
-          >
-            <Icon size={14} aria-hidden />
-            {section.label}
-          </a>
-        );
-      })}
-      <button
-        type="button"
-        onClick={() => window.scrollTo({ top: 0, behavior: reduced ? "auto" : "smooth" })}
-        className="ml-auto flex shrink-0 items-center gap-1 rounded px-2 py-1 text-[var(--color-muted)] hover:text-[var(--color-text)]"
+      <nav
+        aria-label="Sections"
+        className="flex items-center gap-1 overflow-x-auto rounded-lg border border-[var(--color-line)] bg-[var(--color-ink)]/95 px-1 py-1 pr-14 text-xs backdrop-blur md:pr-1"
       >
-        <ArrowUp size={14} aria-hidden />
-        Top
-      </button>
-    </nav>
+        {SECTIONS.map((section) => {
+          const Icon = section.icon;
+          return (
+            <a
+              key={section.id}
+              href={`#${section.id}`}
+              className="flex shrink-0 items-center gap-1 rounded px-2 py-1 text-[var(--color-muted)] hover:text-[var(--color-text)]"
+            >
+              <Icon size={14} aria-hidden />
+              {section.label}
+            </a>
+          );
+        })}
+        <button
+          type="button"
+          onClick={() => window.scrollTo({ top: 0, behavior: reduced ? "auto" : "smooth" })}
+          className="ml-auto flex shrink-0 items-center gap-1 rounded px-2 py-1 text-[var(--color-muted)] hover:text-[var(--color-text)]"
+        >
+          <ArrowUp size={14} aria-hidden />
+          Top
+        </button>
+      </nav>
+    </div>
   );
 }
