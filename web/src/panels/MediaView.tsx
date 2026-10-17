@@ -26,6 +26,14 @@ import { MediaTile } from "./MediaTile";
 
 const LIMIT = 50;
 
+/**
+ * How many provider chips show before the rest fold away. Thirty chips wrap to
+ * six or seven rows on a phone, which pushes the first thumbnail below the fold;
+ * eight keeps the ranking visible and still offers every provider behind one
+ * control.
+ */
+const PROVIDER_CAP = 8;
+
 /** Providers as the payload ranked them: the raw name is what the API filters
  *  on, the label is what a reader sees. Discord's sentinel never gets here. */
 function providerChoices(payload: Payload): { value: string; label: string }[] {
@@ -47,6 +55,7 @@ export function MediaView({
   const notify = useNotice();
   const [provider, setProvider] = useState<string | null>(null);
   const [kind, setKind] = useState<string | null>(null);
+  const [allProviders, setAllProviders] = useState(false);
   const query = useMedia(provider, kind, open);
   const mode = payload.mediaThumbnails ?? "proxy";
 
@@ -55,12 +64,21 @@ export function MediaView({
   // deriving them from the fifty rows in hand hid every kind below the limit.
   const kinds = query.data?.kinds ?? [];
   const providers = providerChoices(payload);
+  const visibleProviders = allProviders ? providers : providers.slice(0, PROVIDER_CAP);
+  const hiddenProviders = providers.length - visibleProviders.length;
 
   const body = (
     <div className="space-y-3">
       <div className="space-y-2">
         <div className="flex flex-wrap items-start justify-between gap-2">
-          <div className="flex flex-wrap gap-1" role="group" aria-label="Filter by provider">
+          <div
+            role="group"
+            aria-label="Filter by provider"
+            // Wrapping keeps the strip inside a 390px card; the cap keeps it
+            // from eating the screen, and the expanded state gets its own
+            // scroll region rather than growing the page.
+            className={`flex flex-wrap gap-1 ${allProviders ? "max-h-28 overflow-y-auto" : ""}`}
+          >
             <Chip
               active={provider === null}
               onClick={() => {
@@ -70,7 +88,7 @@ export function MediaView({
             >
               All providers
             </Chip>
-            {providers.map((choice) => (
+            {visibleProviders.map((choice) => (
               <Chip
                 key={choice.value}
                 active={provider === choice.value}
@@ -85,6 +103,16 @@ export function MediaView({
                 {choice.label}
               </Chip>
             ))}
+            {providers.length > PROVIDER_CAP ? (
+              <button
+                type="button"
+                aria-expanded={allProviders}
+                onClick={() => setAllProviders((open) => !open)}
+                className="rounded border border-[var(--color-line)] px-2 py-0.5 text-[11px] text-[var(--color-muted)]"
+              >
+                {allProviders ? "Fewer providers" : `More providers (${hiddenProviders})`}
+              </button>
+            ) : null}
           </div>
           {/* The list is the aggregate here, so the export is the list. */}
           <button
