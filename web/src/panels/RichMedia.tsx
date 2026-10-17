@@ -147,7 +147,7 @@ export function RichMedia({ payload }: { panelId?: string; payload: Payload; fil
           {shown.length === 0 ? (
             <EmptyState>No embeds yet — ingest, or upload a database from the Admin board.</EmptyState>
           ) : (
-            <ol className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
+            <ol className="grid grid-cols-1 gap-3 md:grid-cols-2">
               {shown.map((row) => (
                 <MediaTile key={row[0]} row={row} mode={mode} />
               ))}

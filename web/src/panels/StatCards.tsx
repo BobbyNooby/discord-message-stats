@@ -63,7 +63,7 @@ export function StatCards({ payload, filters: fallbackFilters }: PanelProps & Wi
     <Panel
       title="Stat cards"
       subtitle={`${fmt(totals.msgs)} messages · ${totals.authors} authors · ${totals.days} active days`}
-      className="xl:col-span-3"
+      className="md:col-span-2"
       csv={{
         name: "Stat cards",
         rows: [["figure", "value", "note"], ...cards.map((card) => [card.label, card.value, card.sub])],

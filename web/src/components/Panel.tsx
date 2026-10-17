@@ -16,7 +16,7 @@ import { IconButton, Toggle } from "./ui";
  * chart sat in a box sized for a calendar — dead space under one card, a clipped
  * chart in another. Columns let each card be exactly as tall as its own content.
  */
-export const CARD_COLUMNS = "columns-1 gap-4 lg:columns-2 xl:columns-3";
+export const CARD_COLUMNS = "columns-1 gap-4 md:columns-2";
 
 /** The card + header + subtitle + badge wrapper every chart sits in (§11.0). */
 export function Panel({

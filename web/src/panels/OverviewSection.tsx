@@ -14,7 +14,7 @@ export function OverviewSection({ payload, filters }: PanelProps) {
       >
         Overview
       </h2>
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <StatCards payload={payload} filters={filters} />
         <ShareOfVoice payload={payload} filters={filters} />
         <MessagesPerYear payload={payload} filters={filters} />
