@@ -7,7 +7,7 @@ import { effective } from "../filters/selectors";
 import { specFor, type Dimension, type PanelId } from "../panels/registry";
 import { AuthorFilterList } from "./AuthorFilterList";
 import { Chip, FilterGroup } from "./AppShell";
-import { ResetView } from "./ResetView";
+import { PrunedNotice, ResetView } from "./ResetView";
 import { ScopeBanner } from "./ScopeBanner";
 import { ScopeChips } from "./ScopeChips";
 import { TimeRangePicker } from "./TimeRangePicker";
@@ -52,6 +52,7 @@ export function FilterSidebar({
   pruned,
   charts = {},
   onResetView = () => {},
+  onDismissPruned,
 }: {
   payload: Payload;
   filters: Filters;
@@ -63,6 +64,7 @@ export function FilterSidebar({
   onExitScope?: () => void;
   /** What was dropped from saved filters because the payload no longer has it. */
   pruned?: string;
+  onDismissPruned?: () => void;
   /** Chart shapes are stored beside the scopes, so the reset control owns both. */
   charts?: Charts;
   onResetView?: () => void;
@@ -176,6 +178,7 @@ export function FilterSidebar({
 
   return (
     <div className="space-y-4">
+      {!scoped && pruned ? <PrunedNotice pruned={pruned} onDismiss={onDismissPruned ?? (() => {})} /> : null}
       {scoped && spec ? (
         <div className="sticky top-0 z-10">
           <ScopeBanner

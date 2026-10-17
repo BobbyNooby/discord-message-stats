@@ -2,6 +2,32 @@ import { useState } from "react";
 
 import type { Scopes } from "../filters/reducer";
 import type { Charts } from "../filters/persist";
+import { Banner } from "./ui";
+
+/**
+ * Saved filters that named something the payload no longer has. It is only
+ * drawn when the reader is back on the global sidebar — inside a scope the
+ * scope's own banner carries it — so it is never two notices for one drop.
+ */
+export function PrunedNotice({ pruned, onDismiss }: { pruned: string; onDismiss: () => void }) {
+  return (
+    <Banner
+      tone="warn"
+      action={
+        <button
+          type="button"
+          onClick={onDismiss}
+          className="rounded border border-amber-500/60 px-2 py-1 text-[11px]"
+        >
+          Dismiss
+        </button>
+      }
+    >
+      <span className="font-semibold">Saved filters changed:</span> {pruned}. The rebuilt data no
+      longer has those, so they were dropped rather than filtering a card to nothing.
+    </Banner>
+  );
+}
 
 /** "2 cards have their own filters · 1 chart shape · 3 filters" — only what is stored. */
 export function storedCounts(scopes: Scopes, charts: Charts): string[] {
