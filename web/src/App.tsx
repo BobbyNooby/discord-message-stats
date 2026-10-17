@@ -126,6 +126,7 @@ function DashboardBody({
   return (
     <AppShell
       canAdmin={payload.meta.can_admin}
+      mode={mode}
       sidebar={
         <FilterSidebar
           payload={payload}

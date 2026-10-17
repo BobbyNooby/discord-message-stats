@@ -10,7 +10,7 @@ type IconButtonProps = Omit<ComponentPropsWithRef<"button">, "aria-label" | "chi
  * An icon-only control. The accessible name is a required prop: an unlabelled
  * icon is invisible to anyone driving the page by name.
  */
-export function IconButton({ label, icon, variant = "quiet", ...rest }: IconButtonProps) {
+export function IconButton({ label, icon, variant = "quiet", className, ...rest }: IconButtonProps) {
   return (
     <button
       type="button"
@@ -20,7 +20,7 @@ export function IconButton({ label, icon, variant = "quiet", ...rest }: IconButt
         variant === "solid"
           ? "border-[var(--color-accent)] bg-[var(--color-accent)]/20 text-[var(--color-text)]"
           : "border-[var(--color-line)]"
-      }`}
+      } ${className ?? ""}`}
       {...rest}
     >
       {icon}
