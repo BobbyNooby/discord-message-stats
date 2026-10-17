@@ -1,12 +1,14 @@
 import { useEffect } from "react";
 
 /**
- * Two shortcuts, the two a reader reaches for on a long page: `/` to search the
- * word index, `f` to open the filters. Neither fires while a field has focus,
- * neither overrides a browser or OS modifier, and neither reaches past an open
- * modal.
+ * Two shortcuts, the two a reader reaches for on a long page: `/` for the one
+ * search (author, word, domain or media), `f` to open the filters. Neither
+ * fires while a field has focus, neither overrides a browser or OS modifier,
+ * and neither reaches past an open modal.
  */
 
+/** The dashboard's one search. `/` prefers it, and falls back to the word box. */
+export const GLOBAL_SEARCH_ID = "global-search";
 export const WORD_SEARCH_ID = "word-search";
 export const OPEN_FILTERS_EVENT = "dash:open-filters";
 
@@ -41,7 +43,10 @@ export function useKeyboardShortcuts(): void {
       if (isModalOpen()) return;
 
       if (event.key === "/") {
-        const search = document.getElementById(WORD_SEARCH_ID);
+        // One search entry point: the global search when the dashboard has it.
+        // A card preview (a test, a bare panel) still falls back to its word box.
+        const search =
+          document.getElementById(GLOBAL_SEARCH_ID) ?? document.getElementById(WORD_SEARCH_ID);
         if (!search) return;
         event.preventDefault();
         search.focus();

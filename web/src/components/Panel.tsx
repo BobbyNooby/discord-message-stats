@@ -90,7 +90,9 @@ export function Panel({
   return (
     <PanelCsvContext.Provider value={register}>
       <section
-        className={`mb-4 break-inside-avoid rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] p-4 ${className ?? ""}`}
+        id={spec?.id}
+        tabIndex={-1}
+        className={`mb-4 break-inside-avoid rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] p-4 focus:outline-none ${className ?? ""}`}
       >
         <header className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
           <div className="flex min-w-0 items-baseline gap-1">

@@ -9,6 +9,7 @@ import {
 import { useBootstrap, useHealth, useRecent } from "./api/queries";
 import { AppShell } from "./components/AppShell";
 import { FilterSidebar } from "./components/FilterSidebar";
+import { GlobalSearch } from "./components/GlobalSearch";
 import { HealthBanner } from "./components/HealthBanner";
 import { JumpNav } from "./components/JumpNav";
 import { NoticeProvider, useNotice } from "./components/Notice";
@@ -200,6 +201,7 @@ function DashboardBody({
           <span>
             {payload.tz.label} · as of {stampLabel(payload.meta.computed_at, timeFormatOf(payload.meta))}
           </span>
+          <GlobalSearch payload={payload} dispatch={dispatch} />
         </>
       }
     >
