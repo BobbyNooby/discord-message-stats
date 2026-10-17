@@ -128,12 +128,12 @@ describe("Links & embeds section", () => {
 
   it("shows an empty state, not a broken chart, when nothing is left", () => {
     const { rerender } = render(<LinkDomains payload={makePayload({ linkCells: [] })} filters={allOn} />);
-    expect(screen.getByText("No links in this filter.")).toBeInTheDocument();
+    expect(screen.getByText("No links match the active filters — widen the time range, or switch an author back on.")).toBeInTheDocument();
     expect(screen.getByText(statsLine)).toBeInTheDocument(); // the totals survive an empty filter
     expect(mocks.init).not.toHaveBeenCalled();
 
     rerender(<LinkDomains payload={makePayload()} filters={{ ...allOn, active: [false, false] }} />);
-    expect(screen.getByText("No authors selected.")).toBeInTheDocument();
+    expect(screen.getByText("No authors selected — switch one back on in the filters.")).toBeInTheDocument();
   });
 
   it("marks the normalised link list as global only, filters or not", () => {
@@ -199,7 +199,7 @@ describe("Links & embeds section", () => {
   it("renders an empty embed-types panel without a chart", () => {
     render(<EmbedTypes payload={makePayload({ embedTypes: [] })} filters={allOn} />);
 
-    expect(screen.getByText(/no embed data/i)).toBeInTheDocument();
+    expect(screen.getByText(/no embeds yet/i)).toBeInTheDocument();
     expect(mocks.init).not.toHaveBeenCalled();
   });
 

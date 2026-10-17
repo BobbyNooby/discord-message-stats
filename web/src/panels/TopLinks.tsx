@@ -81,7 +81,7 @@ export function TopLinks({ payload, }: { panelId?: string; payload: Payload; fil
       subtitle="normalised · query strings and fragments stripped"
     >
       {!rows.length ? (
-        <EmptyState>No links in this payload.</EmptyState>
+        <EmptyState>No links yet — ingest, or upload a database from the Admin board.</EmptyState>
       ) : (
         <EChart option={option} height={340} />
       )}

@@ -22,7 +22,7 @@ export function RepliesVsStandalone({ payload, filters: fallbackFilters }: Media
   const shape = useChartShape("replies-vs-standalone");
   const { cells, empty } = mediaCells(payload, filters);
   const { replies, standalone, total } = replyShare(cells);
-  const blank = empty ?? (total > 0 ? null : "No messages match the active filters.");
+  const blank = empty ?? (total > 0 ? null : "No messages match the active filters — widen the time range, or switch an author back on.");
   // Two parts that add up to every filtered message: a nameable whole.
   const rows = [
     { name: "replies", value: replies, color: REPLY_COLOR },

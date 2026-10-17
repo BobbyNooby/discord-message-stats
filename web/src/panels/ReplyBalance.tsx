@@ -31,7 +31,7 @@ export function ReplyBalance({ payload, filters: fallbackFilters }: { panelId?: 
   if (!points.length) {
     return (
       <Panel title="Reply balance" badge={badge}>
-        <EmptyState>No authors selected.</EmptyState>
+        <EmptyState>No authors selected — switch one back on in the filters.</EmptyState>
       </Panel>
     );
   }

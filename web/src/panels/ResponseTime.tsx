@@ -15,7 +15,7 @@ export function ResponseTime({ payload, filters: fallbackFilters }: { panelId?: 
   if (!rows.length) {
     return (
       <Panel title="How fast people reply" badge={badge}>
-        <EmptyState>No reply latencies in the payload.</EmptyState>
+        <EmptyState>No reply latencies yet — ingest, or upload a database from the Admin board.</EmptyState>
       </Panel>
     );
   }

@@ -22,7 +22,7 @@ export function TextVsMedia({ payload, filters: fallbackFilters }: MediaPanelPro
   const shape = useChartShape("text-vs-media");
   const { cells, empty } = mediaCells(payload, filters);
   const { media, textOnly, total } = mediaShare(cells);
-  const blank = empty ?? (total > 0 ? null : "No messages match the active filters.");
+  const blank = empty ?? (total > 0 ? null : "No messages match the active filters — widen the time range, or switch an author back on.");
   // Both shapes read the same two numbers, and together they are the whole of
   // the filtered total, which is why this card declares a pie.
   const rows = [

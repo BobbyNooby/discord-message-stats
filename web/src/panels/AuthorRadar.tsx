@@ -21,7 +21,7 @@ export function AuthorRadar({ payload, filters: fallbackFilters }: { panelId?: s
   if (!radar.top.length) {
     return (
       <Panel title="Author profile">
-        <EmptyState>No messages match the current filters.</EmptyState>
+        <EmptyState>No messages match the active filters — widen the time range, or switch an author back on.</EmptyState>
       </Panel>
     );
   }

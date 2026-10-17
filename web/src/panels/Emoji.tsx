@@ -19,7 +19,7 @@ const TITLE = "Emoji in text";
 export function Emoji({ payload, filters: fallbackFilters }: MediaPanelProps & WithPanelId) {
   const filters = usePanelFilters("emoji-in-text", fallbackFilters);
   const rows = pairRows(payload.emoji, 14);
-  const blank = globalEmpty(payload, filters) ?? (rows.length ? null : "No emoji in this history.");
+  const blank = globalEmpty(payload, filters) ?? (rows.length ? null : "No emoji yet — ingest, or upload a database from the Admin board.");
 
   return (
     <Panel

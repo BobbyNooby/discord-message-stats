@@ -63,7 +63,7 @@ export function EditRate({ payload, filters: fallbackFilters }: { panelId?: stri
   if (!rows.length && !trend.order.length) {
     return (
       <Panel title="Who proofreads" badge={badge}>
-        <EmptyState>No edits match the current filters.</EmptyState>
+        <EmptyState>No edits match the active filters — widen the time range.</EmptyState>
       </Panel>
     );
   }

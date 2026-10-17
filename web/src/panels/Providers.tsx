@@ -42,7 +42,7 @@ export function Providers({ payload, }: { panelId?: string; payload: Payload; fi
       subtitle={`who Discord unfurled · ${fmt(total)} embeds from ${scope}`}
     >
       {!rows.length ? (
-        <EmptyState>No embed data in this payload.</EmptyState>
+        <EmptyState>No embeds yet — ingest, or upload a database from the Admin board.</EmptyState>
       ) : (
         <EChart option={horizontalBarsOption(rows, PALETTE[0], 11)} height={340} />
       )}

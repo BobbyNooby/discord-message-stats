@@ -204,7 +204,7 @@ export function WordIndex({ words, selected, onSelect }: WordIndexProps) {
       {shown.length ? (
         <EChart option={option} height={288} onReady={handleReady} className="cursor-pointer" />
       ) : !needle ? (
-        <EmptyState>No indexed words in this payload.</EmptyState>
+        <EmptyState>No indexed words yet — ingest, or upload a database from the Admin board.</EmptyState>
       ) : remote.isFetching ? (
         <EmptyState>Searching the full word index…</EmptyState>
       ) : found && found.total > 0 ? (

@@ -14,7 +14,7 @@ export function Leaderboard({ payload, filters: fallbackFilters }: { panelId?: s
   if (!rows.length) {
     return (
       <Panel title="Who talks the most" subtitle={label}>
-        <EmptyState>No messages match the current filters.</EmptyState>
+        <EmptyState>No messages match the active filters — widen the time range, or switch an author back on.</EmptyState>
       </Panel>
     );
   }

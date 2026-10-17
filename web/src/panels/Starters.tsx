@@ -14,7 +14,7 @@ export function Starters({ payload, filters: fallbackFilters }: { panelId?: stri
   if (!rows.length) {
     return (
       <Panel title="Who starts conversations" badge={badge}>
-        <EmptyState>No conversation starts in the payload.</EmptyState>
+        <EmptyState>No conversation starts yet — ingest, or upload a database from the Admin board.</EmptyState>
       </Panel>
     );
   }

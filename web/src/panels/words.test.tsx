@@ -197,12 +197,12 @@ describe("Words section", () => {
   it("renders the lift heatmap's empty states rather than an axis nobody can read", () => {
     const payload = makePayload();
     const { rerender } = render(<WordLift payload={makePayload({ words: [] })} filters={allOn} />);
-    expect(screen.getByText("No words in this payload.")).toBeInTheDocument();
+    expect(screen.getByText("No words yet — ingest, or upload a database from the Admin board.")).toBeInTheDocument();
     // "lift" is jargon, so the card carries its definition rather than assuming it.
     expect(screen.getByRole("note", { name: /lift = how much more often/i })).toBeInTheDocument();
 
     rerender(<WordLift payload={payload} filters={{ ...allOn, active: [false, false] }} />);
-    expect(screen.getByText("No authors selected.")).toBeInTheDocument();
+    expect(screen.getByText("No authors selected — switch one back on in the filters.")).toBeInTheDocument();
     expect(mocks.init).not.toHaveBeenCalled();
   });
 

@@ -19,7 +19,7 @@ const TITLE = "What gets attached";
 export function Attachments({ payload, filters: fallbackFilters }: MediaPanelProps & WithPanelId) {
   const filters = usePanelFilters("what-gets-attached", fallbackFilters);
   const rows = pairRows(payload.attachments, 8);
-  const blank = globalEmpty(payload, filters) ?? (rows.length ? null : "No attachment data.");
+  const blank = globalEmpty(payload, filters) ?? (rows.length ? null : "No attachments yet — ingest, or upload a database from the Admin board.");
 
   return (
     <Panel

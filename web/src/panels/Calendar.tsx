@@ -63,7 +63,7 @@ export function Calendar({ payload, filters: fallbackFilters }: { panelId?: stri
   if (!weeks.weeks.length) {
     return (
       <Panel title="Every day, six years">
-        <EmptyState>No days match the current filters.</EmptyState>
+        <EmptyState>No days match the active filters — widen the time range.</EmptyState>
       </Panel>
     );
   }
