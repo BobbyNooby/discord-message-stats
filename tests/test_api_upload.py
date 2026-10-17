@@ -47,6 +47,24 @@ def test_upload_stages_and_reports_before_committing(admin_client, tmp_path, see
     conn.close()
 
 
+def test_an_abandoned_staging_file_is_swept_when_the_server_starts(
+    client_for, seeded_db_path
+):
+    """A reload takes the upload id with it, so a staged file is unreachable —
+    nothing in the API or the board can confirm or discard it, and it is the
+    size of a database. Booting the server is the one moment every staged file
+    certainly belongs to nobody."""
+    from discord_scraper.auth.session import Level
+
+    stale = seeded_db_path.parent / ".upload-abandoned"
+    stale.write_bytes(b"a candidate nobody can confirm any more")
+
+    client_for(Level.ADMIN)
+
+    assert not stale.exists()
+    assert seeded_db_path.exists(), "only the staging files are swept"
+
+
 def test_committing_replaces_the_database_and_keeps_a_backup(
     admin_client, tmp_path, seeded_db_path, conn
 ):
