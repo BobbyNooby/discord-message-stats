@@ -14,7 +14,6 @@ import sqlite3
 from dataclasses import replace
 from datetime import datetime, timezone
 from typing import Any
-from zoneinfo import ZoneInfo
 
 from pathlib import Path
 
@@ -23,7 +22,7 @@ from pydantic import BaseModel
 
 from discord_scraper.api.deps import connect_writable
 from discord_scraper.auth.session import require_admin
-from discord_scraper.config import Config, config_from_settings
+from discord_scraper.config import Config, config_from_settings, is_timezone
 from discord_scraper.rollups import query
 from discord_scraper.rollups.build import config_digest
 from discord_scraper.rollups.schema import FAMILIES, is_stale
@@ -228,10 +227,12 @@ def put_config(request: Request, payload: dict) -> dict:
 
 def _validate(key: str, value: Any) -> None:
     if key == "timezone":
-        try:
-            ZoneInfo(str(value))
-        except Exception:
-            raise HTTPException(status_code=400, detail=f"unknown timezone: {value}") from None
+        if not is_timezone(str(value)):
+            raise HTTPException(
+                status_code=400,
+                detail=f'unknown timezone: {value} (use an IANA name like '
+                       '"Asia/Kuala_Lumpur", or "auto")',
+            )
     elif key == "allowlist_policy" and str(value) not in ALLOWLIST_POLICIES:
         raise HTTPException(
             status_code=400,

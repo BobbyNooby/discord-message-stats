@@ -88,3 +88,12 @@ def test_search_requires_a_query(admin_client):
 @pytest.fixture
 def anon_client(client_unauthenticated):
     return client_unauthenticated
+
+
+def test_the_board_accepts_the_documented_auto_timezone(admin_client):
+    """config.py accepts "auto" (the host zone); the board's validator used to
+    answer "unknown timezone: auto" for a value the loader allows — a config file
+    and a board that disagree about one setting (§11.6)."""
+    response = admin_client.put("/api/admin/config", json={"timezone": "auto"})
+    assert response.status_code == 200, response.text
+    assert response.json()["effective"]["timezone"] == "auto"
