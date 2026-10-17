@@ -102,31 +102,23 @@ export function activeEdges(payload: Payload, filters: Filters): [number, number
 
 /* ---------- who talks the most ---------- */
 
-export function rankLabel(rankBy: Filters["rankBy"]): string {
-  return rankBy === "chars"
-    ? "characters"
-    : rankBy === "media"
-      ? "media posts"
-      : rankBy === "replies"
-        ? "replies"
-        : "messages";
+/** Which of an author's totals a ranking card draws. The metric is a property
+ *  of the card now, not a global switch: messages and characters are separate
+ *  panels (§UI/UX — no invisible global reordering). */
+export type LeaderMetric = "msgs" | "chars";
+
+export function leaderLabel(metric: LeaderMetric): string {
+  return metric === "chars" ? "characters" : "messages";
 }
 
 /** `rollup_activity` cells, so this one *does* honour the time filter (§11.1). */
-export function leaderRows(payload: Payload, filters: Filters): Row[] {
+export function leaderRows(payload: Payload, filters: Filters, metric: LeaderMetric = "msgs"): Row[] {
   const totals = selectAuthors(payload, filters);
   return totals
     .map((author, index) => ({
       index,
       name: author.name,
-      value:
-        filters.rankBy === "chars"
-          ? author.chars
-          : filters.rankBy === "media"
-            ? author.media
-            : filters.rankBy === "replies"
-              ? author.replies
-              : author.msgs,
+      value: metric === "chars" ? author.chars : author.msgs,
       n: author.msgs,
     }))
     .filter((row) => row.value > 0)

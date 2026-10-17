@@ -2,14 +2,15 @@ import type { Payload } from "../api/types";
 import { EmptyState, Panel } from "../components/Panel";
 import type { Filters } from "../filters/reducer";
 import { EChart } from "../lib/echart";
-import { fmt, hbarOption, kfmt, leaderRows, rankLabel } from "./people";
+import { fmt, hbarOption, kfmt, leaderLabel, leaderRows } from "./people";
 import { usePanelFilters } from "./panelScope";
 
-/** "Who talks the most" — cells, so it honours the time filter and `rankBy` (§11.1). */
+/** "Who talks the most" — cells, so it honours the time filter (§11.1). Its
+ *  twin, "Who writes the most", ranks the same cells by characters. */
 export function Leaderboard({ payload, filters: fallbackFilters }: { panelId?: string; payload: Payload; filters?: Filters }) {
   const filters = usePanelFilters("who-talks-the-most", fallbackFilters);
-  const rows = leaderRows(payload, filters);
-  const label = `by ${rankLabel(filters.rankBy)}`;
+  const rows = leaderRows(payload, filters, "msgs");
+  const label = `by ${leaderLabel("msgs")}`;
 
   if (!rows.length) {
     return (
@@ -23,12 +24,12 @@ export function Leaderboard({ payload, filters: fallbackFilters }: { panelId?: s
   return (
     <Panel
       title="Who talks the most"
-      subtitle={`${label} · ${fmt(total)} ${rankLabel(filters.rankBy)} across ${rows.length} authors`}
+      subtitle={`${label} · ${fmt(total)} ${leaderLabel("msgs")} across ${rows.length} authors`}
     >
       <EChart
         option={hbarOption(rows, {
           axis: kfmt,
-          tooltip: (row) => `${row.name}<br><b>${fmt(row.value)}</b> ${rankLabel(filters.rankBy)}`,
+          tooltip: (row) => `${row.name}<br><b>${fmt(row.value)}</b> ${leaderLabel("msgs")}`,
         })}
         height={Math.max(180, rows.length * 26)}
       />

@@ -49,7 +49,7 @@ const sidebarProps = {
 describe("<FilterSidebar>", () => {
   it("groups every filter and keeps them visible beside the charts", () => {
     render(<FilterSidebar {...sidebarProps} />);
-    for (const label of ["Time range", "Authors (2/2)", "Bucket", "Rank by"]) {
+    for (const label of ["Time range", "Authors (2/2)", "Bucket"]) {
       expect(screen.getByText(label)).toBeInTheDocument();
     }
     expect(screen.getByRole("button", { name: "Reset all filters" })).toBeInTheDocument();
@@ -145,7 +145,7 @@ describe("<AppShell>", () => {
     );
     await userEvent.click(screen.getByRole("button", { name: "Filters" }));
     const drawer = screen.getByRole("dialog", { name: "Filters" });
-    for (const label of ["Time range", "Authors (2/2)", "Bucket", "Rank by"]) {
+    for (const label of ["Time range", "Authors (2/2)", "Bucket"]) {
       expect(within(drawer).getByText(label)).toBeInTheDocument();
     }
   });
