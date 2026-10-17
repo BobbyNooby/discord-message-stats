@@ -141,6 +141,10 @@ def create_app(
     # Without this, N parallel requests each hold their own 25 MB body, which is
     # what would turn the byte ceiling above into a per-request promise.
     thumb_fetches = threading.Semaphore(4)
+    # Storing is a read-modify-write of the cache and its running total, and the
+    # endpoint runs on worker threads: two stores landing together would evict
+    # the same entry twice, or drop a subtraction, and the total would drift.
+    thumb_lock = threading.Lock()
 
     def _thumb_allowed(url: str) -> bool:
         try:
@@ -163,13 +167,14 @@ def create_app(
         if not _thumb_allowed(u):
             raise HTTPException(status_code=400, detail="that host is not on the thumbnail allowlist")
         now = _time.monotonic()
-        hit = thumb_cache.get(u)
-        if hit and hit[0] > now:
-            # A hit is a use: move the entry to the most-recently-used end so
-            # eviction below throws away the genuinely cold entries.
-            thumb_cache[u] = thumb_cache.pop(u)
-            return Response(hit[1], media_type=hit[2],
-                            headers={"Cache-Control": "public, max-age=86400"})
+        with thumb_lock:
+            hit = thumb_cache.get(u)
+            if hit is not None and hit[0] > now:
+                # A hit is a use: move the entry to the most-recently-used end so
+                # eviction below throws away the genuinely cold entries.
+                thumb_cache[u] = thumb_cache.pop(u)
+                return Response(hit[1], media_type=hit[2],
+                                headers={"Cache-Control": "public, max-age=86400"})
         too_big = f"that image is larger than {THUMB_MAX_BYTES // 1024 // 1024} MB"
         thumb_fetches.acquire()
         try:
@@ -200,20 +205,21 @@ def create_app(
         finally:
             thumb_fetches.release()
         body = bytes(body)
-        # An entry for this URL that has expired is replaced, not double-counted.
-        expired = thumb_cache.pop(u, None)
-        if expired is not None:
-            thumb_cache_bytes -= len(expired[1])
-        while thumb_cache and (
-            len(thumb_cache) >= THUMB_CACHE_ENTRIES
-            or thumb_cache_bytes + len(body) > THUMB_CACHE_BYTES
-        ):
-            # `dict` keeps insertion order and has no `popitem(last=False)`, so
-            # the front of the dict — the least recently used entry — is named.
-            coldest = next(iter(thumb_cache))
-            thumb_cache_bytes -= len(thumb_cache.pop(coldest)[1])
-        thumb_cache[u] = (now + 86400, body, kind)
-        thumb_cache_bytes += len(body)
+        with thumb_lock:
+            # An entry for this URL that has expired is replaced, not double-counted.
+            expired = thumb_cache.pop(u, None)
+            if expired is not None:
+                thumb_cache_bytes -= len(expired[1])
+            while thumb_cache and (
+                len(thumb_cache) >= THUMB_CACHE_ENTRIES
+                or thumb_cache_bytes + len(body) > THUMB_CACHE_BYTES
+            ):
+                # `dict` keeps insertion order and has no `popitem(last=False)`, so
+                # the front of the dict — the least recently used entry — is named.
+                coldest = next(iter(thumb_cache))
+                thumb_cache_bytes -= len(thumb_cache.pop(coldest)[1])
+            thumb_cache[u] = (now + 86400, body, kind)
+            thumb_cache_bytes += len(body)
         return Response(body, media_type=kind,
                         headers={"Cache-Control": "public, max-age=86400"})
 
