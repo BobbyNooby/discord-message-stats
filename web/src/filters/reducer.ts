@@ -96,6 +96,7 @@ export type ScopeAction =
   | { type: "openScope"; panelId: PanelId }
   | { type: "patchScope"; panelId: PanelId; patch: FilterPatch }
   | { type: "applyScope"; panelId: PanelId }
+  | { type: "replaceScope"; panelId: PanelId; patch: FilterPatch }
   | { type: "clearScope"; panelId: PanelId }
   | { type: "clearScopes" }
   | { type: "closeScope" };
@@ -154,6 +155,23 @@ export function scopesReducer(state: ScopeState, action: ScopeAction): ScopeStat
       else delete scopes[action.panelId];
       return { ...state, scopes };
     }
+    case "replaceScope": {
+      // Removing an applied chip: the applied patch becomes exactly this, and
+      // the dimensions it dropped leave the open draft too — the sidebar must
+      // not keep showing a filter the card no longer has.
+      const patch = clean(action.patch);
+      const previous = state.scopes[action.panelId] ?? {};
+      const scopes = { ...state.scopes };
+      if (Object.keys(patch).length) scopes[action.panelId] = patch;
+      else delete scopes[action.panelId];
+
+      if (!scoped || scoped.panelId !== action.panelId) return { ...state, scopes };
+      const draft = { ...scoped.draft };
+      for (const key of Object.keys(previous)) {
+        if (!(key in patch)) delete draft[key as keyof Filters];
+      }
+      return { scopes, mode: { ...scoped, draft } };
+    }
     case "clearScope": {
       const scopes = { ...state.scopes };
       delete scopes[action.panelId];
@@ -187,6 +205,7 @@ const SCOPE_ACTIONS = [
   "openScope",
   "patchScope",
   "applyScope",
+  "replaceScope",
   "clearScope",
   "clearScopes",
   "closeScope",

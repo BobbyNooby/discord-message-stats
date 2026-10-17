@@ -1,12 +1,14 @@
-import { useReducer } from "react";
+import { useCallback, useReducer } from "react";
 
 import { Unauthorized } from "./api/client";
 import { useBootstrap, useHealth, useRecent } from "./api/queries";
 import { AppShell } from "./components/AppShell";
 import { FilterSidebar } from "./components/FilterSidebar";
 import { HealthBanner } from "./components/HealthBanner";
+import { PanelScopeProvider } from "./components/Panel";
 import { RecentStrip } from "./components/RecentStrip";
-import { initialFilters, filtersReducer } from "./filters/reducer";
+import { dashboardReducer, initialDashboardState } from "./filters/reducer";
+import type { PanelId } from "./panels/registry";
 import { Calendar } from "./panels/Calendar";
 import { LinksSection } from "./panels/LinksSection";
 import { MediaSection } from "./panels/MediaSection";
@@ -64,14 +66,31 @@ function DashboardBody({
   banner: "stale" | "token_dead" | null;
   recent?: { messages: { author: string; created_at: string; body: string }[]; truncated?: boolean };
 }) {
-  const [filters, dispatch] = useReducer(filtersReducer, payload, (seed) => initialFilters(seed));
+  const [{ filters, scopes, mode }, dispatch] = useReducer(
+    dashboardReducer,
+    payload,
+    initialDashboardState,
+  );
   const years = [...new Set(payload.days.map((day) => Number(day.slice(0, 4))))].sort();
+  // Stable, so a card's "…" does not re-render every panel through the context.
+  const openScope = useCallback(
+    (panelId: PanelId) => dispatch({ type: "openScope", panelId }),
+    [dispatch],
+  );
 
   return (
     <AppShell
       canAdmin={payload.meta.can_admin}
       sidebar={
-        <FilterSidebar payload={payload} filters={filters} dispatch={dispatch} years={years} />
+        <FilterSidebar
+          payload={payload}
+          filters={filters}
+          scopes={scopes}
+          mode={mode}
+          dispatch={dispatch}
+          years={years}
+          onExitScope={() => dispatch({ type: "closeScope" })}
+        />
       }
       header={
         <>
@@ -89,14 +108,17 @@ function DashboardBody({
       <HealthBanner banner={banner} stale={payload.meta.stale} staleAt={payload.meta.computed_at} />
       <RecentStrip messages={recent?.messages ?? []} truncated={recent?.truncated} />
       {/* Six sections in the spec's order; the calendar sits inside Time &
-          rhythm where §11.1 puts it. */}
-      <OverviewSection payload={payload} filters={filters} />
-      <TimeSection payload={payload} filters={filters} calendar={<Calendar payload={payload} filters={filters} />} />
-      <PeopleSection payload={payload} filters={filters} />
-      <WordsSection payload={payload} filters={filters} dispatch={dispatch} />
-      <LinksSection payload={payload} filters={filters} />
-      <RichMediaSection payload={payload} filters={filters} />
-      <MediaSection payload={payload} filters={filters} />
+          rhythm where §11.1 puts it. Every card inside can hand its id to the
+          sidebar, which is how a card's "…" swaps what the sidebar edits. */}
+      <PanelScopeProvider onOpenScope={openScope}>
+        <OverviewSection payload={payload} filters={filters} />
+        <TimeSection payload={payload} filters={filters} calendar={<Calendar payload={payload} filters={filters} />} />
+        <PeopleSection payload={payload} filters={filters} />
+        <WordsSection payload={payload} filters={filters} dispatch={dispatch} />
+        <LinksSection payload={payload} filters={filters} />
+        <RichMediaSection payload={payload} filters={filters} />
+        <MediaSection payload={payload} filters={filters} />
+      </PanelScopeProvider>
       <footer className="pb-8 text-[11px] text-[var(--color-muted)]">
         {payload.meta.payload_kb} KB payload ({payload.meta.payload_gzip_kb} KB gzipped) ·{" "}
         {payload.meta.cells.toLocaleString()} rollup cells instead of{" "}

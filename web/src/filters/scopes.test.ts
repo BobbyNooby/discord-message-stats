@@ -118,6 +118,23 @@ describe("scoped filter state", () => {
     expect(state.mode).toEqual({ kind: "global" });
     expect(state.scopes).toEqual({ "word-cloud": { word: "dog" } });
   });
+
+  it("drops a removed dimension from the draft as well as the applied scope", () => {
+    let state = initialScopeState({ "who-says-it": { word: "cat", active: [true, false] } });
+    state = scopesReducer(state, { type: "openScope", panelId: "who-says-it" });
+    state = scopesReducer(state, {
+      type: "replaceScope",
+      panelId: "who-says-it",
+      patch: { active: [true, false] },
+    });
+
+    expect(state.scopes).toEqual({ "who-says-it": { active: [true, false] } });
+    expect(state.mode).toEqual({
+      kind: "scoped",
+      panelId: "who-says-it",
+      draft: { active: [true, false] },
+    });
+  });
 });
 
 describe("dashboardReducer", () => {
