@@ -212,7 +212,7 @@ def test_a_merge_reports_the_state_it_replaced_so_it_can_be_undone(admin_client)
     )
     undone = admin_client.put("/api/admin/identity", json={"merges": []}).json()
     assert undone["merges"] == []
-    assert undone["previous"] == [{"canonical": "u1", "accounts": ["u1", "u2"]}]
+    assert undone["previous"] == [{"canonical": "u1", "accounts": ["u1", "u2"], "name": None}]
 
     restored = admin_client.put(
         "/api/admin/identity", json={"merges": undone["previous"]}
@@ -238,3 +238,167 @@ def test_the_board_refuses_a_channel_id_that_is_not_an_id(admin_client, conn):
 
     assert response.status_code == 400
     assert "channel_id" in response.json()["detail"]
+
+
+# --- the merge guardrails ----------------------------------------------------
+#
+# The picker used to offer a canonical account with alts of its own as a plain
+# "alt". Sending that produced two merges sharing one account id: an
+# IntegrityError (500) at best, a silent absorption at worst. The endpoint now
+# validates the whole set, so the UI's mistake cannot corrupt the table.
+
+
+def test_a_merge_refuses_an_account_that_is_already_in_another_merge(admin_client):
+    response = admin_client.put(
+        "/api/admin/identity",
+        json={
+            "merges": [
+                {"canonical": "u1", "accounts": ["u2", "u3"]},
+                {"canonical": "u4", "accounts": ["u3"]},
+            ]
+        },
+    )
+    assert response.status_code == 400
+    detail = response.json()["detail"]
+    assert "u3" in detail
+    assert "one person" in detail
+
+
+def test_a_merge_refuses_a_canonical_offered_as_a_plain_alt(admin_client):
+    """The exact screenshot bug: Jetkenon is a canonical with its own alt, and was
+    offered as a free account. The refusal names the identity to absorb instead."""
+    response = admin_client.put(
+        "/api/admin/identity",
+        json={
+            "merges": [
+                {"canonical": "u1", "accounts": ["u2"]},
+                {"canonical": "u2", "accounts": ["u3"]},
+            ]
+        },
+    )
+    assert response.status_code == 400
+    detail = response.json()["detail"]
+    assert "u2" in detail
+    assert "canonical" in detail
+
+
+def test_a_merge_refuses_a_cycle_between_two_canonicals(admin_client):
+    response = admin_client.put(
+        "/api/admin/identity",
+        json={
+            "merges": [
+                {"canonical": "u2", "accounts": ["u1"]},
+                {"canonical": "u1", "accounts": ["u2"]},
+            ]
+        },
+    )
+    assert response.status_code == 400
+
+
+def test_a_merge_refuses_to_merge_an_account_with_itself(admin_client):
+    response = admin_client.put(
+        "/api/admin/identity", json={"merges": [{"canonical": "u1", "accounts": ["u1"]}]}
+    )
+    assert response.status_code == 400
+    assert "itself" in response.json()["detail"]
+
+
+def test_absorbing_a_whole_identity_moves_every_one_of_its_accounts(admin_client, conn, tmp_path):
+    """The loud form of the same merge: the caller lists the absorbed identity's
+    accounts in the surviving merge and drops the absorbed group."""
+    response = admin_client.put(
+        "/api/admin/identity",
+        json={"merges": [{"canonical": "u1", "accounts": ["u2", "u3"]}]},
+    )
+    assert response.status_code == 200
+    assert response.json()["merges"] == [{"canonical": "u1", "accounts": ["u1", "u2", "u3"]}]
+
+    rebuild_all(conn, cfg_fixture(tmp_path))
+    authors = [row[0] for row in conn.execute(
+        "SELECT DISTINCT author_id FROM rollup_activity ORDER BY author_id")]
+    assert authors == ["u1"]
+
+
+def test_merging_an_admin_moves_the_admin_row_and_their_sessions(admin_client, conn):
+    """Admin is keyed on a Discord id. Absorbing that id must move the privilege
+    to the surviving canonical, not leave it on a dead account."""
+    from discord_scraper.auth.admins import is_admin
+    from discord_scraper.auth.session import Level, establish_session, hash_token, session_level
+
+    admin_client.post("/api/admin/admins", json={"discord_id": "u2"})
+    victim = establish_session(conn, "u2", Level.ADMIN)
+    cfg = admin_client.app.state.cfg
+
+    body = admin_client.put(
+        "/api/admin/identity", json={"merges": [{"canonical": "u1", "accounts": ["u2"]}]}
+    ).json()
+
+    assert body["admins_moved"] == [{"from": "u2", "to": "u1", "configured": False}]
+    assert is_admin(conn, cfg, "u1") is True
+    assert is_admin(conn, cfg, "u2") is False
+    assert session_level(conn, victim) is Level.ADMIN
+    assert conn.execute(
+        "SELECT discord_id FROM sessions WHERE id = ?", (hash_token(victim),)
+    ).fetchone()[0] == "u1"
+
+
+def test_the_configured_admin_stays_admin_and_is_flagged_as_configured(seeded_db_path, tmp_path):
+    """ADMIN_DISCORD_ID is a second source, so its row cannot be deleted. The
+    surviving canonical is still granted, and the response says the config still
+    points at the absorbed id so the UI can explain it."""
+    import sqlite3
+
+    from fastapi.testclient import TestClient
+
+    from discord_scraper.api.app import create_app
+    from discord_scraper.auth.admins import is_admin
+
+    cfg = cfg_fixture(tmp_path, admin_id="u2")
+    client = TestClient(create_app(cfg, seeded_db_path, dev_login=True),
+                        base_url="https://stats.example")
+    client.get("/auth/dev-login?level=admin", follow_redirects=False)
+
+    body = client.put(
+        "/api/admin/identity", json={"merges": [{"canonical": "u1", "accounts": ["u2"]}]}
+    ).json()
+
+    assert body["admins_moved"] == [{"from": "u2", "to": "u1", "configured": True}]
+    conn = sqlite3.connect(seeded_db_path)
+    try:
+        assert is_admin(conn, cfg, "u1") is True
+    finally:
+        conn.close()
+
+
+def test_undo_restores_a_two_level_chain_and_the_names_it_had(admin_client, conn):
+    """Undo writes back the whole replaced set, not one level of it: both the
+    identity groups and the display-name pins come back."""
+    first = admin_client.put(
+        "/api/admin/identity",
+        json={"merges": [{"canonical": "u2", "accounts": ["u4"], "name": "Kenon"}]},
+    ).json()
+    assert first["previous"] == []
+
+    chained = admin_client.put(
+        "/api/admin/identity",
+        json={"merges": [{"canonical": "u1", "accounts": ["u2", "u4"], "name": "Alice"}]},
+    ).json()
+    assert chained["merges"] == [{"canonical": "u1", "accounts": ["u1", "u2", "u4"]}]
+    assert chained["previous"] == [
+        {"canonical": "u2", "accounts": ["u2", "u4"], "name": "Kenon"}
+    ]
+
+    undone = admin_client.put(
+        "/api/admin/identity",
+        json={"merges": chained["previous"], "clear_names": ["u1"]},
+    ).json()
+    assert undone["merges"] == [{"canonical": "u2", "accounts": ["u2", "u4"]}]
+    # The pin the chain introduced is cleared, and the older one is restored.
+    old = conn.execute(
+        "SELECT renamed FROM author_names WHERE channel_id = 'c1' AND author_id = 'u1'"
+    ).fetchone()
+    assert old[0] == 0
+    kept = conn.execute(
+        "SELECT name, renamed FROM author_names WHERE channel_id = 'c1' AND author_id = 'u2'"
+    ).fetchone()
+    assert (kept[0], kept[1]) == ("Kenon", 1)
