@@ -23,7 +23,7 @@ vi.mock("../api/client", () => ({
 }));
 
 import type { MediaRow, Payload } from "../api/types";
-import { initialFilters } from "../filters/reducer";
+import { initialFilters, type Filters } from "../filters/reducer";
 import { RichMedia } from "./RichMedia";
 
 const cat: MediaRow = [
@@ -48,11 +48,11 @@ const base = {
 } as unknown as Payload;
 
 /** The card as the app mounts it: a real query client over the mocked client. */
-function renderCard(payload: Payload = base) {
+function renderCard(payload: Payload = base, filters?: Filters) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
-      <RichMedia payload={payload} filters={initialFilters(payload)} />
+      <RichMedia payload={payload} filters={filters ?? initialFilters(payload)} />
     </QueryClientProvider>,
   );
 }
@@ -190,6 +190,18 @@ describe("<RichMedia>", () => {
       "aria-pressed",
       "true",
     );
+  });
+
+  it("shows a scoped provider's own top rows instead of the payload's ranking", async () => {
+    const video: MediaRow = ["https://youtu.be/abc", "YouTube", "video", "A video", "", "", 9];
+    server.getMedia.mockResolvedValue({ provider: "YouTube", kind: null, kinds: [], items: [video] });
+    renderCard(base, { ...initialFilters(base), provider: "YouTube" });
+
+    // The card asks the server, not a client-side filter of its 24 payload rows.
+    await waitFor(() => expect(server.getMedia).toHaveBeenCalledWith("YouTube", undefined, 10));
+    expect(await screen.findByText("A video")).toBeInTheDocument();
+    expect(screen.queryByText("Zesty Cat")).toBeNull();
+    expect(screen.getByText(/top 1 for YouTube/)).toBeInTheDocument();
   });
 
   it("names the two chip groups so they do not read as decoration", async () => {

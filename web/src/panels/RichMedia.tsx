@@ -3,11 +3,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { EChartsOption } from "echarts";
 
 import type { MediaRow, Payload } from "../api/types";
+import { useMedia } from "../api/queries";
 import { EmptyState, GlobalOnlyBadge, Panel, CARD_COLUMNS } from "../components/Panel";
 import { EChart } from "../lib/echart";
-import { providerChoices, providerLabel } from "../lib/mediaLabels";
+import { kindLabel, providerChoices, providerLabel } from "../lib/mediaLabels";
 import type { Filters } from "../filters/reducer";
 import { readMediaOpen, writeMediaState } from "../filters/persist";
+import { usePanelFilters } from "./panelScope";
 import { MediaTile } from "./MediaTile";
 import { MediaView } from "./MediaView";
 
@@ -73,8 +75,16 @@ function useMediaViewState(): { viewOpen: boolean; onViewOpenChange: (open: bool
   return { viewOpen, onViewOpenChange };
 }
 
-export function RichMedia({ payload }: { panelId?: string; payload: Payload; filters?: Filters }) {
-  const items: MediaRow[] = payload.topMedia ?? [];
+export function RichMedia({ payload, filters }: { panelId?: string; payload: Payload; filters?: Filters }) {
+  // The card's own scope, composed over the global filters. With a provider or
+  // kind scope it asks the server for that slice's top rows — the payload only
+  // ships the twenty-four biggest overall, where GIFs win every slot.
+  const scoped = usePanelFilters("most-reposted", filters);
+  const scopeProvider = scoped.provider ?? null;
+  const scopeKind = scoped.kind ?? null;
+  const hasScope = Boolean(scopeProvider || scopeKind);
+  const scopedQuery = useMedia(scopeProvider, scopeKind, hasScope, IN_CARD);
+  const items: MediaRow[] = hasScope ? scopedQuery.data?.items ?? [] : payload.topMedia ?? [];
   const shown = items.slice(0, IN_CARD);
   const mode = payload.mediaThumbnails ?? "proxy";
   const { viewOpen, onViewOpenChange } = useMediaViewState();
@@ -91,6 +101,13 @@ export function RichMedia({ payload }: { panelId?: string; payload: Payload; fil
     setViewProvider(provider);
     onViewOpenChange(true);
   };
+
+  const scopeName = [
+    scopeProvider ? providerLabel(scopeProvider, scopeProvider) : null,
+    scopeKind ? kindLabel(scopeKind) : null,
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   // Raw provider totals, with Discord's unnamed bucket split by host: an
   // `cdn.discordapp.com` attachment is somebody's own upload, not a mystery.
@@ -138,9 +155,11 @@ export function RichMedia({ payload }: { panelId?: string; payload: Payload; fil
         <Panel
           title="Most reposted"
           subtitle={
-            items.length > IN_CARD
-              ? `the same link posted again and again · top ${IN_CARD} of ${fmt(items.length)}`
-              : `the same link posted again and again · ${fmt(items.length)} links`
+            hasScope
+              ? `the same link posted again and again · top ${fmt(shown.length)} for ${scopeName}`
+              : items.length > IN_CARD
+                ? `the same link posted again and again · top ${IN_CARD} of ${fmt(items.length)}`
+                : `the same link posted again and again · ${fmt(items.length)} links`
           }
           badge={
             <span className="flex flex-wrap items-center gap-1">
@@ -191,8 +210,18 @@ export function RichMedia({ payload }: { panelId?: string; payload: Payload; fil
               </button>
             </div>
           ) : null}
-          {shown.length === 0 ? (
-            <EmptyState>No embeds yet — ingest, or upload a database from the Admin board.</EmptyState>
+          {hasScope && scopedQuery.isError ? (
+            <p className="text-xs text-red-300">
+              Could not load this scope: {(scopedQuery.error as Error).message}
+            </p>
+          ) : hasScope && scopedQuery.isLoading ? (
+            <p className="text-xs text-[var(--color-muted)]">Loading…</p>
+          ) : shown.length === 0 ? (
+            <EmptyState>
+              {hasScope
+                ? "No embeds in this filter — widen it, or browse them all."
+                : "No embeds yet — ingest, or upload a database from the Admin board."}
+            </EmptyState>
           ) : (
             <ol className="grid grid-cols-1 gap-3 md:grid-cols-2">
               {shown.map((row, index) => (
@@ -224,13 +253,13 @@ export function RichMedia({ payload }: { panelId?: string; payload: Payload; fil
   );
 }
 
-export function RichMediaSection({ payload }: { payload: Payload }) {
+export function RichMediaSection({ payload, filters }: { payload: Payload; filters?: Filters }) {
   return (
     <section aria-labelledby="sec-media-rich" className="space-y-4">
       <h2 id="sec-media-rich" className="text-base font-semibold text-[var(--color-text)]">
         Rich media
       </h2>
-      <RichMedia payload={payload} />
+      <RichMedia payload={payload} filters={filters} />
     </section>
   );
 }

@@ -5,6 +5,7 @@ import { PALETTE } from "../lib/palette";
 import type { Payload } from "../api/types";
 import { allPairRows, fmt, horizontalBarsOption, sumRows } from "./mediaData";
 import type { Filters } from "../filters/reducer";
+import { usePanelFilters } from "./panelScope";
 
 /**
  * "Embed providers" — who Discord unfurled, as a ranked bar.
@@ -16,14 +17,20 @@ import type { Filters } from "../filters/reducer";
  * says in words which slice of the ranking it is drawing.
  *
  * `providers` is a flat [name, embeds] list with no day or author column, so it
- * cannot re-aggregate under a filter, and says so (§11.2).
+ * cannot re-aggregate under a filter, and says so (§11.2). A provider scope is
+ * the one thing it can honour: narrowing the ranking to that provider.
  */
 
 /** Bars are only readable while the labels do not collide. */
 const MAX_BARS = 12;
 
-export function Providers({ payload, }: { panelId?: string; payload: Payload; filters?: Filters }) {
-  const all = allPairRows(payload.providers).map((row) => ({
+export function Providers({ payload, filters }: { panelId?: string; payload: Payload; filters?: Filters }) {
+  const scoped = usePanelFilters("embed-providers", filters);
+  const provider = scoped.provider ?? null;
+  const source = provider
+    ? (payload.providers ?? []).filter(([name]) => name === provider)
+    : payload.providers;
+  const all = allPairRows(source).map((row) => ({
     ...row,
     // Discord's `unprovidenced` is a bucket, not a provider name (§UI/UX rule 1).
     // This list has no URL to split CDN uploads from unnamed links, so both read
@@ -32,8 +39,11 @@ export function Providers({ payload, }: { panelId?: string; payload: Payload; fi
   }));
   const rows = all.slice(0, MAX_BARS);
   const total = sumRows(rows);
-  const scope =
-    all.length <= MAX_BARS ? "every provider the payload carries" : `the ${MAX_BARS} biggest providers`;
+  const scope = provider
+    ? `only ${providerLabel(provider, provider)}`
+    : all.length <= MAX_BARS
+      ? "every provider the payload carries"
+      : `the ${MAX_BARS} biggest providers`;
 
   return (
     <Panel

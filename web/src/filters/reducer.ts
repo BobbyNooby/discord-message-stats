@@ -10,6 +10,10 @@ export type Filters = {
   bucket: "day" | "month" | "year";
   rankBy: "msgs" | "chars" | "media" | "replies";
   word: string | null;
+  /** Discord's exact provider string, as `/api/media` filters on it. */
+  provider: string | null;
+  /** One embed kind (`gifv`, `video`, …), as `/api/media` filters on it. */
+  kind: string | null;
 };
 
 export type Action =
@@ -23,6 +27,8 @@ export type Action =
   | { type: "setBucket"; bucket: Filters["bucket"] }
   | { type: "setRankBy"; rankBy: Filters["rankBy"] }
   | { type: "setWord"; word: string | null }
+  | { type: "setProvider"; provider: string | null }
+  | { type: "setKind"; kind: string | null }
   | { type: "reset" };
 
 /** Filters before the payload arrives: nobody is known yet, so nobody is hidden. */
@@ -34,6 +40,8 @@ export const EMPTY_FILTERS: Filters = {
   bucket: "month",
   rankBy: "msgs",
   word: null,
+  provider: null,
+  kind: null,
 };
 
 /** One author per identity, all switched on — the payload's own default view. */
@@ -70,6 +78,12 @@ export function filtersReducer(state: Filters, action: Action): Filters {
       return { ...state, rankBy: action.rankBy };
     case "setWord":
       return { ...state, word: action.word };
+    case "setProvider":
+      // A provider that does not have a kind makes the kind invisible, so it
+      // goes with the provider rather than filtering the card to nothing.
+      return { ...state, provider: action.provider, kind: null };
+    case "setKind":
+      return { ...state, kind: action.kind };
     case "reset":
       // `active` keeps its length: resetting shows everybody, it does not forget
       // how many people there are.

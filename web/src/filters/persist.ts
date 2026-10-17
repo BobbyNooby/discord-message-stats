@@ -77,6 +77,7 @@ export function loadScopes(payload: Payload, raw?: string | null): LoadedScopes 
 
     const authors = new Set(payload.authors.map((author) => author.name));
     const words = new Set((payload.words ?? []).map(([word]) => word));
+    const providers = new Set((payload.providers ?? []).map(([name]) => name));
     const authorsChanged = Array.isArray((payload as { authors?: unknown }).authors);
     // The names as they were when the scope was saved: an index means nothing
     // after a rebuild, a name does.
@@ -137,6 +138,24 @@ export function loadScopes(payload: Payload, raw?: string | null): LoadedScopes 
             continue;
           }
           patch.word = value;
+          continue;
+        }
+        if (key === "provider") {
+          // A provider scope is the raw name the API matches, so a rebuild that
+          // dropped it must drop the scope with it, not filter the card to
+          // nothing. There is no payload list of kinds to prune against, so a
+          // stale kind is left for the server to answer honestly.
+          if (typeof value !== "string" || !value.length) continue;
+          if (!providers.has(value)) {
+            dropped.push({ panelId, dimension: "provider", key: value });
+            continue;
+          }
+          patch.provider = value;
+          continue;
+        }
+        if (key === "kind") {
+          if (typeof value !== "string" || !value.length) continue;
+          patch.kind = value;
           continue;
         }
         if (key === "from" || key === "to") {
@@ -220,6 +239,8 @@ function encodePatch(panelId: string, patch: FilterPatch, authors: string[]): st
     parts.push(`${panelId}:author=${encodeValue(names.length ? names.join(",") : "none")}`);
   }
   if (patch.word) parts.push(`${panelId}:word=${encodeValue(patch.word)}`);
+  if (patch.provider) parts.push(`${panelId}:provider=${encodeValue(patch.provider)}`);
+  if (patch.kind) parts.push(`${panelId}:kind=${encodeValue(patch.kind)}`);
   return parts;
 }
 
@@ -265,6 +286,10 @@ export function readUrlState(payload?: Payload, search?: string): UrlState {
       }
     } else if (dimension === "word") {
       patch.word = value;
+    } else if (dimension === "provider") {
+      patch.provider = value;
+    } else if (dimension === "kind") {
+      patch.kind = value;
     } else if (dimension === "years") {
       patch.years = value
         .split(",")

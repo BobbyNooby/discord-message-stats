@@ -28,7 +28,7 @@
  * cards: they carry no controls and no scope, so they have no spec here.
  */
 
-export type Dimension = "time" | "author" | "word" | "provider" | "kind" | "media";
+export type Dimension = "time" | "author" | "word" | "provider" | "kind";
 export type ChartKind = "bar" | "pie";
 
 export type PanelSpec = {
@@ -45,7 +45,7 @@ const TA = ["time", "author"] as const;
 const A = ["author"] as const;
 const W = ["word"] as const;
 const WA = ["word", "author"] as const;
-const RICH = ["provider", "kind", "media"] as const;
+const RICH = ["provider", "kind"] as const;
 const NONE: readonly Dimension[] = [];
 const BAR = ["bar"] as const;
 const BAR_PIE = ["bar", "pie"] as const;

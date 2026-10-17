@@ -36,6 +36,16 @@ describe("filtersReducer", () => {
     expect(state.years).toEqual([2023, 2024]);
     expect(filtersReducer(state, { type: "toggleYear", year: 2023 }).years).toEqual([2024]);
   });
+
+  it("sets a provider and clears a kind that provider may not have", () => {
+    let state = filtersReducer(filters(), { type: "setKind", kind: "gifv" });
+    state = filtersReducer(state, { type: "setProvider", provider: "YouTube" });
+    expect(state.provider).toBe("YouTube");
+    expect(state.kind).toBeNull();
+
+    state = filtersReducer(state, { type: "setKind", kind: "video" });
+    expect(state.kind).toBe("video");
+  });
 });
 
 describe("selectors", () => {

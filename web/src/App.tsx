@@ -227,7 +227,7 @@ function DashboardBody({
         <PeopleSection payload={payload} filters={filters} />
         <WordsSection payload={payload} filters={filters} dispatch={dispatch} />
         <LinksSection payload={payload} filters={filters} />
-        <RichMediaSection payload={payload} />
+        <RichMediaSection payload={payload} filters={filters} />
         <MediaSection payload={payload} filters={filters} />
       </PanelScopeProvider>
       <footer className="pb-8 text-[11px] text-[var(--color-muted)]">
