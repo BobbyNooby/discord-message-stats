@@ -19,7 +19,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { Payload } from "../api/types";
 import { Admin } from "../routes/Admin";
-import type { AdminConfig, AdminRow, AdminStatus, MergeEntry } from "./api";
+import type { AdminConfig, AdminRow, AdminStatus, MergeEntry, Progress } from "./api";
 
 const STATUS: AdminStatus = {
   app: "Discord Scraper",
@@ -65,6 +65,48 @@ const STATUS: AdminStatus = {
   jobs: { queued: 0, running: 0, done: 3, failed: 1 },
   sessions: { active: 2 },
   checked_at: "2026-10-15T20:00:00+00:00",
+};
+
+const PROGRESS: Progress = {
+  running: false,
+  started_at: null,
+  phase: null,
+  families: [
+    {
+      family: "activity",
+      state: "done",
+      rows: 120,
+      seconds: 3.1,
+      computed_at: "2026-10-14T20:00:00+00:00",
+      added_since: 3,
+      stale: true,
+    },
+    {
+      family: "heat",
+      state: "done",
+      rows: 30,
+      seconds: 1.2,
+      computed_at: "2026-10-15T20:00:00+00:00",
+      added_since: 0,
+      stale: false,
+    },
+  ],
+  log: [],
+  totals: { families: 2, rows: 150, seconds: 4.3 },
+  latest_id: 42,
+  last: {
+    status: "finished",
+    finished_at: "2026-10-15T20:00:00+00:00",
+    seconds: 4.3,
+    rows: 150,
+    message: "150 rows rebuilt in 4.3s",
+  },
+  freshness: {
+    built_at: "2026-10-15T20:00:00+00:00",
+    current: false,
+    added_since: 3,
+    newest_message_id: "903",
+  },
 };
 
 const CONFIG: AdminConfig = {
@@ -176,6 +218,7 @@ beforeEach(() => {
     "POST /api/admin/recalculate": () =>
       response(202, { id: 7, channel_id: "c1", kind: "rebuild_rollups", status: "queued" }),
     "GET /api/admin/jobs": () => response(200, { jobs: [] }),
+    "GET /api/admin/progress": () => response(200, PROGRESS),
   };
   vi.stubGlobal(
     "fetch",
@@ -210,6 +253,10 @@ const recorded = (method: string, url: string) =>
 
 const recordedCall = (method: string, url: string) =>
   calls.find((call) => call.method === method && call.url === url);
+
+/** `/api/admin/progress` is polled, so its URL carries the `since` cursor. */
+const progressCalls = () =>
+  calls.filter((call) => call.method === "GET" && call.url.startsWith("/api/admin/progress"));
 
 /** The nav is the four tasks; open one before touching its controls. */
 async function openTask(user: ReturnType<typeof userEvent.setup>, label: string) {
@@ -291,6 +338,19 @@ describe("<Admin>", () => {
 
     expect(await screen.findByText(/wait for the running job/i)).toBeInTheDocument();
     expect(screen.queryByText(/^conflict$/i)).not.toBeInTheDocument();
+  });
+
+  it("does not poll the progress endpoint until the task is opened", async () => {
+    const user = userEvent.setup();
+    renderAdmin();
+
+    await openTask(user, "Fix the data");
+    await screen.findByRole("heading", { name: "Fix the data" });
+    expect(progressCalls()).toHaveLength(0);
+
+    await openTask(user, "Refresh the cache");
+    await waitFor(() => expect(progressCalls().length).toBeGreaterThan(0));
+    expect(progressCalls()[0].url).toBe("/api/admin/progress?since=0");
   });
 
   it("marks a stale rollup family stale and says what changed since it was built", async () => {
