@@ -110,7 +110,7 @@ export function GlobalSearch({
   return (
     <div
       ref={container}
-      className="relative min-w-0 flex-1 sm:flex-none sm:basis-72"
+      className="relative w-full sm:w-72"
       onBlur={(event) => {
         if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setOpen(false);
       }}

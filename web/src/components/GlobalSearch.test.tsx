@@ -127,6 +127,14 @@ describe("<GlobalSearch>", () => {
     expect(input).toHaveFocus();
   });
 
+  it("keeps the field usable on a phone and fixed on a wide screen", () => {
+    const { container } = render(<GlobalSearch payload={payload} dispatch={vi.fn()} />);
+    const box = container.firstElementChild as HTMLElement;
+    // Full width in the wrapping header on a phone; a 288px field on desktop.
+    expect(box.className).toContain("w-full");
+    expect(box.className).toContain("sm:w-72");
+  });
+
   it("says when nothing matches", async () => {
     render(<GlobalSearch payload={payload} dispatch={vi.fn()} />);
     await userEvent.type(screen.getByRole("combobox"), "zzzz");
