@@ -133,3 +133,96 @@ def test_only_an_admin_may_upload(viewer_client, tmp_path):
 
 def test_the_cap_is_explicit_and_generous():
     assert MAX_UPLOAD_BYTES >= 1 << 30      # a 783 MB database must fit
+
+
+def add_meta_timezone(path, zone):
+    conn = sqlite3.connect(path)
+    conn.execute("INSERT INTO meta (key, value) VALUES ('timezone', ?)", (zone,))
+    conn.commit()
+    conn.close()
+    return path
+
+
+def test_the_preview_reports_the_channel_and_the_zone_the_file_records(admin_client, tmp_path):
+    candidate = add_meta_timezone(make_database(tmp_path / "candidate.db", rows=2), "Europe/Berlin")
+    body = upload(admin_client, candidate).json()
+    assert body["channel_id"] == "c1"
+    assert body["timezone"] == "Europe/Berlin"
+    assert body["timezone_source"] == "database"
+
+
+def test_a_file_without_a_zone_is_labelled_with_the_servers_own(admin_client, tmp_path):
+    body = upload(admin_client, make_database(tmp_path / "candidate.db", rows=1)).json()
+    assert body["timezone"] == "UTC"          # the fixture's configured zone
+    assert body["timezone_source"] == "config"
+
+
+def test_the_preview_dry_runs_the_diff(admin_client, tmp_path):
+    """The seeded database holds m1..m7; the candidate holds m0 and m1, so one
+    row would arrive and six would be gone — before anything is swapped."""
+    candidate = make_database(tmp_path / "candidate.db", rows=2)
+    body = upload(admin_client, candidate).json()
+    assert body["rows"] == 2
+    assert body["added"] == 1
+    assert body["lost"] == 6
+    assert body["replaces"]["rows"] == 7
+
+
+def test_the_preview_names_the_disk_floor(admin_client, tmp_path):
+    body = upload(admin_client, make_database(tmp_path / "candidate.db", rows=1)).json()
+    assert body["disk"]["required_bytes"] == 2 * body["size_bytes"]
+    assert body["disk"]["free_bytes"] > 0
+
+
+def test_replacing_the_database_with_itself_is_refused(admin_client, seeded_db_path):
+    response = admin_client.post(
+        "/api/admin/upload",
+        files={"file": ("messages.db", seeded_db_path.read_bytes(), "application/octet-stream")},
+    )
+    assert response.status_code == 400
+    assert "already in place" in response.json()["detail"]
+
+
+def test_an_upload_needing_more_room_than_the_disk_has_is_refused(
+    admin_client, tmp_path, monkeypatch
+):
+    monkeypatch.setattr("discord_scraper.api.upload._free_bytes", lambda directory: 10)
+    response = upload(admin_client, make_database(tmp_path / "candidate.db", rows=1))
+    assert response.status_code == 400
+    assert "free disk space" in response.json()["detail"]
+
+
+def test_a_commit_that_cannot_prepare_the_file_leaves_the_live_one_alone(
+    admin_client, tmp_path, seeded_db_path, monkeypatch
+):
+    candidate = make_database(tmp_path / "candidate.db", rows=2)
+    upload_id = upload(admin_client, candidate).json()["upload_id"]
+    before = seeded_db_path.read_bytes()
+
+    def boom(conn):
+        raise RuntimeError("no room for the rollup tables")
+
+    monkeypatch.setattr("discord_scraper.api.upload.create_rollup_tables", boom)
+    with pytest.raises(RuntimeError):
+        admin_client.post(f"/api/admin/upload/{upload_id}/commit")
+
+    assert seeded_db_path.read_bytes() == before, "a failed upload must not touch the live file"
+    assert not seeded_db_path.with_suffix(".db.bak").exists()
+
+
+def test_the_backup_holds_the_database_that_was_replaced(
+    admin_client, tmp_path, seeded_db_path
+):
+    """The backup is a hard link to the old inode, so it has to survive the swap
+    with its own contents intact — a backup holding the new file would be worse
+    than none."""
+    candidate = make_database(tmp_path / "candidate.db", rows=2)
+    upload_id = upload(admin_client, candidate).json()["upload_id"]
+    assert admin_client.post(f"/api/admin/upload/{upload_id}/commit").status_code == 202
+
+    backup = seeded_db_path.with_suffix(seeded_db_path.suffix + ".bak")
+    conn = sqlite3.connect(backup)
+    try:
+        assert conn.execute("SELECT COUNT(*) FROM messages").fetchone()[0] == 7
+    finally:
+        conn.close()
