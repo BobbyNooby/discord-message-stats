@@ -167,7 +167,9 @@ export function GlobalSearch({
         >
           {hits.map((hit, index) => (
             <li
-              key={`${hit.kind}:${hit.label}`}
+              // A media label is a title two rows can share; the url is the
+              // item's identity, so it is the key.
+              key={hit.kind === "media" ? `media:${hit.url}` : `${hit.kind}:${hit.label}`}
               id={OPTION_ID(index)}
               role="option"
               aria-selected={index === cursor}
