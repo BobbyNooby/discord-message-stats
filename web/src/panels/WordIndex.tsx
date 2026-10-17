@@ -4,6 +4,7 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { useWords } from "../api/queries";
 import { EmptyState, Panel } from "../components/Panel";
 import { EChart } from "../lib/echart";
+import { WORD_SEARCH_ID } from "../lib/shortcuts";
 import { usePanelFilters } from "./panelScope";
 
 /**
@@ -172,6 +173,7 @@ export function WordIndex({ words, selected, onSelect }: WordIndexProps) {
       }
     >
       <input
+        id={WORD_SEARCH_ID}
         type="search"
         aria-label="Search words"
         autoComplete="off"

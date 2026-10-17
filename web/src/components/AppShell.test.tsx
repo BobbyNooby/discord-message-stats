@@ -1,8 +1,9 @@
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { Payload } from "../api/types";
+import { OPEN_FILTERS_EVENT } from "../lib/shortcuts";
 import { AppShell } from "./AppShell";
 import { FilterSidebar } from "./FilterSidebar";
 import { initialFilters } from "../filters/reducer";
@@ -176,6 +177,32 @@ describe("<AppShell>", () => {
     );
     expect(screen.getByRole("dialog", { name: "Filters" })).toBeInTheDocument();
     expect(screen.getByText("Filter for Who talks the most")).toBeInTheDocument();
+  });
+
+  it("opens the drawer when the `f` shortcut fires on a phone", () => {
+    window.innerWidth = 390;
+    render(
+      <AppShell sidebar={<p>filter groups</p>} header={null}>
+        <p>charts</p>
+      </AppShell>,
+    );
+    expect(screen.queryByRole("dialog")).toBeNull();
+
+    fireEvent(window, new Event(OPEN_FILTERS_EVENT));
+
+    expect(screen.getByRole("dialog", { name: "Filters" })).toBeInTheDocument();
+  });
+
+  it("puts the caret in the sidebar when the `f` shortcut fires on a wide screen", () => {
+    render(
+      <AppShell sidebar={<button type="button">Reset all filters</button>} header={null}>
+        <p>charts</p>
+      </AppShell>,
+    );
+
+    fireEvent(window, new Event(OPEN_FILTERS_EVENT));
+
+    expect(screen.getByRole("button", { name: "Reset all filters" })).toHaveFocus();
   });
 
   it("sizes the floating trigger for a thumb and stays clear of the notch", () => {
