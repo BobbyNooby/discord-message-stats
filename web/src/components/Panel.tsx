@@ -43,8 +43,12 @@ export function Panel({
       className={`mb-4 break-inside-avoid rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] p-4 ${className ?? ""}`}
     >
       <header className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-sm font-semibold tracking-wide text-[var(--color-text)]">{title}</h2>
-        <span className="flex shrink-0 items-center gap-1">
+        <h2 className="min-w-0 text-sm font-semibold tracking-wide text-[var(--color-text)]">
+          {title}
+        </h2>
+        {/* The actions wrap too: "Most reposted" is a tab strip plus a badge plus
+            the "…" trigger, which is wider than a 390px card on its own. */}
+        <span className="flex min-w-0 flex-wrap items-center justify-end gap-1">
           {badge}
           {onOpenScope && target ? (
             <IconButton

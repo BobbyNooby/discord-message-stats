@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
-import { ResetView, storedCounts } from "./ResetView";
+import { PrunedNotice, ResetView, storedCounts } from "./ResetView";
 
 describe("storedCounts", () => {
   it("says how much is stored, in words", () => {
@@ -66,5 +66,17 @@ describe("<ResetView>", () => {
     render(<ResetView scopes={{}} charts={{}} onReset={vi.fn()} />);
     expect(screen.getByRole("button", { name: "Reset view" })).toBeDisabled();
     expect(screen.getByText("Nothing saved yet.")).toBeInTheDocument();
+  });
+});
+
+describe("<PrunedNotice>", () => {
+  it("says what was dropped from saved filters, and dismisses", async () => {
+    const onDismiss = vi.fn();
+    render(<PrunedNotice pruned={'author \u201cBob\u201d from Who talks the most'} onDismiss={onDismiss} />);
+
+    expect(screen.getByText(/Saved filters changed/)).toBeInTheDocument();
+    expect(screen.getByText(/Bob/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Dismiss" }));
+    expect(onDismiss).toHaveBeenCalledTimes(1);
   });
 });

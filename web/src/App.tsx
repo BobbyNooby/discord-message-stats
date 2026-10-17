@@ -91,7 +91,7 @@ function DashboardBody({
   // Saved scopes are read from the URL first (one entry per dimension, names
   // not indices) and the storage key second, then pruned against the payload
   // that is actually loaded.
-  const [saved] = useState(() => {
+  const [saved, setSaved] = useState(() => {
     const fromUrl = readUrlState(payload);
     const loaded = loadScopes(payload);
     return {
@@ -136,6 +136,7 @@ function DashboardBody({
           dispatch={dispatch}
           years={years}
           pruned={pruned}
+          onDismissPruned={() => setSaved((previous) => ({ ...previous, dropped: [] }))}
           charts={charts}
           onExitScope={() => dispatch({ type: "closeScope" })}
           onResetView={() => {
