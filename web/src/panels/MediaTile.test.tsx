@@ -48,7 +48,7 @@ afterEach(() => {
 
 describe("<MediaTile> reduced motion", () => {
   it("autoplays an animated asset when the reader has not asked for less motion", () => {
-    const { container } = render(<MediaTile row={cat} mode="proxy" />);
+    const { container } = render(<MediaTile row={cat} mode="proxy" rank={1} />);
 
     expect(container.querySelector("video")).not.toBeNull();
     expect(screen.queryByRole("button", { name: /play/i })).toBeNull();
@@ -56,7 +56,7 @@ describe("<MediaTile> reduced motion", () => {
 
   it("shows the poster with a play control under prefers-reduced-motion", () => {
     stubMotion(true);
-    const { container } = render(<MediaTile row={cat} mode="proxy" />);
+    const { container } = render(<MediaTile row={cat} mode="proxy" rank={1} />);
 
     expect(container.querySelector("video")).toBeNull();
     expect(container.querySelector("img")).toHaveAttribute("src", expect.stringContaining("cat.png"));
@@ -65,7 +65,7 @@ describe("<MediaTile> reduced motion", () => {
 
   it("plays only when the reader presses the control", async () => {
     stubMotion(true);
-    const { container } = render(<MediaTile row={cat} mode="proxy" />);
+    const { container } = render(<MediaTile row={cat} mode="proxy" rank={1} />);
 
     await userEvent.click(screen.getByRole("button", { name: "Play Tenor animation" }));
 
@@ -76,7 +76,7 @@ describe("<MediaTile> reduced motion", () => {
 
   it("reacts when the setting changes mid-session", () => {
     const setReduced = stubMotion(false);
-    const { container } = render(<MediaTile row={cat} mode="proxy" />);
+    const { container } = render(<MediaTile row={cat} mode="proxy" rank={1} />);
     expect(container.querySelector("video")).not.toBeNull();
 
     act(() => setReduced(true));
@@ -88,7 +88,7 @@ describe("<MediaTile> reduced motion", () => {
 
 describe("<MediaTile> preview fit", () => {
   it("fits the asset whole in a fixed box rather than cropping it", () => {
-    const { container } = render(<MediaTile row={cat} mode="proxy" />);
+    const { container } = render(<MediaTile row={cat} mode="proxy" rank={1} />);
 
     const video = container.querySelector("video")!;
     expect(video.className).toContain("object-contain");
@@ -106,7 +106,7 @@ describe("<MediaTile> preview fit", () => {
       "",
       2,
     ];
-    const { container } = render(<MediaTile row={broken} mode="proxy" />);
+    const { container } = render(<MediaTile row={broken} mode="proxy" rank={1} />);
 
     const image = container.querySelector("img")!;
     expect(image.className).toContain("object-contain");
@@ -116,6 +116,27 @@ describe("<MediaTile> preview fit", () => {
     const frame = container.querySelector("a > div")!;
     expect(frame.className).toContain("h-24");
     expect(frame.textContent).toContain("Tenor");
+  });
+});
+
+describe("<MediaTile> rank", () => {
+  it("shows the list position as a prominent numeral", () => {
+    render(<MediaTile row={cat} mode="proxy" rank={1} />);
+
+    const rank = screen.getByText("#1");
+    expect(rank.className).toContain("tabular-nums");
+    expect(rank.className).toContain("text-lg");
+    expect(rank.className).toContain("font-bold");
+    expect(rank.className).toContain("color-accent");
+  });
+
+  it("accents the podium and leaves the rest plain", () => {
+    const { unmount } = render(<MediaTile row={cat} mode="proxy" rank={4} />);
+    expect(screen.getByText("#4").className).not.toContain("color-accent");
+    unmount();
+
+    render(<MediaTile row={cat} mode="proxy" rank={3} />);
+    expect(screen.getByText("#3").className).toContain("color-accent");
   });
 });
 
@@ -134,7 +155,7 @@ describe("<MediaTile> offscreen videos", () => {
     const pause = vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => {});
     const play = vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue(undefined);
 
-    render(<MediaTile row={cat} mode="proxy" />);
+    render(<MediaTile row={cat} mode="proxy" rank={1} />);
     expect(callback).not.toBeNull();
 
     callback!([{ isIntersecting: false }]);

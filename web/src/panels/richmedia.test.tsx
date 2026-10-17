@@ -132,6 +132,20 @@ describe("<RichMedia>", () => {
     expect(screen.getByRole("button", { name: "Show top 50" })).toBeInTheDocument();
   });
 
+  it("ranks the card's ten items and carries the ranking on to the top 50", async () => {
+    server.getMedia.mockResolvedValue({ provider: null, kinds: [], items: many(50) });
+    renderCard({ ...base, topMedia: many(14) } as Payload);
+
+    expect(screen.getByText("#1")).toBeInTheDocument();
+    expect(screen.getByText("#10")).toBeInTheDocument();
+    expect(screen.queryByText("#11")).toBeNull();
+
+    await openView();
+    const dialog = await screen.findByRole("dialog", { name: /top 50/i });
+    // The ranking is the list order, so it continues past the card's ten.
+    expect(within(dialog).getByText("#50")).toBeInTheDocument();
+  });
+
   it("draws the payload's one ranking, with no per-provider tabs", () => {
     renderCard();
     expect(screen.queryByRole("button", { name: "Video links" })).toBeNull();

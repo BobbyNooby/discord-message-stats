@@ -8,7 +8,9 @@ import { useReducedMotion } from "../lib/motion";
 /**
  * One media item, as the card and the top-50 view both draw it: a thumbnail
  * that respects `media.thumbnails`, the item's name, and its repost count said
- * in words ("posted 63 times · Tenor GIF").
+ * in words ("posted 63 times · Tenor GIF"). The caller passes the item's `rank`
+ * — its position in the list it is drawn in — because the count alone cannot
+ * order two links that were posted the same number of times.
  *
  * A thumbnail that fails — too large, or the CDN said no — falls back to the
  * provider label rather than a broken-image icon.
@@ -155,7 +157,7 @@ function Thumbnail({
   );
 }
 
-export function MediaTile({ row, mode }: { row: MediaRow; mode: string }) {
+export function MediaTile({ row, mode, rank }: { row: MediaRow; mode: string; rank: number }) {
   const [url, provider, kind, title, thumbnail, animated, uses] = row;
   const src = thumbnailSrc(thumbnail || url, mode);
   const animatedSrc = thumbnailSrc(animated || "", mode);
@@ -166,13 +168,25 @@ export function MediaTile({ row, mode }: { row: MediaRow; mode: string }) {
     <li className="overflow-hidden rounded border border-[var(--color-line)]">
       <Thumbnail src={src} animated={animatedSrc} provider={name} url={url} />
       <a href={url} target="_blank" rel="noreferrer noopener" className="block">
-        <div className="space-y-1 p-2">
-          <p className="truncate text-xs text-[var(--color-text)]" title={mediaName(url, title)}>
-            {mediaName(url, title)}
-          </p>
-          <p className="truncate text-[10px] uppercase tracking-wide text-[var(--color-muted)]" title={caption}>
-            {caption}
-          </p>
+        <div className="flex items-start gap-2 p-2">
+          {/* The list position, not the count: two links can be posted the same
+              number of times, and only the ranking says which came first. A
+              fixed gutter with tabular figures keeps #1…#50 aligned. */}
+          <span
+            className={`w-9 shrink-0 text-right text-lg font-bold leading-none tabular-nums ${
+              rank <= 3 ? "text-[var(--color-accent)]" : "text-[var(--color-text)]"
+            }`}
+          >
+            #{rank}
+          </span>
+          <div className="min-w-0 flex-1 space-y-1">
+            <p className="truncate text-xs text-[var(--color-text)]" title={mediaName(url, title)}>
+              {mediaName(url, title)}
+            </p>
+            <p className="truncate text-[10px] uppercase tracking-wide text-[var(--color-muted)]" title={caption}>
+              {caption}
+            </p>
+          </div>
         </div>
       </a>
     </li>
