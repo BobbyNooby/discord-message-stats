@@ -87,6 +87,16 @@ describe("<FilterSidebar> in a card's scope", () => {
     }
   });
 
+  it("offers no global sort: ranking lives on the individual cards", () => {
+    render(<Harness />);
+    // The sidebar is the global filter surface. The old "Rank by" control lived
+    // here; messages and characters are separate cards now, each naming itself.
+    expect(screen.queryByText(/rank by/i)).toBeNull();
+    expect(screen.queryByText(/sort by/i)).toBeNull();
+    expect(screen.queryByRole("combobox", { name: /rank|sort|metric/i })).toBeNull();
+    expect(screen.queryByRole("button", { name: /rank by/i })).toBeNull();
+  });
+
   it("swaps the sidebar to the card's own scope and names the card", async () => {
     render(<Harness />);
     expect(screen.getByText(/Bucket ·/)).toBeInTheDocument();
