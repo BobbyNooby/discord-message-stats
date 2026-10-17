@@ -1,7 +1,7 @@
 import { createContext, useContext, useMemo, type ReactNode } from "react";
 
 import { EMPTY_FILTERS, type Filters, type Scopes } from "../filters/reducer";
-import { isPanelId, type PanelId } from "./registry";
+import type { PanelId } from "./registry";
 import { effective } from "../filters/selectors";
 
 /**
@@ -59,8 +59,3 @@ export function usePanelScopeTarget(): ((panelId: PanelId) => void) | null {
 
 /** A card may be told its own id; it reads its scope through the context above. */
 export type WithPanelId = { panelId?: PanelId };
-
-/** Whether an id a panel was handed is one the registry knows. */
-export function knownPanelId(value: string | undefined): PanelId | null {
-  return value && isPanelId(value) ? value : null;
-}
