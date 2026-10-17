@@ -113,6 +113,15 @@ def create_app(
         except sqlite3.OperationalError:
             pass   # not a database we can migrate; the endpoints will say so
 
+    # A staged upload from a previous process is unreachable: its id lived in
+    # that process's memory and on an operator's screen that has since reloaded.
+    # Boot is the one moment nothing can be in flight, so this is where the
+    # files a reload orphaned are reclaimed rather than sitting in the size of a
+    # database each.
+    from discord_scraper.api import upload as staging
+
+    staging.sweep_orphans(Path(app.state.db_path).parent)
+
     def connection() -> sqlite3.Connection:
         return connect(app.state.db_path)
 

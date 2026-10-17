@@ -269,3 +269,24 @@ def commit(staged: Staged) -> Path | None:
 
 def discard(staged: Staged) -> None:
     staged.path.unlink(missing_ok=True)
+
+
+def sweep_orphans(directory: Path) -> list[Path]:
+    """Delete staging files this process cannot have written.
+
+    A staged upload is only meaningful to the process that validated it: the
+    upload id lives in memory and on the operator's screen, and a page reload
+    takes it away, so nothing can confirm or discard the file afterwards. At
+    boot, with no upload in flight, every ``.upload-*`` beside the database is
+    one of those — and it is the size of a database.
+    """
+    if not directory.is_dir():
+        return []
+    removed: list[Path] = []
+    for path in sorted(directory.glob(".upload-*")):
+        try:
+            path.unlink()
+        except OSError:  # pragma: no cover - a file we cannot remove is not fatal
+            continue
+        removed.append(path)
+    return removed
