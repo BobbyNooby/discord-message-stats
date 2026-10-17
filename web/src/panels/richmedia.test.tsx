@@ -181,6 +181,30 @@ describe("<RichMedia>", () => {
     expect(within(dialog).getAllByRole("listitem")).toHaveLength(1);
   });
 
+  it("caps the provider strip so the thumbnails stay above the fold on a phone", async () => {
+    const manyProviders = Array.from(
+      { length: 30 },
+      (_, index) => [`Provider ${index}`, 100 - index] as [string, number],
+    );
+    renderCard({ ...base, providers: manyProviders } as Payload);
+    await openView();
+    await screen.findByRole("dialog", { name: /top 50/i });
+
+    // Eight chips, not thirty: the rest are one control away.
+    expect(screen.getByRole("button", { name: "Provider 7" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Provider 8" })).toBeNull();
+    const more = screen.getByRole("button", { name: "More providers (22)" });
+    expect(more).toHaveAttribute("aria-expanded", "false");
+
+    await userEvent.click(more);
+
+    expect(screen.getByRole("button", { name: "Provider 29" })).toBeInTheDocument();
+    // The expanded strip scrolls inside itself rather than growing the page.
+    expect(screen.getByRole("group", { name: "Filter by provider" }).className).toContain(
+      "overflow-y-auto",
+    );
+  });
+
   it("offers the opened ranking as a csv, from the rows on screen", async () => {
     renderCard();
     await openView();
