@@ -98,6 +98,7 @@ def create_app(
     # browser saw. Idempotent, control plane only, and skipped when there is no
     # database yet.
     if Path(app.state.db_path).exists():
+        from discord_scraper.auth.admins import seed_admin
         from discord_scraper.rollups.schema import create_control_tables, create_rollup_tables
         from discord_scraper.scraper.database import INDEXES as MESSAGE_INDEXES
 
@@ -106,6 +107,9 @@ def create_app(
             try:
                 create_rollup_tables(boot)
                 create_control_tables(boot)
+                # The configured admin becomes a row here, so "who is an admin"
+                # lives in the database by default rather than only in `.env`.
+                seed_admin(boot, cfg.admin_id)
                 boot.executescript(MESSAGE_INDEXES)   # including idx_channel
                 boot.commit()
             finally:

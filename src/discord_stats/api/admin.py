@@ -22,7 +22,14 @@ from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, Upl
 from pydantic import BaseModel
 
 from discord_scraper.api.deps import connect_writable
-from discord_scraper.auth.session import require_admin
+from discord_scraper.auth.admins import (
+    AdminLocked,
+    UnknownAdmin,
+    add_admin,
+    list_admins,
+    remove_admin,
+)
+from discord_scraper.auth.session import SESSION_COOKIE, hash_token, require_admin
 from discord_scraper.config import AUTO_TIMEZONE, Config, config_from_settings, is_timezone
 from discord_scraper.rollups import query
 from discord_scraper.rollups.build import config_digest
@@ -623,5 +630,72 @@ def revoke_all_sessions(request: Request) -> dict:
         )
         conn.commit()
         return {"revoked": int(cursor.rowcount or 0)}
+    finally:
+        conn.close()
+
+
+class AdminRequest(BaseModel):
+    discord_id: str
+    # An id with no message is refused by default; the operator can insist.
+    force: bool = False
+
+
+def _actor(request: Request, conn: sqlite3.Connection) -> str:
+    """The Discord id behind the request, for the `added_by` audit column."""
+    token = request.cookies.get(SESSION_COOKIE, "")
+    if token:
+        row = conn.execute(
+            "SELECT discord_id FROM sessions WHERE id = ?", (hash_token(token),)
+        ).fetchone()
+        if row is not None:
+            return str(row[0])
+    return "board"
+
+
+@router.get("/admins")
+def list_the_admins(request: Request) -> dict:
+    """Who may run the board (§8.1), each with whether they have posted."""
+    conn = _conn(request)
+    try:
+        cfg = _effective_for(request, conn)
+        return {"admins": list_admins(conn, cfg, cfg.channel_id)}
+    finally:
+        conn.close()
+
+
+@router.post("/admins", status_code=201)
+def add_an_admin(request: Request, body: AdminRequest) -> dict:
+    """Grant admin to one id. A typo is refused unless `force` says otherwise."""
+    conn = _conn(request)
+    try:
+        cfg = _effective_for(request, conn)
+        return add_admin(
+            conn,
+            discord_id=body.discord_id,
+            channel_id=cfg.channel_id,
+            added_by=_actor(request, conn),
+            force=body.force,
+        )
+    except UnknownAdmin as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from None
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from None
+    finally:
+        conn.close()
+
+
+@router.delete("/admins/{discord_id}")
+def remove_an_admin(request: Request, discord_id: str) -> dict:
+    """Remove one id and revoke its sessions. The last admin cannot go."""
+    conn = _conn(request)
+    try:
+        cfg = _effective_for(request, conn)
+        try:
+            revoked = remove_admin(conn, cfg, discord_id)
+        except LookupError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from None
+        except AdminLocked as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from None
+        return {"removed": discord_id, "revoked": revoked}
     finally:
         conn.close()

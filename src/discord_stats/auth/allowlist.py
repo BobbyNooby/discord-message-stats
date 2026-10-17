@@ -10,6 +10,7 @@ from __future__ import annotations
 import sqlite3
 from datetime import datetime, timedelta, timezone
 
+from discord_scraper.auth.admins import is_admin
 from discord_scraper.auth.session import Level
 from discord_scraper.config import Config
 
@@ -22,7 +23,8 @@ def decision_for(conn: sqlite3.Connection, cfg: Config, discord_id: str) -> Leve
     who = str(discord_id or "").strip()
     if not who:
         return None
-    if cfg.admin_id and who == str(cfg.admin_id):
+    # The one admin predicate: a row in `admins`, or the configured id.
+    if is_admin(conn, cfg, who):
         return Level.ADMIN
 
     row = conn.execute(

@@ -102,6 +102,18 @@ export type InclusionWrite = { included: Record<string, boolean>; cache_stale: b
 
 export type RevokeResult = { revoked: number };
 
+/** One row of the admin list (§8.1): a database row, or the configured fallback. */
+export type AdminRow = {
+  discord_id: string;
+  added_at: string | null;
+  added_by: string | null;
+  /** The `known` idea: has this id posted in the channel at all? */
+  known: boolean;
+  source: "table" | "config";
+};
+
+export type AdminRemoval = { removed: string; revoked: number };
+
 export type JobKind = "catch_up" | "backfill" | "probe" | "rebuild_rollups";
 
 export type Job = {
@@ -244,6 +256,22 @@ export const putInclusions = (included: Record<string, boolean>) =>
 /** Ends every session but the caller's own; the response says how many. */
 export const revokeAllSessions = () =>
   request<RevokeResult>("/api/admin/sessions/revoke-all", { method: "POST" });
+
+/** Who may run the board, each with whether they have posted. */
+export const listAdmins = () => request<{ admins: AdminRow[] }>("/api/admin/admins");
+
+/**
+ * Grant admin to one id. An id that matches no message is a 409 from the
+ * server; `force` is the operator saying they meant it.
+ */
+export const addAdmin = (discordId: string, force = false) =>
+  request<AdminRow>("/api/admin/admins", json("POST", { discord_id: discordId, force }));
+
+/** Remove an admin and revoke their sessions; the response says how many ended. */
+export const removeAdmin = (discordId: string) =>
+  request<AdminRemoval>(`/api/admin/admins/${encodeURIComponent(discordId)}`, {
+    method: "DELETE",
+  });
 
 export const listJobs = (limit = 50) =>
   request<{ jobs: Job[] }>(`/api/admin/jobs?limit=${limit}`);

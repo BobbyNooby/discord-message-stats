@@ -207,7 +207,12 @@ export function Admin() {
         />
       ) : null}
       {active === "access" ? (
-        <Access status={data} config={config.data ?? null} onSave={saveConfig} />
+        <Access
+          status={data}
+          config={config.data ?? null}
+          payload={bootstrap.data ?? null}
+          onSave={saveConfig}
+        />
       ) : null}
     </main>
   );
