@@ -29,7 +29,11 @@ export function AuthorFilterList({
             className="h-2.5 w-2.5 shrink-0 rounded-sm"
             style={{ background: swatch(index), opacity: active[index] === false ? 0.25 : 1 }}
           />
-          <span className="truncate">{author.name}</span>
+          {/* A long nickname is clipped by the column, so the full one stays
+              reachable on hover rather than being lost to the layout. */}
+          <span className="truncate" title={author.name}>
+            {author.name}
+          </span>
           <span className="ml-auto tabular-nums text-[var(--color-muted)]">{author.msgs}</span>
         </button>
       ))}
