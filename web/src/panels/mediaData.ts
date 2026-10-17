@@ -301,6 +301,53 @@ export function horizontalBarsOption(
   };
 }
 
+/**
+ * A horizontal bar where each row keeps a colour of its own: the two-way splits
+ * (with media / text only) and Share of voice, where colour follows the author
+ * across panels. Rows keep every entry — the bar is the honest shape for a list
+ * a pie would fold.
+ */
+export function colorBarsOption(rows: Slice[], axisFontSize = 11): EChartsOption {
+  const ordered = rows.slice().reverse();
+  return {
+    tooltip: {
+      ...TOOLTIP,
+      formatter: (params: unknown) => {
+        const point = params as { dataIndex?: number; value?: number };
+        const row = ordered[point.dataIndex ?? 0];
+        return `${row?.name ?? ""}<br><b>${fmt(point.value ?? 0)}</b>`;
+      },
+    },
+    grid: { left: 6, right: 46, top: 8, bottom: 8, containLabel: true },
+    xAxis: {
+      type: "value",
+      axisLabel: { color: MUTED_TEXT, fontSize: 10.5, formatter: (value: unknown) => kfmt(Number(value)) },
+      splitLine: { lineStyle: { color: SPLIT_LINE } },
+    },
+    yAxis: {
+      type: "category",
+      data: ordered.map((row) => truncate(row.name, 30)),
+      axisLabel: { color: MUTED_TEXT, fontSize: axisFontSize },
+      axisLine: { lineStyle: { color: AXIS_LINE } },
+      axisTick: { show: false },
+    },
+    series: [
+      {
+        type: "bar",
+        barWidth: "62%",
+        data: ordered.map((row) => ({ value: row.value, itemStyle: { color: row.color } })),
+        label: {
+          show: true,
+          position: "right",
+          color: MUTED_TEXT,
+          fontSize: 10,
+          formatter: (params: unknown) => kfmt(Number((params as { value?: number }).value ?? 0)),
+        },
+      },
+    ],
+  };
+}
+
 export function gaugeOption(gauges: Gauge[]): EChartsOption {
   return {
     series: gauges.map((gauge, index) => ({

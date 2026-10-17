@@ -3,6 +3,7 @@ import { EChart } from "../lib/echart";
 import {
   REMAINDER_COLOR,
   REPLY_COLOR,
+  colorBarsOption,
   doughnutOption,
   fmt,
   mediaCells,
@@ -11,16 +12,22 @@ import {
   type MediaPanelProps,
 } from "./mediaData";
 import type { WithPanelId } from "./panelScope";
-import { usePanelFilters } from "./panelScope";
+import { useChartShape, usePanelFilters } from "./panelScope";
 
 const TITLE = "Replies vs standalone";
 
 /** Share of messages that quote another message. */
 export function RepliesVsStandalone({ payload, filters: fallbackFilters }: MediaPanelProps & WithPanelId) {
   const filters = usePanelFilters("replies-vs-standalone", fallbackFilters);
+  const shape = useChartShape("replies-vs-standalone");
   const { cells, empty } = mediaCells(payload, filters);
   const { replies, standalone, total } = replyShare(cells);
   const blank = empty ?? (total > 0 ? null : "No messages match the active filters.");
+  // Two parts that add up to every filtered message: a nameable whole.
+  const rows = [
+    { name: "replies", value: replies, color: REPLY_COLOR },
+    { name: "standalone", value: standalone, color: REMAINDER_COLOR },
+  ];
 
   return (
     <Panel
@@ -32,17 +39,10 @@ export function RepliesVsStandalone({ payload, filters: fallbackFilters }: Media
     >
       {blank ? (
         <EmptyState>{blank}</EmptyState>
+      ) : shape === "bar" ? (
+        <EChart height={300} option={colorBarsOption(rows)} />
       ) : (
-        <EChart
-          height={300}
-          option={doughnutOption(
-            [
-              { name: "replies", value: replies, color: REPLY_COLOR },
-              { name: "standalone", value: standalone, color: REMAINDER_COLOR },
-            ],
-            "messages",
-          )}
-        />
+        <EChart height={300} option={doughnutOption(rows, "messages")} />
       )}
     </Panel>
   );

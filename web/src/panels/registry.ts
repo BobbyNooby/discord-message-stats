@@ -10,9 +10,12 @@
  * silent-filter failure the design set out to remove. `shapes` lists a pie only
  * where the card shows a whole; a ranked top-N or a cut-off list stays a bar.
  *
- * "A whole" means the payload ships every row of it. Two cards qualify:
- * `rollup_type` has no LIMIT and every message has exactly one type, and
- * `rollup_embed_type` has one row per Discord embed kind, a closed set of six.
+ * "A whole" means the payload ships every row of it. Two rollups qualify
+ * outright: `rollup_type` has no LIMIT and every message has exactly one type,
+ * and `rollup_embed_type` has one row per Discord embed kind, a closed set of
+ * six. Three more are whole by construction: the two two-way splits
+ * (`text-vs-media`, `replies-vs-standalone`) partition every filtered message,
+ * and Share of voice covers every message that has an author.
  * The rest — providers, mime types, emoji, reactions — arrive through
  * `query.pairs(..., limit=30)`, an open vocabulary cut to its thirty biggest
  * rows (on the reference database: 30 of 678 providers, 30 of 335 emoji, 30 of
@@ -50,7 +53,7 @@ const BAR_PIE = ["bar", "pie"] as const;
 const SPECS = [
   // Overview
   { id: "stat-cards", label: "Stat cards", honours: TA, shapes: BAR, defaultShape: "bar" },
-  { id: "share-of-voice", label: "Share of voice", honours: TA, shapes: BAR, defaultShape: "bar" },
+  { id: "share-of-voice", label: "Share of voice", honours: TA, shapes: BAR_PIE, defaultShape: "pie" },
   { id: "messages-per-year", label: "Messages per year", honours: TA, shapes: BAR, defaultShape: "bar" },
   {
     id: "share-of-voice-year-by-year",
@@ -131,13 +134,13 @@ const SPECS = [
   { id: "embed-types", label: "Embed types", honours: NONE, shapes: BAR_PIE, defaultShape: "bar" },
 
   // Media & reactions (the rollups have no date or author dimension)
-  { id: "text-vs-media", label: "Text vs media", honours: TA, shapes: BAR, defaultShape: "bar" },
+  { id: "text-vs-media", label: "Text vs media", honours: TA, shapes: BAR_PIE, defaultShape: "pie" },
   {
     id: "replies-vs-standalone",
     label: "Replies vs standalone",
     honours: TA,
-    shapes: BAR,
-    defaultShape: "bar",
+    shapes: BAR_PIE,
+    defaultShape: "pie",
   },
   { id: "message-types", label: "Message types", honours: NONE, shapes: BAR_PIE, defaultShape: "bar" },
   { id: "what-gets-attached", label: "What gets attached", honours: NONE, shapes: BAR, defaultShape: "bar" },

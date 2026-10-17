@@ -104,16 +104,24 @@ describe("the panel registry", () => {
   });
 
   it("offers a pie only where the payload ships the whole list", () => {
-    // The two survivors are the closed vocabularies: `rollup_type` (no LIMIT,
-    // and every message has exactly one type) and `rollup_embed_type` (one row
-    // per Discord embed kind). Providers, mime types, emoji and reactions come
+    // Closed vocabularies: `rollup_type` (no LIMIT, every message has exactly
+    // one type) and `rollup_embed_type` (one row per Discord embed kind). Then
+    // the three cards whose part already sums to the whole: the two two-way
+    // splits over all filtered messages, and Share of voice, which covers every
+    // message with an author. Providers, mime types, emoji and reactions come
     // from `query.pairs(..., limit=30)` — an open vocabulary cut to its thirty
     // biggest rows — so a full circle would claim a total that is not there.
     const pie = Object.values(PANELS)
       .filter((spec) => spec.shapes.includes("pie"))
       .map((spec) => spec.id)
       .sort();
-    expect(pie).toEqual(["embed-types", "message-types"]);
+    expect(pie).toEqual([
+      "embed-types",
+      "message-types",
+      "replies-vs-standalone",
+      "share-of-voice",
+      "text-vs-media",
+    ]);
   });
 
   it("names the panels that honour a dimension, and only those", () => {

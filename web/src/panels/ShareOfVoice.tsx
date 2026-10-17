@@ -14,18 +14,21 @@ import {
   type PanelProps,
   type Slice,
 } from "./timeAggregates";
+import { colorBarsOption } from "./mediaData";
 import type { WithPanelId } from "./panelScope";
-import { usePanelFilters } from "./panelScope";
+import { useChartShape, usePanelFilters } from "./panelScope";
 
 /**
  * Share of voice — `drawSov` from the mockup: one wedge per author, coloured by
  * the author's index so the colour means the same thing in every panel.
  *
  * §11.5 caps a doughnut at "few categories", so authors past the fifth fold into
- * one "Others" wedge; the total and the tooltip still carry them.
+ * one "Others" wedge; the total and the tooltip still carry them. The bar keeps
+ * every author, and colour follows the author there too.
  */
 export function ShareOfVoice({ payload, filters: fallbackFilters }: PanelProps & WithPanelId) {
   const filters = usePanelFilters("share-of-voice", fallbackFilters);
+  const shape = useChartShape("share-of-voice");
   const rows: Slice[] = selectAuthors(payload, filters)
     .map((author, index) => ({ name: author.name, value: author.msgs, index }))
     .filter((row) => row.value > 0)
@@ -76,11 +79,24 @@ export function ShareOfVoice({ payload, filters: fallbackFilters }: PanelProps &
   return (
     <Panel
       title="Share of voice"
-      subtitle={`${fmt(total)} messages · ${rows.length} authors${
-        folded ? " · top 5, rest as Others" : ""
-      }`}
+      subtitle={
+        shape === "bar"
+          ? `${fmt(total)} messages · ${rows.length} authors`
+          : `${fmt(total)} messages · ${rows.length} authors${
+              folded ? " · top 5, rest as Others" : ""
+            }`
+      }
     >
-      <EChart option={option} height={300} />
+      {shape === "bar" ? (
+        <EChart
+          option={colorBarsOption(
+            rows.map((row) => ({ name: row.name, value: row.value, color: swatch(row.index) })),
+          )}
+          height={300}
+        />
+      ) : (
+        <EChart option={option} height={300} />
+      )}
     </Panel>
   );
 }
