@@ -205,6 +205,22 @@ describe("the states a failed load can leave the reader in", () => {
   });
 });
 
+describe("the health payload through the dashboard", () => {
+  it("shows the ingest age the health payload carries", async () => {
+    // The bug this guards: /api/health learned to return last_ingest_at, but
+    // App never handed it to HealthBanner, so the banner always said "unknown".
+    server.health.mockReset().mockResolvedValue({
+      ok: true,
+      checked_at: "",
+      banner: "stale",
+      last_ingest_at: new Date(Date.now() - 4 * 86_400_000).toISOString(),
+    });
+    renderApp();
+
+    expect(await screen.findByText(/4 days old/)).toBeInTheDocument();
+  });
+});
+
 describe("ui.time_format through the dashboard", () => {
   it("writes the header's 'as of' line on the configured clock", async () => {
     server.bootstrap.mockReset().mockResolvedValue({
