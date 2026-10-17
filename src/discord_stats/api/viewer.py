@@ -104,18 +104,9 @@ def bootstrap(conn: sqlite3.Connection, cfg: Config) -> dict[str, Any]:
         "topLinks": [list(row) for row in host_keys[:60]],
         "providers": query.pairs(conn, channel, "rollup_provider", "provider", "embeds"),
         "topMedia": query.top_media(conn, channel, cfg.media_top_n),
-        # The overall ranking is dominated by GIFs, so each of the biggest
-        # providers also gets its own top — that is where YouTube's best links
-        # are, and it keeps the tabs a client-side switch.
-        "mediaByProvider": {
-            str(name): query.top_media(conn, channel, 12, provider=str(name))
-            for (name,) in query.rows(
-                conn,
-                """SELECT provider FROM rollup_media WHERE channel_id = ?
-                    GROUP BY provider ORDER BY SUM(uses) DESC LIMIT 6""",
-                (channel,),
-            )
-        },
+        # The per-provider rankings that used to ship here are gone: the top-50
+        # view asks `/api/media?provider=…&kind=…` for them, so shipping a dozen
+        # rows per provider was payload nothing read (§P3).
         "mediaThumbnails": cfg.media_thumbnails,
         "embedTypes": query.pairs(conn, channel, "rollup_embed_type", "embed_type", "embeds"),
         "linkStats": query.link_stats(conn, channel),

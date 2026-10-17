@@ -61,7 +61,6 @@ export type Payload = {
   providers: [string, number][];
   /** [url, provider, kind, title, thumbnail, animated, uses], most reposted first. */
   topMedia?: MediaRow[];
-  mediaByProvider?: Record<string, MediaRow[]>;
   mediaThumbnails?: string;
   embedTypes: [string, number][];
   linkStats: { msgs: number; domains: number; both: number };

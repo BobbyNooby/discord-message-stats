@@ -44,9 +44,6 @@ const base = {
     ["https://klipy.com/gifs/blm", "Klipy", "gifv", "", "https://static.klipy.com/blm.gif", "", 55],
     ["https://cdn.discordapp.com/attachments/1/2/cat.png", "unprovidenced", "image", "", "https://cdn.discordapp.com/attachments/1/2/cat.png", "", 35],
   ] as MediaRow[],
-  mediaByProvider: {
-    YouTube: [["https://www.youtube.com/watch?v=abc", "YouTube", "video", "A video", "https://i.ytimg.com/vi/abc/hq.jpg", "", 9]],
-  },
   meta: { stale: false, can_admin: false },
 } as unknown as Payload;
 
@@ -135,13 +132,13 @@ describe("<RichMedia>", () => {
     expect(screen.getByRole("button", { name: "Show top 50" })).toBeInTheDocument();
   });
 
-  it("drops the tabs and ignores the payload's old per-provider rankings", () => {
+  it("draws the payload's one ranking, with no per-provider tabs", () => {
     renderCard();
     expect(screen.queryByRole("button", { name: "Video links" })).toBeNull();
     expect(screen.queryByRole("button", { name: "GIFs" })).toBeNull();
-    // `mediaByProvider` ships YouTube's own ranking; the view asks the server
-    // now, so nothing may draw it.
-    expect(screen.queryByText("A video")).toBeNull();
+    // `mediaByProvider` no longer ships: the top-50 view asks `/api/media` for
+    // a provider's own ranking, so the card draws only `topMedia`.
+    expect(screen.getByText("Zesty Cat")).toBeInTheDocument();
   });
 
   it("opens the server's top 50 in a labelled dialog", async () => {

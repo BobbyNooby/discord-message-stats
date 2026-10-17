@@ -100,6 +100,15 @@ def test_authors_carry_name_and_volume(client):
     assert first["id"] == "u1"
 
 
+def test_payload_does_not_ship_the_retired_per_provider_media(client):
+    """The top-50 view asks `/api/media?provider=…&kind=…`, so the key is gone.
+
+    It was a dozen rows per provider that nothing read after P3 — dead weight in
+    a payload that is measured to the kilobyte.
+    """
+    assert "mediaByProvider" not in client.get("/api/bootstrap").json()
+
+
 def test_words_are_a_slice_and_word_authors_is_keyed_by_word(client):
     body = client.get("/api/bootstrap").json()
     assert len(body["words"]) <= 500
