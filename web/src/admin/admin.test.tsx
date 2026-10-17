@@ -537,6 +537,35 @@ describe("<Admin>", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("says so when the configured admin id matches no message", async () => {
+    handlers["GET /api/admin/status"] = () =>
+      response(200, { ...STATUS, admin: { discord_id: "999999999999999999", known: false } });
+
+    const user = userEvent.setup();
+    renderAdmin();
+
+    await openTask(user, "Access");
+
+    const warning = (await screen.findByText(/no message in this channel/i)).closest(
+      "p",
+    ) as HTMLElement;
+    expect(warning).toHaveTextContent("999999999999999999");
+    expect(warning).toHaveTextContent("ADMIN_DISCORD_ID");
+    expect(
+      within(screen.getByText(/seen posting/i).closest("div") as HTMLElement).getByText("no"),
+    ).toBeInTheDocument();
+  });
+
+  it("stays quiet about the admin id when it has posted", async () => {
+    const user = userEvent.setup();
+    renderAdmin();
+
+    await openTask(user, "Access");
+
+    expect(await screen.findByText(/seen posting/i)).toBeInTheDocument();
+    expect(screen.queryByText(/no message in this channel/i)).not.toBeInTheDocument();
+  });
+
   it("revokes every other session and reports how many ended", async () => {
     const user = userEvent.setup();
     renderAdmin();
