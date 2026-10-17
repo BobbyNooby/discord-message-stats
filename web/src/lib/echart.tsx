@@ -2,6 +2,8 @@ import * as echarts from "echarts";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { EChartsOption } from "echarts";
 
+import { usePanelCsv } from "../components/panelCsv";
+import { csvFromOption } from "./csvFromOption";
 import { useReducedMotion } from "./motion";
 
 /**
@@ -44,6 +46,18 @@ export function EChart({
     () => (reduced ? { ...option, animation: false } : option),
     [option, reduced],
   );
+  // The card around this chart offers "Export as CSV" from the same numbers the
+  // picture was made of, so a panel cannot export something it is not drawing.
+  const register = usePanelCsv();
+  const rows = useMemo(() => csvFromOption(option), [option]);
+  useEffect(() => {
+    register(rows);
+  }, [register, rows]);
+  // A chart that unmounts (an empty filter) must take its rows with it, or the
+  // card would offer to export numbers it is no longer showing. Depends only on
+  // the stable `register`, so this cleanup runs on unmount and not before every
+  // option change.
+  useEffect(() => () => register([]), [register]);
 
   useEffect(() => {
     // The heading is only reachable once the node is in the document, so this

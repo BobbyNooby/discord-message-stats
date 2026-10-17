@@ -181,6 +181,14 @@ describe("<RichMedia>", () => {
     expect(server.getMedia).toHaveBeenCalledTimes(1);
   });
 
+  it("offers the opened ranking as a csv, from the rows on screen", async () => {
+    renderCard();
+    await openView();
+    await screen.findByRole("dialog", { name: /top 50/i });
+
+    expect(screen.getByRole("button", { name: /export csv/i })).toBeEnabled();
+  });
+
   it("opens as a sheet on a narrow screen", async () => {
     window.matchMedia = ((query: string) => ({
       matches: true,

@@ -136,6 +136,13 @@ export function RichMedia({ payload }: { panelId?: string; payload: Payload; fil
               <GlobalOnlyBadge what="Most reposted" />
             </span>
           }
+          csv={{
+            name: "Most reposted",
+            rows: [
+              ["url", "provider", "kind", "title", "uses"],
+              ...items.map((row) => [row[0], row[1], row[2], row[3], row[6]]),
+            ],
+          }}
         >
           {shown.length === 0 ? (
             <EmptyState>No embeds in the rollups yet.</EmptyState>
