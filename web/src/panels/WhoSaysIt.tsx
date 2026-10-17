@@ -96,6 +96,8 @@ export function WhoSaysIt({
 
   return (
     <Panel
+      // The title names the selected word, so the card states its own id.
+      panelId="who-says-it"
       title={word ? `Who says “${word}”` : "Who says it"}
       subtitle={word ? `${fmt(total)} uses total` : "click a word in the index"}
     >

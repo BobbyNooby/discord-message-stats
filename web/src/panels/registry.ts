@@ -148,6 +148,9 @@ const SPECS = [
 
 export type PanelId = (typeof SPECS)[number]["id"];
 
+/** One spec, with its id narrowed to the literal the registry declared. */
+export type PanelSpecLiteral = (typeof SPECS)[number];
+
 export const PANELS: Record<PanelId, PanelSpec> = Object.fromEntries(
   SPECS.map((spec) => [spec.id, spec]),
 ) as unknown as Record<PanelId, PanelSpec>;
@@ -157,13 +160,15 @@ export function isPanelId(value: string): value is PanelId {
 }
 
 /** The spec for a card. `id` comes from the registry or from a rendered card. */
-export function specFor(id: PanelId): PanelSpec {
-  return PANELS[id];
+export function specFor(id: PanelId): PanelSpecLiteral {
+  // Every PanelId is a key of PANELS by construction; the cast recovers the
+  // literal id so `spec.id` can be handed back to `openScope`.
+  return PANELS[id] as PanelSpecLiteral;
 }
 
 /** A card's title is its identity in the payload and on screen; look it up. */
-export function specForLabel(label: string): PanelSpec | undefined {
-  return Object.values(PANELS).find((spec) => spec.label === label);
+export function specForLabel(label: string): PanelSpecLiteral | undefined {
+  return SPECS.find((spec) => spec.label === label);
 }
 
 /** Every card whose numbers move with this dimension, in registry order. */
