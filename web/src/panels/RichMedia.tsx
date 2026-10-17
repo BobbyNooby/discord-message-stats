@@ -5,7 +5,7 @@ import type { EChartsOption } from "echarts";
 import type { MediaRow, Payload } from "../api/types";
 import { EmptyState, GlobalOnlyBadge, Panel, CARD_COLUMNS } from "../components/Panel";
 import { EChart } from "../lib/echart";
-import { providerLabel } from "../lib/mediaLabels";
+import { providerChoices, providerLabel } from "../lib/mediaLabels";
 import type { Filters } from "../filters/reducer";
 import { readMediaOpen, writeMediaState } from "../filters/persist";
 import { MediaTile } from "./MediaTile";
@@ -31,6 +31,10 @@ import { MediaView } from "./MediaView";
 
 /** The card's taste of the ranking; the whole thing is one click away. */
 const IN_CARD = 10;
+
+/** How many provider shortcuts the card offers before "More". Five fits one
+ *  wrapped row at 390px, where the owner was looking for the switch. */
+const CARD_PROVIDERS = 5;
 
 const nf = new Intl.NumberFormat("en-US");
 const fmt = (n: number) => nf.format(Math.round(n));
@@ -74,6 +78,20 @@ export function RichMedia({ payload }: { panelId?: string; payload: Payload; fil
   const shown = items.slice(0, IN_CARD);
   const mode = payload.mediaThumbnails ?? "proxy";
   const { viewOpen, onViewOpenChange } = useMediaViewState();
+  // The provider options the card's chip row, the full view and the scoped
+  // sidebar all share: one source, so they can never offer different providers.
+  const choices = providerChoices(payload.providers ?? []);
+  const topProviders = choices.slice(0, CARD_PROVIDERS);
+  const totalEmbeds = choices.reduce((sum, choice) => sum + choice.count, 0);
+  // Which provider the full view opens on. A chip hands it one; "Browse all"
+  // and "More" clear it, so a plain open is never silently filtered.
+  const [viewProvider, setViewProvider] = useState<string | null>(null);
+
+  const openView = (provider: string | null) => {
+    setViewProvider(provider);
+    onViewOpenChange(true);
+  };
+
   // Raw provider totals, with Discord's unnamed bucket split by host: an
   // `cdn.discordapp.com` attachment is somebody's own upload, not a mystery.
   const providers: [string, number][] = Object.values(
@@ -128,10 +146,10 @@ export function RichMedia({ payload }: { panelId?: string; payload: Payload; fil
             <span className="flex flex-wrap items-center gap-1">
               <button
                 type="button"
-                onClick={() => onViewOpenChange(true)}
+                onClick={() => openView(null)}
                 className="rounded border border-[var(--color-line)] px-2 py-0.5 text-[10px] uppercase tracking-wider text-[var(--color-muted)] hover:text-[var(--color-text)]"
               >
-                Show top 50
+                {totalEmbeds ? `Browse all ${fmt(totalEmbeds)}` : "Browse all"}
               </button>
               <GlobalOnlyBadge what="Most reposted" />
             </span>
@@ -144,6 +162,35 @@ export function RichMedia({ payload }: { panelId?: string; payload: Payload; fil
             ],
           }}
         >
+          {/* The switch the owner could not find: one chip per top provider,
+              opening the full ranking already narrowed to it. The options come
+              from the same helper the sidebar uses. */}
+          {topProviders.length ? (
+            <div
+              role="group"
+              aria-label="Browse the ranking by provider"
+              className="mb-3 flex flex-wrap gap-1"
+            >
+              {topProviders.map((choice) => (
+                <button
+                  key={choice.value}
+                  type="button"
+                  aria-label={`Browse ${choice.label}`}
+                  onClick={() => openView(choice.value)}
+                  className="rounded border border-[var(--color-line)] px-2 py-0.5 text-[11px] text-[var(--color-muted)] hover:text-[var(--color-text)]"
+                >
+                  {choice.label}
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={() => openView(null)}
+                className="rounded border border-[var(--color-line)] px-2 py-0.5 text-[11px] text-[var(--color-muted)] hover:text-[var(--color-text)]"
+              >
+                More
+              </button>
+            </div>
+          ) : null}
           {shown.length === 0 ? (
             <EmptyState>No embeds yet — ingest, or upload a database from the Admin board.</EmptyState>
           ) : (
@@ -155,7 +202,12 @@ export function RichMedia({ payload }: { panelId?: string; payload: Payload; fil
           )}
         </Panel>
         {viewOpen ? (
-          <MediaView open={viewOpen} onOpenChange={onViewOpenChange} payload={payload} />
+          <MediaView
+            open={viewOpen}
+            onOpenChange={onViewOpenChange}
+            payload={payload}
+            initialProvider={viewProvider}
+          />
         ) : null}
       </div>
       <Panel

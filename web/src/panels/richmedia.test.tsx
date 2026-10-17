@@ -69,7 +69,7 @@ function many(count: number): MediaRow[] {
   ]);
 }
 
-const openView = async () => userEvent.click(screen.getByRole("button", { name: "Show top 50" }));
+const openView = async () => userEvent.click(screen.getByRole("button", { name: /^Browse all/ }));
 
 beforeEach(() => {
   server.getMedia.mockReset();
@@ -129,7 +129,7 @@ describe("<RichMedia>", () => {
     const { container } = renderCard({ ...base, topMedia: many(14) } as Payload);
     expect(container.querySelectorAll("li")).toHaveLength(10);
     expect(screen.getByText(/top 10 of 14/)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Show top 50" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Browse all/ })).toBeInTheDocument();
   });
 
   it("ranks the card's ten items and carries the ranking on to the top 50", async () => {
@@ -176,6 +176,34 @@ describe("<RichMedia>", () => {
     await waitFor(() => expect(server.getMedia).toHaveBeenCalledWith("Tenor", undefined, 50));
     const dialog = await screen.findByRole("dialog", { name: /top 50/i });
     expect(within(dialog).getByText(/posted 63 times · Tenor GIF/)).toBeInTheDocument();
+  });
+
+  it("opens the full view already filtered from a card-level provider chip", async () => {
+    server.getMedia.mockResolvedValue({ provider: "YouTube", kinds: [], items: many(2) });
+    renderCard();
+    await userEvent.click(screen.getByRole("button", { name: "Browse YouTube" }));
+
+    await waitFor(() => expect(server.getMedia).toHaveBeenCalledWith("YouTube", undefined, 50));
+    const dialog = await screen.findByRole("dialog", { name: /top 50/i });
+    // The view opens with that provider already selected, not decoration.
+    expect(within(dialog).getByRole("button", { name: "YouTube" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+  });
+
+  it("names the two chip groups so they do not read as decoration", async () => {
+    server.getMedia.mockResolvedValue({ provider: null, kinds: ["gifv", "video"], items: [cat] });
+    renderCard();
+    await openView();
+    const dialog = await screen.findByRole("dialog", { name: /top 50/i });
+
+    expect(within(dialog).getByText("Provider")).toBeInTheDocument();
+    expect(within(dialog).getByText("Kind")).toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: "All providers" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
   });
 
   it("filters the whole set by kind through the api, not the page in hand", async () => {
