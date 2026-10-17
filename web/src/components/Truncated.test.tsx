@@ -50,6 +50,7 @@ describe("truncated values", () => {
           63,
         ]}
         mode="proxy"
+        rank={1}
       />,
     );
 
