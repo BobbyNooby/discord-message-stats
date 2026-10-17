@@ -18,6 +18,9 @@ const server = vi.hoisted(() => ({
 
 vi.mock("./api/client", () => ({
   Unauthorized: class Unauthorized extends Error {},
+  Forbidden: class Forbidden extends Error {},
+  Offline: class Offline extends Error {},
+  ServerError: class ServerError extends Error {},
   getBootstrap: server.bootstrap,
   getHealth: server.health,
   getRecent: server.recent,
@@ -25,6 +28,7 @@ vi.mock("./api/client", () => ({
 }));
 
 import App from "./App";
+import { Forbidden, Offline, ServerError } from "./api/client";
 import { CHARTS_KEY } from "./filters/persist";
 import type { Payload } from "./api/types";
 
@@ -157,5 +161,46 @@ describe("a chart shape through the dashboard", () => {
     expect(server.bootstrap).toHaveBeenCalledTimes(1);
     expect(server.recent).toHaveBeenCalledTimes(1);
     expect(server.health).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("the states a failed load can leave the reader in", () => {
+  it("draws a skeleton while the payload is still on its way", async () => {
+    server.bootstrap.mockReset().mockReturnValue(new Promise(() => {}));
+    renderApp();
+
+    expect(await screen.findByText("Loading the dashboard…")).toBeInTheDocument();
+    expect(document.querySelector("main")).toHaveAttribute("aria-busy", "true");
+  });
+
+  it("says a signed-in viewer cannot open the dashboard they were refused", async () => {
+    server.bootstrap.mockReset().mockRejectedValue(new Forbidden("admin only"));
+    renderApp();
+
+    expect(await screen.findByRole("heading", { name: "Not allowed" })).toBeInTheDocument();
+  });
+
+  it("says the browser is offline rather than showing a slow-loading page", async () => {
+    server.bootstrap.mockReset().mockRejectedValue(new Offline("no connection"));
+    renderApp();
+
+    expect(
+      await screen.findByRole("heading", { name: "You are offline" }, { timeout: 6000 }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
+  });
+
+  it("shows the server's own message when it cannot build the payload", async () => {
+    server.bootstrap.mockReset().mockRejectedValue(new ServerError("rollups are not built", 503));
+    renderApp();
+
+    expect(
+      await screen.findByRole(
+        "heading",
+        { name: /could not build the dashboard/i },
+        { timeout: 6000 },
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText("rollups are not built")).toBeInTheDocument();
   });
 });

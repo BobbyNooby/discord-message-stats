@@ -1,6 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
 
-import { getBootstrap, getHealth, getMedia, getRecent, getWords, Unauthorized } from "./client";
+import {
+  Forbidden,
+  getBootstrap,
+  getHealth,
+  getMedia,
+  getRecent,
+  getWords,
+  Unauthorized,
+} from "./client";
 
 /**
  * The bootstrap payload is a build artefact, not a live feed: it only changes
@@ -11,7 +19,10 @@ export function useBootstrap() {
     queryKey: ["bootstrap"],
     queryFn: getBootstrap,
     staleTime: Infinity,
-    retry: (attempt, error) => !(error instanceof Unauthorized) && attempt < 2,
+    // A refusal will not change on its own, so retrying one only delays the
+    // screen that says "sign in" or "not allowed".
+    retry: (attempt, error) =>
+      !(error instanceof Unauthorized || error instanceof Forbidden) && attempt < 2,
   });
 }
 

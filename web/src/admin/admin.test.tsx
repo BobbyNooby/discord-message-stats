@@ -623,4 +623,12 @@ describe("<Admin>", () => {
     expect(recorded("POST", "/api/admin/recalculate")).toBe(false);
     expect(await screen.findByText(/cache marked stale/i)).toBeInTheDocument();
   });
+
+  it("gives a viewer a boundary rather than a broken board on a 403", async () => {
+    handlers["GET /api/admin/status"] = () => response(403, { detail: "admin only" });
+    renderAdmin();
+
+    expect(await screen.findByRole("heading", { name: "Not allowed" })).toBeInTheDocument();
+    expect(screen.getByText(/only the configured admin id/i)).toBeInTheDocument();
+  });
 });
