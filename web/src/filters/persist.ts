@@ -1,7 +1,6 @@
 import type { Payload } from "../api/types";
-import { isPanelId, type Dimension, type PanelId } from "../panels/registry";
-import type { FilterPatch, Filters, Scopes } from "./reducer";
-import { effective } from "./selectors";
+import { isPanelId, type Dimension } from "../panels/registry";
+import type { FilterPatch, Scopes } from "./reducer";
 
 /**
  * What survives a reload. Scopes go to `localStorage` and are mirrored into the
@@ -21,8 +20,6 @@ export type Charts = Record<string, ChartKind>;
 export type DroppedScope = { panelId: string; dimension: Dimension; key: string };
 
 export type LoadedScopes = { scopes: Scopes; dropped: DroppedScope[] };
-
-export type ChartState = { kind: ChartKind; raw: string };
 
 /** The URL carries author names rather than indices; the payload supplies them. */
 export type UrlState = { scopes: Scopes; authors?: string[] };
@@ -273,9 +270,4 @@ export function describeDropped(dropped: DroppedScope[], labelFor: (panelId: str
       return `${entry.dimension} “${entry.key}” from ${label}`;
     })
     .join(", ");
-}
-
-/** The panels' one call into the scope layer: a card's own effective filters. */
-export function forPanel(global: Filters, scopes: Scopes, panelId: PanelId | null): Filters {
-  return effective(global, panelId ? scopes[panelId] : undefined);
 }
