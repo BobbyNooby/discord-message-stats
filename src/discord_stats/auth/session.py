@@ -48,6 +48,13 @@ def establish_session(
     """Create a session row and return the bearer token (never stored)."""
     token = secrets.token_urlsafe(TOKEN_BYTES)
     created = _now()
+    # Dead rows first. The cap counts rows, so a login loop's expired (or
+    # revoked) leftovers used to fill it and evict the live token that mattered.
+    # Purging is per identity and does not touch anyone else's sessions.
+    conn.execute(
+        "DELETE FROM sessions WHERE discord_id = ? AND (revoked = 1 OR expires_at <= ?)",
+        (str(discord_id), created.isoformat(timespec="seconds")),
+    )
     conn.execute(
         """
         INSERT INTO sessions (id, discord_id, level, created_at, expires_at, revoked)
