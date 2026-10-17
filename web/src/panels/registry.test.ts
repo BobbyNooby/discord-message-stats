@@ -157,6 +157,16 @@ describe("the panel registry", () => {
     }
   });
 
+  it("reports the measured reach the sidebar labels show", () => {
+    // The brief measured 39 cards / 20 time / 29 author against an earlier
+    // registry; the code carries 40 (chat-health added) and the numbers below.
+    expect(dimensionReach("time")).toEqual({ honoured: 21, total: 40 });
+    expect(dimensionReach("author")).toEqual({ honoured: 30, total: 40 });
+    expect(dimensionReach("word")).toEqual({ honoured: 2, total: 40 });
+    expect(dimensionReach("provider")).toEqual({ honoured: 2, total: 40 });
+    expect(dimensionReach("kind")).toEqual({ honoured: 1, total: 40 });
+  });
+
   it("offers only dimensions a rendered card honours", () => {
     // Every declared dimension currently has a card, so nothing is removed;
     // the gate exists so a future dimension with no card is never offered.
