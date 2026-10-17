@@ -3,9 +3,9 @@ import type { EChartsOption } from "echarts";
 import type { Payload } from "../api/types";
 import { EmptyState, GlobalOnlyBadge, Panel } from "../components/Panel";
 import type { Filters } from "../filters/reducer";
-import { hasTimeFilter } from "../filters/selectors";
 import { EChart } from "../lib/echart";
 import { AXIS_LINE, AXIS_TEXT, fmt, matrixData, TOOLTIP } from "./people";
+import { usePanelFilters } from "./panelScope";
 
 const PIECES = [
   { min: 1000, label: "1k+", color: "#c3c8fb" },
@@ -23,15 +23,16 @@ const PIECES = [
  */
 export function ReplyMatrix({
   payload,
-  filters,
+  filters: fallbackFilters,
   className,
-}: {
+}: { panelId?: string;
   payload: Payload;
-  filters: Filters;
+  filters?: Filters;
   className?: string;
 }) {
+  const filters = usePanelFilters("reply-matrix", fallbackFilters);
   const matrix = matrixData(payload, filters);
-  const badge = hasTimeFilter(filters) ? <GlobalOnlyBadge what="Reply pairs" /> : null;
+  const badge = true ? <GlobalOnlyBadge what="Reply pairs" /> : null;
 
   if (!matrix.k) {
     return (

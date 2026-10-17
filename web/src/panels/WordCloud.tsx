@@ -4,9 +4,9 @@ import { useEffect, useMemo, useState } from "react";
 import type { Payload } from "../api/types";
 import { EmptyState, GlobalOnlyBadge, Panel } from "../components/Panel";
 import type { Filters } from "../filters/reducer";
-import { hasTimeFilter } from "../filters/selectors";
 import { EChart } from "../lib/echart";
 import { PALETTE } from "../lib/palette";
+import { usePanelFilters } from "./panelScope";
 
 /**
  * "Word cloud" — the one `echarts-wordcloud` user (§11.1 calls it decorative).
@@ -50,14 +50,15 @@ export function cloudRows(payload: Payload, filters: Filters, limit = LIMIT): [s
 
 export function WordCloud({
   payload,
-  filters,
+  filters: fallbackFilters,
   loadPlugin = importWordCloudPlugin,
-}: {
+}: { panelId?: string;
   payload: Payload;
-  filters: Filters;
+  filters?: Filters;
   /** Test seam: the plugin cannot load in jsdom, and both paths must be covered. */
   loadPlugin?: () => Promise<unknown>;
 }) {
+  const filters = usePanelFilters("word-cloud", fallbackFilters);
   const rows = useMemo(() => cloudRows(payload, filters), [payload, filters]);
   const [plugin, setPlugin] = useState<"loading" | "ready" | "missing">("loading");
   const total = useMemo(() => rows.reduce((sum, [, uses]) => sum + uses, 0), [rows]);
@@ -118,7 +119,7 @@ export function WordCloud({
   return (
     <Panel
       title="Word cloud"
-      badge={hasTimeFilter(filters) ? <GlobalOnlyBadge what="The word rollup" /> : undefined}
+      badge={<GlobalOnlyBadge what="The word rollup" />}
       subtitle={`top ${fmt(rows.length)} words by frequency · ${fmt(total)} uses shown · no date dimension`}
     >
       {!rows.length ? (

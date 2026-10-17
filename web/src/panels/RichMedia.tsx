@@ -3,10 +3,9 @@ import { useState } from "react";
 import type { EChartsOption } from "echarts";
 
 import type { Payload } from "../api/types";
-import type { Filters } from "../filters/reducer";
 import { EmptyState, GlobalOnlyBadge, Panel, CARD_COLUMNS } from "../components/Panel";
-import { hasTimeFilter } from "../filters/selectors";
 import { EChart } from "../lib/echart";
+import type { Filters } from "../filters/reducer";
 
 /**
  * "Most reposted" (§11.1, the rich-media idea).
@@ -111,7 +110,7 @@ function Thumbnail({ src, animated, provider }: {
   );
 }
 
-export function RichMedia({ payload, filters }: { payload: Payload; filters: Filters }) {
+export function RichMedia({ payload, }: { panelId?: string; payload: Payload; filters?: Filters }) {
   const everything: MediaRow[] = payload.topMedia ?? [];
   const byProvider = payload.mediaByProvider ?? {};
   const mode = payload.mediaThumbnails ?? "proxy";
@@ -196,7 +195,7 @@ export function RichMedia({ payload, filters }: { payload: Payload; filters: Fil
                   {entry.label}
                 </button>
               ))}
-              {hasTimeFilter(filters) ? <GlobalOnlyBadge what="Most reposted" /> : null}
+              <GlobalOnlyBadge what="Most reposted" />
             </span>
           }
         >
@@ -244,13 +243,13 @@ export function RichMedia({ payload, filters }: { payload: Payload; filters: Fil
   );
 }
 
-export function RichMediaSection({ payload, filters }: { payload: Payload; filters: Filters }) {
+export function RichMediaSection({ payload }: { payload: Payload }) {
   return (
     <section aria-labelledby="sec-media-rich" className="space-y-4">
       <h2 id="sec-media-rich" className="text-base font-semibold text-[var(--color-text)]">
         Rich media
       </h2>
-      <RichMedia payload={payload} filters={filters} />
+      <RichMedia payload={payload} />
     </section>
   );
 }

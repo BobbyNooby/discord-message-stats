@@ -8,7 +8,8 @@ import { dashboardReducer, initialDashboardState } from "../filters/reducer";
 import { effective } from "../filters/selectors";
 import type { PanelId } from "../panels/registry";
 import { FilterSidebar } from "./FilterSidebar";
-import { Panel, PanelScopeProvider } from "./Panel";
+import { PanelScopeProvider } from "../panels/panelScope";
+import { Panel } from "./Panel";
 
 const payload = {
   meta: { lastLocal: "2024-06-30", firstLocal: "2023-01-01" },
@@ -35,7 +36,7 @@ function Harness() {
 
   return (
     <>
-      <PanelScopeProvider onOpenScope={openScope}>
+      <PanelScopeProvider filters={state.filters} scopes={state.scopes} onOpenScope={openScope}>
         <Panel title="Who talks the most">
           <p>leaderboard</p>
         </Panel>

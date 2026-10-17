@@ -5,13 +5,15 @@ import { EmptyState, Panel } from "../components/Panel";
 import type { Filters } from "../filters/reducer";
 import { EChart } from "../lib/echart";
 import { AXIS_LINE, AXIS_TEXT, burstiness, fmt, kfmt, quantile, SPLIT_LINE, TOOLTIP } from "./people";
+import { usePanelFilters } from "./panelScope";
 
 /**
  * "How bursty is everyone" — a boxplot of each author's daily totals. Only days
  * they actually posted count, so a quiet week does not read as a burst of zeros;
  * a single active day gives a flat box, which is the honest answer.
  */
-export function Burstiness({ payload, filters }: { payload: Payload; filters: Filters }) {
+export function Burstiness({ payload, filters: fallbackFilters }: { panelId?: string; payload: Payload; filters?: Filters }) {
+  const filters = usePanelFilters("how-bursty-is-everyone", fallbackFilters);
   const bursts = burstiness(payload, filters);
 
   if (!bursts.length) {

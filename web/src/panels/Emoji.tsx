@@ -1,5 +1,4 @@
 import { EmptyState, GlobalOnlyBadge, Panel } from "../components/Panel";
-import { hasTimeFilter } from "../filters/selectors";
 import { EChart } from "../lib/echart";
 import {
   EMOJI_COLOR,
@@ -11,11 +10,14 @@ import {
   pairTotal,
   type MediaPanelProps,
 } from "./mediaData";
+import type { WithPanelId } from "./panelScope";
+import { usePanelFilters } from "./panelScope";
 
 const TITLE = "Emoji in text";
 
 /** Counted from message bodies. Global only: `rollup_emoji` has no date. */
-export function Emoji({ payload, filters }: MediaPanelProps) {
+export function Emoji({ payload, filters: fallbackFilters }: MediaPanelProps & WithPanelId) {
+  const filters = usePanelFilters("emoji-in-text", fallbackFilters);
   const rows = pairRows(payload.emoji, 14);
   const blank = globalEmpty(payload, filters) ?? (rows.length ? null : "No emoji in this history.");
 
@@ -25,7 +27,7 @@ export function Emoji({ payload, filters }: MediaPanelProps) {
       subtitle={`counted from message bodies · ${fmt(pairTotal(payload.emoji))} uses across ${pairCount(
         payload.emoji,
       )} emoji`}
-      badge={hasTimeFilter(filters) ? <GlobalOnlyBadge what={TITLE} /> : null}
+      badge={<GlobalOnlyBadge what={TITLE} />}
     >
       {blank ? (
         <EmptyState>{blank}</EmptyState>

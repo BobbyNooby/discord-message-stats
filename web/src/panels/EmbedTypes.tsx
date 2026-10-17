@@ -3,9 +3,8 @@ import { useMemo } from "react";
 
 import type { Payload } from "../api/types";
 import { EmptyState, GlobalOnlyBadge, Panel } from "../components/Panel";
-import type { Filters } from "../filters/reducer";
-import { hasTimeFilter } from "../filters/selectors";
 import { EChart } from "../lib/echart";
+import type { Filters } from "../filters/reducer";
 
 /**
  * "Embed types" — the mockup's `drawEmbedTypes`, a doughnut for the same reason
@@ -30,12 +29,10 @@ export function foldEmbedTypes(rows: [string, number][], max = MAX_SLICES): Embe
   return [...head, { name: "Others", value: tail, index: -1 }];
 }
 
-export function EmbedTypes({ payload, filters }: { payload: Payload; filters: Filters }) {
+export function EmbedTypes({ payload, }: { panelId?: string; payload: Payload; filters?: Filters }) {
   const slices = useMemo(() => foldEmbedTypes(payload.embedTypes ?? []), [payload]);
   const total = useMemo(() => slices.reduce((sum, slice) => sum + slice.value, 0), [slices]);
   const folded = slices.length < (payload.embedTypes ?? []).length;
-  const narrowed = hasTimeFilter(filters) || filters.active.some((on) => !on);
-
   const option = useMemo<EChartsOption>(
     () => ({
       tooltip: {
@@ -82,7 +79,7 @@ export function EmbedTypes({ payload, filters }: { payload: Payload; filters: Fi
   return (
     <Panel
       title="Embed types"
-      badge={narrowed ? <GlobalOnlyBadge what="The embed-type rollup" /> : undefined}
+      badge={<GlobalOnlyBadge what="The embed-type rollup" />}
       subtitle={`video, gifv, link, article… · ${fmt(total)} embeds${
         folded ? ` · top ${MAX_SLICES - 1}, rest as Others` : ""
       }`}

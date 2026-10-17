@@ -163,11 +163,13 @@ describe("Media & reactions", () => {
     expect(slices.map((slice) => slice.name)).toEqual(["with media", "text only"]);
   });
 
-  it("marks Message types global only under a time filter, without changing its numbers", () => {
+  it("says Message types is global only, and holds its numbers under a time filter", () => {
     const payload = fixture();
     const base = initialFilters(payload);
+    // The registry declares this card honours nothing, so the badge is not a
+    // reaction to a filter being on: it is true whenever the card is drawn.
     const { unmount } = render(<MessageTypes payload={payload} filters={base} />);
-    expect(screen.queryByText(/global only/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/global only/i)).toBeInTheDocument();
     const unfiltered = screen.getByText(/212 messages across 3 types/).textContent;
     unmount();
 
@@ -189,7 +191,7 @@ describe("Media & reactions", () => {
     for (const [PanelComponent, figure] of cases) {
       const { unmount } = render(<PanelComponent payload={payload} filters={base} />);
       const before = screen.getByText(figure).textContent;
-      expect(screen.queryByText(/global only/i)).not.toBeInTheDocument();
+      expect(screen.getByText(/global only/i)).toBeInTheDocument();
       unmount();
 
       render(<PanelComponent payload={payload} filters={timeFiltered} />);

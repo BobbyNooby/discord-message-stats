@@ -6,6 +6,7 @@ import type { Filters } from "../filters/reducer";
 import { EChart } from "../lib/echart";
 import { swatch } from "../lib/palette";
 import { AXIS_TEXT, RADAR_TRAITS, radarData, TOOLTIP } from "./people";
+import { usePanelFilters } from "./panelScope";
 
 /**
  * "Author profile" — six traits, each normalised to 100 against the busiest
@@ -13,7 +14,8 @@ import { AXIS_TEXT, RADAR_TRAITS, radarData, TOOLTIP } from "./people";
  * panel does respond to the time filter; "starts conv" and "vocabulary" are
  * global counts and are read whole.
  */
-export function AuthorRadar({ payload, filters }: { payload: Payload; filters: Filters }) {
+export function AuthorRadar({ payload, filters: fallbackFilters }: { panelId?: string; payload: Payload; filters?: Filters }) {
+  const filters = usePanelFilters("author-profile", fallbackFilters);
   const radar = radarData(payload, filters);
 
   if (!radar.top.length) {

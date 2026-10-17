@@ -6,6 +6,7 @@ import { EmptyState, Panel } from "../components/Panel";
 import type { Filters } from "../filters/reducer";
 import { EChart } from "../lib/echart";
 import { swatch } from "../lib/palette";
+import { usePanelFilters } from "./panelScope";
 
 /**
  * "Who says it" — the mockup's `drawWordLead`.
@@ -37,13 +38,14 @@ export function whoSaysItRows(payload: Payload, filters: Filters, word: string |
 
 export function WhoSaysIt({
   payload,
-  filters,
+  filters: fallbackFilters,
   word,
-}: {
+}: { panelId?: string;
   payload: Payload;
-  filters: Filters;
+  filters?: Filters;
   word: string | null;
 }) {
+  const filters = usePanelFilters("who-says-it", fallbackFilters);
   const rows = useMemo(() => whoSaysItRows(payload, filters, word), [payload, filters, word]);
   const indexed = Boolean(word && payload.wordAuthors[word]);
   // The bars honour the author selection, so the total has to as well or the

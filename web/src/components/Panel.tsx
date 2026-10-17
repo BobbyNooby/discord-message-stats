@@ -1,25 +1,9 @@
 import { Ellipsis } from "lucide-react";
-import { createContext, useContext, type ReactNode } from "react";
+import type { ReactNode } from "react";
 
+import { usePanelScopeTarget } from "../panels/panelScope";
 import { specFor, specForLabel, type PanelId } from "../panels/registry";
 import { IconButton } from "./ui";
-
-/**
- * How a card asks the shell to put the sidebar into that card's scope. It is a
- * context rather than a prop on every panel so a card can carry the control
- * without forty panels threading a callback they do not use for anything else.
- */
-const ScopeTarget = createContext<((panelId: PanelId) => void) | null>(null);
-
-export function PanelScopeProvider({
-  onOpenScope,
-  children,
-}: {
-  onOpenScope: (panelId: PanelId) => void;
-  children: ReactNode;
-}) {
-  return <ScopeTarget.Provider value={onOpenScope}>{children}</ScopeTarget.Provider>;
-}
 
 /**
  * Sections lay their cards out in columns, not grid rows.
@@ -47,9 +31,10 @@ export function Panel({
   /** When the title is dynamic ("Who says “cat”"), name the card explicitly. */
   panelId?: PanelId;
 }) {
-  const onOpenScope = useContext(ScopeTarget);
+  const onOpenScope = usePanelScopeTarget();
   // The registry decides whether a card can be scoped, not a prop or a guess
-  // from the title: "…" exists iff the card honours at least one dimension.
+  // from the title: "…" exists iff the card honours at least one dimension. A
+  // dynamic title names its card explicitly; a static one is looked up by title.
   const spec = panelId ? specFor(panelId) : specForLabel(title);
   const target = spec && spec.honours.length > 0 ? spec : null;
 

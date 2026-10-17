@@ -5,6 +5,8 @@ import { Chip } from "../components/AppShell";
 import { EmptyState, Panel } from "../components/Panel";
 import { EChart } from "../lib/echart";
 import { TOOLTIP, byHour, clock, emptyLabel, fmt, heatGrid, kfmt, type PanelProps } from "./timeAggregates";
+import type { WithPanelId } from "./panelScope";
+import { usePanelFilters } from "./panelScope";
 
 type Style = "bar" | "rose";
 
@@ -15,7 +17,8 @@ const HOURS = Array.from({ length: 24 }, (_, hour) => hour);
  * chart, and the polar rose, which reads as a clock face and shows the
  * overnight dip as a gap rather than as two low bars.
  */
-export function TimeOfDay({ payload, filters }: PanelProps) {
+export function TimeOfDay({ payload, filters: fallbackFilters }: PanelProps & WithPanelId) {
+  const filters = usePanelFilters("what-time-of-day", fallbackFilters);
   const [style, setStyle] = useState<Style>("bar");
   const heat = heatGrid(payload, filters);
   const hours = byHour(heat.grid);

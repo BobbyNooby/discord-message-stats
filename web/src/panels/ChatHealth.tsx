@@ -7,6 +7,8 @@ import {
   totalMessages,
   type MediaPanelProps,
 } from "./mediaData";
+import type { WithPanelId } from "./panelScope";
+import { usePanelFilters } from "./panelScope";
 
 const TITLE = "Chat health";
 
@@ -15,7 +17,8 @@ const TITLE = "Chat health";
  * that year rather than against all six years of history. Decorative by the
  * spec's own note (§11.1) — the numbers are also in the subtitle.
  */
-export function ChatHealth({ payload, filters }: MediaPanelProps) {
+export function ChatHealth({ payload, filters: fallbackFilters }: MediaPanelProps & WithPanelId) {
+  const filters = usePanelFilters("chat-health", fallbackFilters);
   const { cells, empty } = mediaCells(payload, filters);
   const gauges = healthGauges(cells);
   const msgs = totalMessages(cells);

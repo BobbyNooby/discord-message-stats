@@ -15,13 +15,16 @@ import {
   kfmt,
   type PanelProps,
 } from "./timeAggregates";
+import type { WithPanelId } from "./panelScope";
+import { usePanelFilters } from "./panelScope";
 
 /**
  * Who was talking, when — `drawStream`: a streamgraph, which is "Messages over
  * time" in stacked mode with the silhouette smoothed out and the per-author
  * line weights removed, so compositional shifts are what you see first.
  */
-export function Stream({ payload, filters }: PanelProps) {
+export function Stream({ payload, filters: fallbackFilters }: PanelProps & WithPanelId) {
+  const filters = usePanelFilters("who-was-talking-when", fallbackFilters);
   const buckets = bucketSeries(payload, filters);
   const authors = activeAuthorIndices(payload, filters);
   const nothing = buckets.order.length === 0;

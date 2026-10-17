@@ -136,10 +136,10 @@ describe("Links & embeds section", () => {
     expect(screen.getByText("No authors selected.")).toBeInTheDocument();
   });
 
-  it("marks the normalised link list as global only once a filter is active", () => {
+  it("marks the normalised link list as global only, filters or not", () => {
     const payload = makePayload();
     const { rerender } = render(<TopLinks payload={payload} filters={allOn} />);
-    expect(screen.queryByText(/global only/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/global only/i)).toBeInTheDocument();
 
     rerender(<TopLinks payload={payload} filters={{ ...allOn, years: [2024] }} />);
     expect(screen.getByText(/global only/i)).toBeInTheDocument();
@@ -196,7 +196,7 @@ describe("Links & embeds section", () => {
       ],
     });
     const { rerender } = render(<EmbedTypes payload={payload} filters={allOn} />);
-    expect(screen.queryByText(/global only/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/global only/i)).toBeInTheDocument();
 
     rerender(<EmbedTypes payload={payload} filters={{ ...allOn, years: [2024] }} />);
     expect(screen.getByText(/global only/i)).toBeInTheDocument();

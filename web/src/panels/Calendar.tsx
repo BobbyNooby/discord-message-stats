@@ -12,6 +12,7 @@ import {
   calendarGeometry,
   clampStart,
 } from "./calendarWeeks";
+import { usePanelFilters } from "./panelScope";
 
 /**
  * Every day, six years — square cells in a window the component owns (§11.3).
@@ -23,7 +24,8 @@ import {
  * wheel listener: it hijacks page scrolling, which is worse than the
  * inconvenience it saves.
  */
-export function Calendar({ payload, filters }: { payload: Payload; filters: Filters }) {
+export function Calendar({ payload, filters: fallbackFilters }: { panelId?: string; payload: Payload; filters?: Filters }) {
+  const filters = usePanelFilters("every-day-six-years", fallbackFilters);
   // The window is the component's own (§11.3), and on a phone 60 weeks would be
   // ~5px cells: a grey smear rather than a calendar. The default fits the space
   // until the reader chooses a size themselves.

@@ -1,5 +1,4 @@
 import { EmptyState, GlobalOnlyBadge, Panel } from "../components/Panel";
-import { hasTimeFilter } from "../filters/selectors";
 import { EChart } from "../lib/echart";
 import { PALETTE } from "../lib/palette";
 import {
@@ -10,6 +9,8 @@ import {
   typeRows,
   type MediaPanelProps,
 } from "./mediaData";
+import type { WithPanelId } from "./panelScope";
+import { usePanelFilters } from "./panelScope";
 
 const TITLE = "Message types";
 
@@ -17,7 +18,8 @@ const TITLE = "Message types";
  * Calls, pins, polls, joins… The payload keeps one row per type with no date
  * or author column, so a time filter cannot change it — it says so instead.
  */
-export function MessageTypes({ payload, filters }: MediaPanelProps) {
+export function MessageTypes({ payload, filters: fallbackFilters }: MediaPanelProps & WithPanelId) {
+  const filters = usePanelFilters("message-types", fallbackFilters);
   const rows = typeRows(payload);
   const blank =
     globalEmpty(payload, filters) ?? (rows.length ? null : "No message types in this history.");
@@ -27,7 +29,7 @@ export function MessageTypes({ payload, filters }: MediaPanelProps) {
     <Panel
       title={TITLE}
       subtitle={`calls, pins, polls, joins… · ${fmt(total)} messages across ${rows.length} types`}
-      badge={hasTimeFilter(filters) ? <GlobalOnlyBadge what={TITLE} /> : null}
+      badge={<GlobalOnlyBadge what={TITLE} />}
     >
       {blank ? (
         <EmptyState>{blank}</EmptyState>
