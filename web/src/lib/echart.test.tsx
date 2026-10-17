@@ -58,4 +58,12 @@ describe("<EChart>", () => {
 
     expect(screen.getByRole("img", { name: "chart" })).toBeInTheDocument();
   });
+
+  it("states how many points it drew, so the pie's eight-slice rule is checkable", () => {
+    const { rerender } = render(<EChart option={{ series: [{ type: "bar", data: [1, 2, 3] }] }} />);
+    expect(screen.getByRole("img", { name: "chart" })).toHaveAttribute("data-points", "3");
+
+    rerender(<EChart option={{ series: [{ type: "pie", data: [1, 2] }] }} />);
+    expect(screen.getByRole("img", { name: "chart" })).toHaveAttribute("data-points", "2");
+  });
 });
