@@ -10,7 +10,7 @@ signal so the operator is warned to rebuild.
 
 from __future__ import annotations
 
-from discord_scraper.api import viewer
+from discord_stats.api import viewer
 from discord_scraper.cli import main
 from discord_scraper.rollups import identity, query
 from discord_scraper.rollups.build import config_digest, rebuild_all

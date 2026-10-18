@@ -8,7 +8,7 @@ import sqlite3
 
 import pytest
 
-from discord_scraper.api.upload import MAX_UPLOAD_BYTES
+from discord_stats.api.upload import MAX_UPLOAD_BYTES
 from discord_scraper.scraper.database import SCHEMA
 
 
@@ -54,7 +54,7 @@ def test_an_abandoned_staging_file_is_swept_when_the_server_starts(
     nothing in the API or the board can confirm or discard it, and it is the
     size of a database. Booting the server is the one moment every staged file
     certainly belongs to nobody."""
-    from discord_scraper.auth.session import Level
+    from discord_stats.auth.session import Level
 
     stale = seeded_db_path.parent / ".upload-abandoned"
     stale.write_bytes(b"a candidate nobody can confirm any more")
@@ -137,7 +137,7 @@ def test_upload_rejects_an_empty_file(admin_client, tmp_path):
 
 
 def test_upload_rejects_an_oversized_file(admin_client, tmp_path, monkeypatch):
-    monkeypatch.setattr("discord_scraper.api.upload.MAX_UPLOAD_BYTES", 100)
+    monkeypatch.setattr("discord_stats.api.upload.MAX_UPLOAD_BYTES", 100)
     big = tmp_path / "big.db"
     big.write_bytes(b"x" * 5000)
     response = upload(admin_client, big)
@@ -204,7 +204,7 @@ def test_replacing_the_database_with_itself_is_refused(admin_client, seeded_db_p
 def test_an_upload_needing_more_room_than_the_disk_has_is_refused(
     admin_client, tmp_path, monkeypatch
 ):
-    monkeypatch.setattr("discord_scraper.api.upload._free_bytes", lambda directory: 10)
+    monkeypatch.setattr("discord_stats.api.upload._free_bytes", lambda directory: 10)
     response = upload(admin_client, make_database(tmp_path / "candidate.db", rows=1))
     assert response.status_code == 400
     assert "free disk space" in response.json()["detail"]
@@ -220,7 +220,7 @@ def test_a_commit_that_cannot_prepare_the_file_leaves_the_live_one_alone(
     def boom(conn):
         raise RuntimeError("no room for the rollup tables")
 
-    monkeypatch.setattr("discord_scraper.api.upload.create_rollup_tables", boom)
+    monkeypatch.setattr("discord_stats.api.upload.create_rollup_tables", boom)
     with pytest.raises(RuntimeError):
         admin_client.post(f"/api/admin/upload/{upload_id}/commit")
 

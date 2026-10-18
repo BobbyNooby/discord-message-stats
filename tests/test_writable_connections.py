@@ -17,7 +17,7 @@ def _pragmas(conn):
 
 
 def test_each_writable_connection_sets_its_own_pragmas(seeded_db_path, tmp_path):
-    from discord_scraper.api.deps import connect_writable
+    from discord_stats.api.deps import connect_writable
     from discord_scraper.cli import _connect
 
     deps_db = tmp_path / "deps.db"

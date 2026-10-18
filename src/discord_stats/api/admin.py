@@ -21,15 +21,15 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile
 from pydantic import BaseModel
 
-from discord_scraper.api.deps import connect_writable
-from discord_scraper.auth.admins import (
+from discord_stats.api.deps import connect_writable
+from discord_stats.auth.admins import (
     AdminLocked,
     UnknownAdmin,
     add_admin,
     list_admins,
     remove_admin,
 )
-from discord_scraper.auth.session import SESSION_COOKIE, hash_token, require_admin
+from discord_stats.auth.session import SESSION_COOKIE, hash_token, require_admin
 from discord_scraper.config import AUTO_TIMEZONE, Config
 from discord_scraper.overrides import (
     OVERRIDABLE,
@@ -567,7 +567,7 @@ def sweep_uploads(request: Request) -> dict:
     ``sweep_orphans`` is the implementation the boot path already uses; this is
     only a way to reach it on demand.
     """
-    from discord_scraper.api import upload as staging
+    from discord_stats.api import upload as staging
 
     directory = Path(app_db_path(request)).parent
     sizes: dict[str, int] = {}
@@ -834,7 +834,7 @@ def _describe_existing(target: Path) -> dict[str, Any]:
 @router.post("/upload")
 def upload_database(request: Request, file: UploadFile = File(...)) -> dict:
     """Stage and validate an upload. Nothing is replaced until the commit call."""
-    from discord_scraper.api import upload as staging
+    from discord_stats.api import upload as staging
 
     target = Path(request.app.state.db_path)
     conn = _conn(request)
@@ -892,7 +892,7 @@ def commit_upload(request: Request, upload_id: str) -> dict:
     before the single replace, so a failure here leaves the live database as it
     was rather than half-replaced.
     """
-    from discord_scraper.api import upload as staging
+    from discord_stats.api import upload as staging
 
     staged = PENDING_UPLOADS.pop(upload_id, None)
     if staged is None:
@@ -913,7 +913,7 @@ def commit_upload(request: Request, upload_id: str) -> dict:
 
 @router.delete("/upload/{upload_id}", status_code=204)
 def discard_upload(request: Request, upload_id: str) -> None:
-    from discord_scraper.api import upload as staging
+    from discord_stats.api import upload as staging
 
     staged = PENDING_UPLOADS.pop(upload_id, None)
     if staged is not None:
@@ -1157,7 +1157,7 @@ def put_inclusions(request: Request, body: InclusionRequest) -> dict:
 @router.post("/sessions/revoke-all")
 def revoke_all_sessions(request: Request) -> dict:
     """Sign everybody else out. The caller keeps their own session."""
-    from discord_scraper.auth.session import hash_token
+    from discord_stats.auth.session import hash_token
 
     token = request.cookies.get("dsh_session", "")
     conn = _conn(request)

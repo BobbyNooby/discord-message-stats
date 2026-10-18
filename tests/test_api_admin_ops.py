@@ -11,7 +11,7 @@ import sqlite3
 
 import pytest
 
-import discord_scraper.api.admin as admin
+import discord_stats.api.admin as admin
 
 USER_BODY = {"id": "42", "username": "scraper", "global_name": "Scraper", "avatar": "abc"}
 CHANNEL_BODY = {"id": "c1", "name": "general"}
@@ -109,7 +109,7 @@ def test_the_last_check_survives_a_restart(admin_client, monkeypatch, client_for
     assert stored["checked_at"] == checked["checked_at"]
     assert stored["bot"]["id"] == "42"
 
-    from discord_scraper.auth.session import Level
+    from discord_stats.auth.session import Level
 
     restarted = client_for(Level.ADMIN)          # a new app over the same database
     after = restarted.get("/api/admin/token").json()

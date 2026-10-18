@@ -16,8 +16,8 @@ import sqlite3
 import pytest
 from fastapi.testclient import TestClient
 
-from discord_scraper.api.app import create_app
-from discord_scraper.auth.session import SESSION_COOKIE, Level, establish_session
+from discord_stats.api.app import create_app
+from discord_stats.auth.session import SESSION_COOKIE, Level, establish_session
 from discord_scraper.rollups.build import rebuild_all
 from discord_scraper.rollups.schema import migrate
 from tests.conftest import cfg_fixture

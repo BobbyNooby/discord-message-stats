@@ -3,8 +3,8 @@ import sqlite3
 
 import pytest
 
-from discord_scraper.api.app import create_app
-from discord_scraper.api.deps import connect
+from discord_stats.api.app import create_app
+from discord_stats.api.deps import connect
 
 PAYLOAD_KEYS = (
     "meta", "authors", "days", "cells", "heat", "edges", "response", "editSpeed",
@@ -177,7 +177,7 @@ def test_database_is_opened_read_only(seeded_db_path):
 
 def test_bootstrap_is_served_from_rollups_only(db_cfg, client_for):
     """Drop the messages table: the payload must still assemble (spec §5.3)."""
-    from discord_scraper.auth.session import Level
+    from discord_stats.auth.session import Level
 
     _cfg, path = db_cfg
     conn = sqlite3.connect(path)
@@ -271,8 +271,8 @@ def test_meta_carries_the_ui_display_settings(db_cfg, tmp_path, conn, client):
     """
     from fastapi.testclient import TestClient
 
-    from discord_scraper.api.app import create_app
-    from discord_scraper.auth.session import SESSION_COOKIE, Level, establish_session
+    from discord_stats.api.app import create_app
+    from discord_stats.auth.session import SESSION_COOKIE, Level, establish_session
     from tests.conftest import cfg_fixture
 
     # The documented defaults, from a config that sets neither.
@@ -297,8 +297,8 @@ def test_a_timezone_change_is_served_with_a_warning(db_cfg, tmp_path, conn):
     and with an operator override set no rebuild could ever clear it."""
     from fastapi.testclient import TestClient
 
-    from discord_scraper.api.app import create_app
-    from discord_scraper.auth.session import SESSION_COOKIE, Level, establish_session
+    from discord_stats.api.app import create_app
+    from discord_stats.auth.session import SESSION_COOKIE, Level, establish_session
     from tests.conftest import cfg_fixture
 
     _cfg, path = db_cfg
@@ -333,7 +333,7 @@ def test_no_rollups_is_still_fatal(seeded_db_path, tmp_path, conn):
     """No rollups at all is genuinely unusable data, not a zone disagreement."""
     from fastapi.testclient import TestClient
 
-    from discord_scraper.auth.session import SESSION_COOKIE, Level, establish_session
+    from discord_stats.auth.session import SESSION_COOKIE, Level, establish_session
 
     client = TestClient(create_app(cfg_for(tmp_path), seeded_db_path))
     client.cookies.set(SESSION_COOKIE, establish_session(conn, "u1", Level.VIEWER))

@@ -4,9 +4,9 @@ import pytest
 from fastapi import Depends, FastAPI
 from fastapi.testclient import TestClient
 
-from discord_scraper.auth.allowlist import decision_for, record_login_attempt, too_many_attempts
-from discord_scraper.auth.oauth import authorize_url, exchange_code
-from discord_scraper.auth.session import (
+from discord_stats.auth.allowlist import decision_for, record_login_attempt, too_many_attempts
+from discord_stats.auth.oauth import authorize_url, exchange_code
+from discord_stats.auth.session import (
     SESSION_COOKIE,
     Level,
     establish_session,
@@ -22,7 +22,7 @@ from tests.conftest import cfg_fixture
 def test_sessions_are_revocable(conn):
     """The plan's version updated `WHERE id = <token>`; rows store a hash (§8.2),
     so the update has to go through the same hashing the lookup uses."""
-    from discord_scraper.auth.session import hash_token
+    from discord_stats.auth.session import hash_token
 
     sid = establish_session(conn, "u1", Level.VIEWER)
     assert session_level(conn, sid) is Level.VIEWER
@@ -93,8 +93,8 @@ def _guarded(dependency):
     ("admin", Level.ADMIN, 200),
 ])
 def test_privilege_matrix(db_cfg, conn, dependency, level, expected):
-    from discord_scraper.api.app import create_app
-    from discord_scraper.auth.session import require_admin, require_viewer
+    from discord_stats.api.app import create_app
+    from discord_stats.auth.session import require_admin, require_viewer
 
     cfg, path = db_cfg
     configured = create_app(cfg, path)
@@ -246,7 +246,7 @@ def test_the_token_exchange_is_made_by_authlib(monkeypatch):
 def test_the_authorize_url_still_carries_the_five_oauth_fields(db_cfg):
     from fastapi.testclient import TestClient
 
-    from discord_scraper.api.app import create_app
+    from discord_stats.api.app import create_app
 
     cfg, path = db_cfg
     client = TestClient(create_app(cfg, path), base_url="https://stats.example")
@@ -262,7 +262,7 @@ def test_the_authorize_url_still_carries_the_five_oauth_fields(db_cfg):
 def test_login_redirects_to_discord_and_sets_a_state_cookie(db_cfg):
     from fastapi.testclient import TestClient
 
-    from discord_scraper.api.app import create_app
+    from discord_stats.api.app import create_app
 
     cfg, path = db_cfg
     client = TestClient(create_app(cfg, path), base_url="https://stats.example")
@@ -277,7 +277,7 @@ def test_login_redirects_to_discord_and_sets_a_state_cookie(db_cfg):
 def test_callback_rejects_a_mismatched_state(db_cfg):
     from fastapi.testclient import TestClient
 
-    from discord_scraper.api.app import create_app
+    from discord_stats.api.app import create_app
 
     cfg, path = db_cfg
     client = TestClient(create_app(cfg, path), base_url="https://stats.example")
@@ -289,7 +289,7 @@ def test_callback_rejects_a_mismatched_state(db_cfg):
 def test_callback_rejects_a_missing_state(db_cfg):
     from fastapi.testclient import TestClient
 
-    from discord_scraper.api.app import create_app
+    from discord_stats.api.app import create_app
 
     cfg, path = db_cfg
     client = TestClient(create_app(cfg, path), base_url="https://stats.example")
@@ -303,8 +303,8 @@ def test_a_state_cookie_signed_with_another_secret_is_rejected(db_cfg):
 
     from fastapi.testclient import TestClient
 
-    from discord_scraper.api.app import create_app
-    from discord_scraper.auth import oauth
+    from discord_stats.api.app import create_app
+    from discord_stats.auth import oauth
 
     cfg, path = db_cfg
     signed = replace(cfg, secrets=replace(cfg.secrets, session_secret="the-real-key"))
@@ -325,8 +325,8 @@ def test_a_valid_signed_state_round_trips_into_a_session(db_cfg, conn, monkeypat
     import httpx
     from fastapi.testclient import TestClient
 
-    from discord_scraper.api.app import create_app
-    from discord_scraper.auth import oauth
+    from discord_stats.api.app import create_app
+    from discord_stats.auth import oauth
 
     cfg, path = db_cfg
     signed = replace(cfg, secrets=replace(cfg.secrets, session_secret="a-signing-key"))
@@ -358,7 +358,7 @@ def test_a_whitespace_only_state_is_never_valid():
     Nothing mints an all-space cookie today, but whitespace must not pass as a
     state in any secret combination.
     """
-    from discord_scraper.auth.oauth import state_is_valid
+    from discord_stats.auth.oauth import state_is_valid
 
     for secret in (None, "a-signing-key"):
         assert state_is_valid("   ", "   ", secret) is False

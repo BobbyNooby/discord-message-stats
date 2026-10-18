@@ -13,9 +13,9 @@ from datetime import datetime, timedelta, timezone
 import pytest
 from fastapi.testclient import TestClient
 
-from discord_scraper.api.app import create_app
-from discord_scraper.api.progress import ABANDONED_AFTER_SECONDS
-from discord_scraper.auth.session import SESSION_COOKIE, Level, establish_session
+from discord_stats.api.app import create_app
+from discord_stats.api.progress import ABANDONED_AFTER_SECONDS
+from discord_stats.auth.session import SESSION_COOKIE, Level, establish_session
 from discord_scraper.rollups.build import (
     EVENTS_KEEP,
     prune_rebuild_events,

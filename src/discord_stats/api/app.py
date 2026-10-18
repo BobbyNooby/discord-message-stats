@@ -18,11 +18,11 @@ from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from discord_scraper.api import admin, logstream, progress, viewer
-from discord_scraper.api.deps import connect, connect_writable
-from discord_scraper.auth import oauth
-from discord_scraper.auth.allowlist import decision_for, record_login_attempt, too_many_attempts
-from discord_scraper.auth.session import (
+from discord_stats.api import admin, logstream, progress, viewer
+from discord_stats.api.deps import connect, connect_writable
+from discord_stats.auth import oauth
+from discord_stats.auth.allowlist import decision_for, record_login_attempt, too_many_attempts
+from discord_stats.auth.session import (
     SESSION_COOKIE,
     SESSION_DAYS,
     Level,
@@ -130,7 +130,7 @@ def create_app(
     # browser saw. Idempotent, control plane only, and skipped when there is no
     # database yet.
     if Path(app.state.db_path).exists():
-        from discord_scraper.auth.admins import seed_admin
+        from discord_stats.auth.admins import seed_admin
         from discord_scraper.rollups.schema import create_control_tables, create_rollup_tables
         from discord_scraper.scraper.database import INDEXES as MESSAGE_INDEXES
 
@@ -154,7 +154,7 @@ def create_app(
     # Boot is the one moment nothing can be in flight, so this is where the
     # files a reload orphaned are reclaimed rather than sitting in the size of a
     # database each.
-    from discord_scraper.api import upload as staging
+    from discord_stats.api import upload as staging
 
     staging.sweep_orphans(Path(app.state.db_path).parent)
 
@@ -379,7 +379,7 @@ def create_app(
         # be able to hand out sessions. `serve --dev-login` prints a warning.
         @app.get("/auth/dev-login")
         def dev_login_route(level: str = "viewer"):
-            from discord_scraper.auth.session import Level, establish_session
+            from discord_stats.auth.session import Level, establish_session
 
             try:
                 chosen = Level[level.upper()]
@@ -510,7 +510,7 @@ def create_app(
         ``limit`` lets a caller ask for fewer messages; the 200 ceiling is this
         endpoint's own, so a generous ``ui.show_recent`` cannot widen it.
         """
-        from discord_scraper.api.recent import recent
+        from discord_stats.api.recent import recent
 
         conn = connection()
         try:

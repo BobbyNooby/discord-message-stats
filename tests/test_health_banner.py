@@ -56,7 +56,7 @@ def test_the_banner_reads_sqlite_not_process_memory(db_cfg, conn):
     """A second app instance sees state written through another connection."""
     from fastapi.testclient import TestClient
 
-    from discord_scraper.api.app import create_app
+    from discord_stats.api.app import create_app
     from discord_scraper.worker.state import set_worker_state
 
     cfg, path = db_cfg

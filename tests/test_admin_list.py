@@ -13,10 +13,10 @@ import sqlite3
 
 from fastapi.testclient import TestClient
 
-from discord_scraper.api.app import create_app
-from discord_scraper.auth.admins import is_admin
-from discord_scraper.auth.allowlist import decision_for
-from discord_scraper.auth.session import Level, establish_session, session_level
+from discord_stats.api.app import create_app
+from discord_stats.auth.admins import is_admin
+from discord_stats.auth.allowlist import decision_for
+from discord_stats.auth.session import Level, establish_session, session_level
 from tests.conftest import cfg_fixture
 
 
@@ -36,7 +36,7 @@ def test_boot_seeds_the_configured_admin_into_the_table(seeded_db_path, tmp_path
 
 
 def test_the_seed_is_idempotent_and_never_hardcodes_an_id(seeded_db_path, tmp_path):
-    from discord_scraper.auth.admins import seed_admin
+    from discord_stats.auth.admins import seed_admin
 
     cfg = cfg_fixture(tmp_path, admin_id="admin-1")
     create_app(cfg, seeded_db_path)

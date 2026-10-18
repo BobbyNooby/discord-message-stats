@@ -20,8 +20,8 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, Query, Request
 
-from discord_scraper.api.deps import connect
-from discord_scraper.auth.session import require_admin
+from discord_stats.api.deps import connect
+from discord_stats.auth.session import require_admin
 from discord_scraper.config import Config
 from discord_scraper.rollups.schema import FAMILIES
 

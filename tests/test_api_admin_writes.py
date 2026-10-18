@@ -76,7 +76,7 @@ def test_status_reports_the_database_size_and_the_admin_id(admin_client, tmp_pat
 
 
 def test_revoke_all_ends_every_session_but_the_caller(admin_client, conn, client_for):
-    from discord_scraper.auth.session import Level
+    from discord_stats.auth.session import Level
 
     other = client_for(Level.VIEWER)
     assert other.get("/api/bootstrap").status_code == 200
@@ -114,8 +114,8 @@ def test_the_api_migrates_an_older_database_at_boot(seeded_db_path, tmp_path):
 
     from fastapi.testclient import TestClient
 
-    from discord_scraper.api.app import create_app
-    from discord_scraper.auth.session import SESSION_COOKIE, Level, establish_session
+    from discord_stats.api.app import create_app
+    from discord_stats.auth.session import SESSION_COOKIE, Level, establish_session
     from discord_scraper.rollups.schema import create_control_tables
 
     # rebuild the old table shape over an otherwise valid database
@@ -322,8 +322,8 @@ def test_absorbing_a_whole_identity_moves_every_one_of_its_accounts(admin_client
 def test_merging_an_admin_moves_the_admin_row_and_their_sessions(admin_client, conn):
     """Admin is keyed on a Discord id. Absorbing that id must move the privilege
     to the surviving canonical, not leave it on a dead account."""
-    from discord_scraper.auth.admins import is_admin
-    from discord_scraper.auth.session import Level, establish_session, hash_token, session_level
+    from discord_stats.auth.admins import is_admin
+    from discord_stats.auth.session import Level, establish_session, hash_token, session_level
 
     admin_client.post("/api/admin/admins", json={"discord_id": "u2"})
     victim = establish_session(conn, "u2", Level.ADMIN)
@@ -350,8 +350,8 @@ def test_the_configured_admin_stays_admin_and_is_flagged_as_configured(seeded_db
 
     from fastapi.testclient import TestClient
 
-    from discord_scraper.api.app import create_app
-    from discord_scraper.auth.admins import is_admin
+    from discord_stats.api.app import create_app
+    from discord_stats.auth.admins import is_admin
 
     cfg = cfg_fixture(tmp_path, admin_id="u2")
     client = TestClient(create_app(cfg, seeded_db_path, dev_login=True),

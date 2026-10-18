@@ -123,7 +123,7 @@ def _current_level(request: Request) -> Level | None:
         # treated every visitor as a level was removed: an unauthenticated
         # request must be refused, always.
         return None
-    from discord_scraper.api.deps import connect_writable
+    from discord_stats.api.deps import connect_writable
 
     conn = connect_writable(request.app.state.db_path)
     try:

@@ -35,8 +35,8 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import StreamingResponse
 
-from discord_scraper.api.progress import read_events
-from discord_scraper.auth.session import require_admin
+from discord_stats.api.progress import read_events
+from discord_stats.auth.session import require_admin
 
 router = APIRouter(prefix="/api/admin", dependencies=[Depends(require_admin)])
 

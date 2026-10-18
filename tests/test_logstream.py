@@ -21,10 +21,10 @@ import time
 import pytest
 from fastapi.testclient import TestClient
 
-from discord_scraper.api import logstream
-from discord_scraper.api.app import create_app
-from discord_scraper.api.progress import read_events
-from discord_scraper.auth.session import SESSION_COOKIE, Level, establish_session
+from discord_stats.api import logstream
+from discord_stats.api.app import create_app
+from discord_stats.api.progress import read_events
+from discord_stats.auth.session import SESSION_COOKIE, Level, establish_session
 from discord_scraper.rollups.build import record_event
 from tests.conftest import cfg_fixture
 
