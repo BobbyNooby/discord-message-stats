@@ -340,3 +340,53 @@ def test_no_rollups_is_still_fatal(seeded_db_path, tmp_path, conn):
     response = client.get("/api/bootstrap")
     assert response.status_code == 503
     assert "have not been built" in response.json()["detail"]
+
+
+def test_a_matching_schema_version_is_silent(client, conn):
+    from discord_scraper.rollups.schema import SCHEMA_VERSION
+    from discord_scraper.scraper.database import set_meta
+
+    set_meta(conn, "schema_version", str(SCHEMA_VERSION))
+    response = client.get("/api/bootstrap")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["authors"]                    # the payload is intact
+    meta = body["meta"]
+    assert meta["schema_version"] == SCHEMA_VERSION
+    assert meta["schema_expected"] == SCHEMA_VERSION
+    assert meta["schema_message"] is None
+
+
+def test_a_mismatched_schema_version_warns_but_serves(client, conn):
+    from discord_scraper.rollups.schema import SCHEMA_VERSION
+    from discord_scraper.scraper.database import set_meta
+
+    set_meta(conn, "schema_version", str(SCHEMA_VERSION + 1))
+    response = client.get("/api/bootstrap")
+    assert response.status_code == 200             # never fail closed
+    body = response.json()
+    assert body["authors"]
+    assert body["meta"]["cells"] == 2
+    meta = body["meta"]
+    assert meta["schema_version"] == SCHEMA_VERSION + 1
+    assert meta["schema_expected"] == SCHEMA_VERSION
+    assert str(SCHEMA_VERSION + 1) in meta["schema_message"]
+    assert str(SCHEMA_VERSION) in meta["schema_message"]
+
+
+def test_an_unstamped_database_warns_honestly(client, conn):
+    from discord_scraper.rollups.schema import SCHEMA_VERSION
+    from discord_scraper.scraper.database import delete_meta
+
+    delete_meta(conn, "schema_version")
+    response = client.get("/api/bootstrap")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["authors"]
+    meta = body["meta"]
+    assert meta["schema_version"] is None
+    assert meta["schema_expected"] == SCHEMA_VERSION
+    message = meta["schema_message"]
+    assert message is not None
+    assert str(SCHEMA_VERSION) in message           # names what this library expects
+    assert "was built by library schema v" not in message   # no invented version
