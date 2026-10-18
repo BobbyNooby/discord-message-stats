@@ -11,7 +11,7 @@ import { MediaTile } from "../panels/MediaTile";
  */
 describe("truncated values", () => {
   it("keeps a clipped author name on the element", () => {
-    const name = "Bobbynooby (the very long display name)";
+    const name = "Alexandria-Cassandra (the very long display name)";
     render(
       <AuthorFilterList
         authors={[{ id: "u1", name, msgs: 3 }]}
