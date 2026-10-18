@@ -38,9 +38,15 @@ git clone --recurse-submodules https://github.com/BobbyNooby/discord-message-sta
 cd discord-message-stats
 
 pnpm install                         # submodule, .venv, both packages, web deps, .env
+pnpm build                           # the SPA the API serves
 
 cp config.example.toml config.toml   # then set source.channel_id
 # .env was created for you — put DISCORD_TOKEN in it
+
+# `discord-scraper` walks up from the pinned tool in vendor/ for its home, so
+# point it here, where config.toml, .env and output/ live. Every tool command
+# below assumes this export (the container sets it to /data instead).
+export DISCORD_SCRAPER_HOME="$PWD"
 ```
 
 That is the whole setup. `pnpm install` is idempotent, so re-run it any time.
@@ -97,6 +103,12 @@ overwrites one you already have. `.env` holds secrets:
 - `source.channel_id` — the channel ID (the number in the client URL
   `/channels/@me/<id>` for a DM, or right-click a channel → Copy Channel ID)
 - `source.batch_size` — messages per request (1–100; default 50)
+
+Both `config.toml` and `.env` are read from the tool's home, `output/messages.db`
+is written there, and `DISCORD_SCRAPER_HOME` selects it: the container sets
+`/data`, and the quickstart's `export DISCORD_SCRAPER_HOME="$PWD"` makes the repo
+root the home. Without the export the home is the pinned tool checkout under
+`vendor/`, so the three files there would shadow the ones you just copied.
 
 The rest — timezone, counted message types, the bot rule, stopword packs,
 identity merges, OAuth client id and redirect URI — have neutral defaults and
@@ -165,14 +177,10 @@ cd web && pnpm test && pnpm typecheck && pnpm build
 `pnpm install` already provides everything these need: the `[web,dev]` extras in
 `pyproject.toml` are FastAPI/uvicorn/authlib plus pytest.
 
-No network: the catch-up tests run against a temp SQLite file with only the
-HTTP call faked, and the rollup tests run against an in-memory database with
-the real schema. The resume paths get their own tests — a pass killed
-mid-update, a re-run that is already current, a `--max-batches` stop, and new
-messages arriving while a hole is still open.
-
-`python3 -m unittest discover -s tests -t .` also works, but it only finds the
-few `unittest.TestCase` classes, not the pytest-style functions.
+The suite builds temporary SQLite databases and drives the app through FastAPI's
+`TestClient`, with the thumbnail proxy's upstream fetch faked, so it needs no
+network. Every test is a pytest-style function — there is no `unittest.TestCase`
+to discover — so pytest is the runner, for the backend and the frontend alike.
 
 ## Schema
 
