@@ -61,10 +61,18 @@ def _serve(args: argparse.Namespace) -> int:
     try:
         # Serving no worker must not *demand* a Discord token, but the other secrets
         # still have to load or the admin list and OAuth client secret vanish.
-        cfg = load_config(config_path=config_path, require_token=False)
+        # Nor does it demand a channel: a fresh volume is seeded empty, and
+        # refusing to boot would hide the admin board that sets it. The UI warns.
+        cfg = load_config(config_path=config_path, require_token=False, require_channel=False)
     except SystemExit as exc:
         print(str(exc), file=sys.stderr)
         return 2
+    if not cfg.channel_id:
+        print(
+            "no channel configured: set source.channel_id in "
+            f"{config_path} (or in the admin board) — serving a warning until then",
+            file=sys.stderr,
+        )
 
     if bool(args.tls_cert) != bool(args.tls_key):
         print("--tls-cert and --tls-key must be given together", file=sys.stderr)

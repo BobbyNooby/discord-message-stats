@@ -1,24 +1,51 @@
-# Two services, one volume (spec §4.2, §14). The split exists so the Discord
-# token can live on the worker, which serves no HTTP: `api` runs without it.
+# One image, two services, one named volume. The split exists so the Discord
+# token can live only on the worker: `api` serves HTTP and needs no token, but
+# both read the same database on the shared volume.
 services:
   api:
     build: .
-    image: discord-scraper
-    command: ["discord-scraper", "serve", "--api", "--host", "0.0.0.0", "--port", "8000"]
+    image: discord-message-stats
+    command: ["discord-stats", "serve", "--api", "--host", "0.0.0.0", "--port", "8000"]
+    # required:false so `docker compose config` works before the first
+    # `pnpm install` has written .env.
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      DISCORD_SCRAPER_HOME: /data
+      DISCORD_SCRAPER_DB: /data/messages.db
+      DISCORD_SCRAPER_STATIC: /app/static
     ports:
       - "8000:8000"
     volumes:
-      - ./data:/data
+      - discord-data:/data
+    # The image carries the same check; repeating it here is what makes
+    # `depends_on: service_healthy` and Coolify's rollout gate work.
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=4).status==200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
     restart: unless-stopped
 
   worker:
     build: .
-    image: discord-scraper
+    image: discord-message-stats
     command: ["discord-scraper", "serve", "--worker"]
     env_file:
-      - .env
+      - path: .env
+        required: false
+    environment:
+      DISCORD_SCRAPER_HOME: /data
+      DISCORD_SCRAPER_DB: /data/messages.db
+      DISCORD_SCRAPER_STATIC: /app/static
     volumes:
-      - ./data:/data
-    restart: unless-stopped
+      - discord-data:/data
     depends_on:
-      - api
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  discord-data:

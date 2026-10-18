@@ -106,6 +106,24 @@ def _schema_meta(conn: sqlite3.Connection) -> dict:
     }
 
 
+def _channel_meta(cfg: Config) -> dict:
+    """Whether a channel is configured yet, and the line to show if not.
+
+    Same shape as the schema and timezone warnings: a fresh volume is seeded
+    with an empty ``source.channel_id``, and the dashboard serves anyway — exiting
+    there would hide the admin board that is one of the two ways to set it.
+    """
+    if cfg.channel_id:
+        return {"channel_configured": True, "channel_message": None}
+    return {
+        "channel_configured": False,
+        "channel_message": (
+            "no channel configured: set source.channel_id in config.toml "
+            "(or in the admin board), then scrape that channel"
+        ),
+    }
+
+
 def create_app(
     cfg: Config,
     db_path: str | Path,
@@ -323,6 +341,7 @@ def create_app(
             "checked_at": _now(),
             "banner": banner_for(stored),
             "last_ingest_at": stored.get("last_ingest_at"),
+            **_channel_meta(cfg),
         }
 
     @app.get("/auth/login")
@@ -497,6 +516,9 @@ def create_app(
                 # Same shape as the zone warning: what the database says, what
                 # this library expects, and one line the browser can print.
                 **_schema_meta(conn),
+                # And the same again for "there is no channel yet", which is the
+                # state of every freshly seeded volume.
+                **_channel_meta(effective),
             }
             return body
         finally:
