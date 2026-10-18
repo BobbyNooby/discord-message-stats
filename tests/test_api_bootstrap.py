@@ -252,6 +252,8 @@ def test_meta_reports_the_rollup_timezone_and_freshness(client, conn):
 
     meta = client.get("/api/bootstrap").json()["meta"]
     assert meta["timezone"] == "UTC"     # the zone the numbers were built in
+    assert meta["configured_timezone"] == "UTC"
+    assert meta["timezone_mismatch"] is False
     assert meta["stale"] is False
 
     # "z9" sorts after the fixture's "m7", like a real snowflake would
@@ -288,8 +290,11 @@ def test_meta_carries_the_ui_display_settings(db_cfg, tmp_path, conn, client):
     assert meta["time_format"] == "12h"
 
 
-def test_a_timezone_change_is_refused_not_mislabelled(db_cfg, tmp_path, conn):
-    """Spec §7.1: refuse rollups whose recorded timezone differs from config."""
+def test_a_timezone_change_is_served_with_a_warning(db_cfg, tmp_path, conn):
+    """Spec §7.1, revised: the buckets are correct for the zone they were built
+    in, so the dashboard serves them and names both zones instead of blanking.
+    The old 409 made a config edit indistinguishable from an unbuilt database,
+    and with an operator override set no rebuild could ever clear it."""
     from fastapi.testclient import TestClient
 
     from discord_scraper.api.app import create_app
@@ -301,5 +306,37 @@ def test_a_timezone_change_is_refused_not_mislabelled(db_cfg, tmp_path, conn):
     client = TestClient(create_app(moved, path))
     client.cookies.set(SESSION_COOKIE, establish_session(conn, "u1", Level.VIEWER))
     response = client.get("/api/bootstrap")
-    assert response.status_code == 409
+    assert response.status_code == 200
+    meta = response.json()["meta"]
+    assert meta["timezone"] == "UTC"                    # built in
+    assert meta["configured_timezone"] == "Europe/London"
+    assert meta["timezone_mismatch"] is True
+    assert "UTC" in meta["timezone_message"]
+    assert "Europe/London" in meta["timezone_message"]
+
+
+def test_an_operator_override_zone_mismatch_is_a_warning(admin_client):
+    """The live bug: an override the rebuild path used to ignore. The guard can
+    never be satisfied while that happens, so it must warn, not 409 forever."""
+    changed = admin_client.put("/api/admin/config", json={"timezone": "Europe/London"})
+    assert changed.status_code == 200
+
+    response = admin_client.get("/api/bootstrap")
+    assert response.status_code == 200
+    meta = response.json()["meta"]
+    assert meta["timezone"] == "UTC"
+    assert meta["configured_timezone"] == "Europe/London"
+    assert meta["timezone_mismatch"] is True
+
+
+def test_no_rollups_is_still_fatal(seeded_db_path, tmp_path, conn):
+    """No rollups at all is genuinely unusable data, not a zone disagreement."""
+    from fastapi.testclient import TestClient
+
+    from discord_scraper.auth.session import SESSION_COOKIE, Level, establish_session
+
+    client = TestClient(create_app(cfg_for(tmp_path), seeded_db_path))
+    client.cookies.set(SESSION_COOKIE, establish_session(conn, "u1", Level.VIEWER))
+    response = client.get("/api/bootstrap")
+    assert response.status_code == 503
     assert "rollups rebuild" in response.json()["detail"]
