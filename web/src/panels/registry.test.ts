@@ -49,6 +49,9 @@ function titlesInSource(): { file: string; titles: string[] }[] {
   const out: { file: string; titles: string[] }[] = [];
   for (const [file, text] of Object.entries(SOURCES).sort()) {
     if (file.endsWith(".test.tsx")) continue;
+    // CustomSection renders whatever the fork's registry declares, so its card
+    // titles are not upstream's to check.
+    if (file.endsWith("CustomSection.tsx")) continue;
     if (!/<Panel\b/.test(text)) continue;
     const constants = new Map<string, string>();
     for (const match of text.matchAll(/\bconst\s+([A-Z][A-Z0-9_]*)\s*=\s*"([^"]*)"/g)) {
