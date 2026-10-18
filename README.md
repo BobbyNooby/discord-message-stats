@@ -342,7 +342,7 @@ stopword edit, the tables are **stale** until you rebuild.
 
 | Route | Who | What |
 |---|---|---|
-| `/` | signed-in viewer | the dashboard: 36 panels in seven sections |
+| `/` | signed-in viewer | the dashboard: 40 cards over seven sections |
 | `/login` | anyone | Discord OAuth, scope `identify` only |
 | `/admin` | admin | data source, who shows, identity merge, ingest, rollup cache, access |
 | `/api/health` | anyone | liveness plus the banner state |
