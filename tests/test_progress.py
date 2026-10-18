@@ -283,6 +283,18 @@ def test_progress_since_returns_only_events_newer_than_that_id(admin_client):
     assert 0 < len(half["log"]) < len(first["log"])
 
 
+def test_progress_log_entries_carry_the_verbose_fields(admin_client):
+    """The stream and the poll share one entry type, so the poll has it too."""
+    body = admin_client.get("/api/admin/progress").json()
+    entry = body["log"][0]
+    assert set(entry) == {"id", "at", "kind", "family", "phase", "message",
+                          "level", "source", "scope"}
+    # Every rebuild row written now names its provenance; old rows stay readable.
+    assert entry["source"] == "rebuild"
+    assert entry["scope"] == "rollup"
+    assert entry["level"] in ("info", "warn", "error")
+
+
 def test_progress_says_how_far_behind_the_data_is(admin_client, conn):
     conn.execute(
         "INSERT INTO messages (id, channel_id, author_id, content, created_at, type) "
