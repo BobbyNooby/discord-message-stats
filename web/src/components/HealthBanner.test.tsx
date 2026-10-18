@@ -84,4 +84,59 @@ describe("<HealthBanner>", () => {
     expect(screen.getByRole("alert")).toBeInTheDocument();
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
   });
+
+  it("renders nothing when there is no schema message to show", () => {
+    const { container } = render(<HealthBanner banner={null} schemaMessage={null} />);
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it("renders nothing for a payload that predates the schema field", () => {
+    const { container } = render(<HealthBanner banner={null} />);
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it("shows the schema sentence the API phrased", () => {
+    render(
+      <HealthBanner
+        banner={null}
+        schemaMessage="This database was built by an older revision (no schema version). Some numbers may be missing. Recalculate to rebuild them."
+      />,
+    );
+    expect(screen.getByRole("status")).toHaveTextContent(/built by an older revision/i);
+  });
+
+  it("keeps a timezone mismatch and a schema mismatch readable together", () => {
+    // Different causes, different numbers at risk: neither sentence may replace
+    // the other.
+    render(
+      <HealthBanner
+        banner={null}
+        timezoneMismatch
+        timezoneMessage="These numbers were built in UTC; the configured timezone is Europe/London."
+        schemaMessage="This database was built by a newer revision (schema 2). Update the dashboard before trusting every number."
+      />,
+    );
+    const banner = screen.getByRole("status");
+    expect(banner).toHaveTextContent(/configured timezone is Europe\/London/);
+    expect(banner).toHaveTextContent(/built by a newer revision/);
+  });
+
+  it("shows the rebuild control for an admin and none for a viewer", () => {
+    const admin = render(
+      <HealthBanner
+        banner={null}
+        schemaMessage="This database was built by an older revision."
+        action={<button type="button">Recalculate now</button>}
+      />,
+    );
+    expect(screen.getByRole("button", { name: /recalculate now/i })).toBeInTheDocument();
+    admin.unmount();
+
+    const viewer = render(
+      <HealthBanner banner={null} schemaMessage="This database was built by an older revision." action={null} />,
+    );
+    expect(screen.getByRole("status")).toHaveTextContent(/older revision/);
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+    viewer.unmount();
+  });
 });

@@ -21,7 +21,9 @@ function daysSince(stamp: string | null | undefined): number | null {
  *    independent and have different fixes: *never ingested* means the scraper
  *    has not run, while *the configuration changed since the last rebuild* means
  *    the scraper is fine and a rebuild is owed. One banner element carries both
- *    rather than either hiding the other.
+ *    rather than either hiding the other. The same rule covers a schema-version
+ *    mismatch: it is a third independent fact, so it gets its own sentence and
+ *    never replaces the timezone one.
  *
  * The rebuild is offered as a control (`action`), never as the shell command an
  * operator would type — the person reading this page is not running a terminal.
@@ -34,6 +36,7 @@ export function HealthBanner({
   timeFormat,
   timezoneMismatch,
   timezoneMessage,
+  schemaMessage,
   action,
 }: {
   banner: "stale" | "token_dead" | null;
@@ -46,6 +49,9 @@ export function HealthBanner({
   timezoneMismatch?: boolean;
   /** Both zones, in a sentence the API already phrased. */
   timezoneMessage?: string | null;
+  /** The installed library and the database disagree on the schema, in the
+   *  API's own sentence; null when they agree. */
+  schemaMessage?: string | null;
   /** "Recalculate now", when the caller may queue one. */
   action?: ReactNode;
 }) {
@@ -72,7 +78,7 @@ export function HealthBanner({
           ? "Data is of unknown age."
           : `Data is ${daysSince(lastIngestAt)} days old.`
       : null;
-  if (!age && !stale && !timezoneMismatch) return null;
+  if (!age && !stale && !timezoneMismatch && !schemaMessage) return null;
   return (
     <div
       role="status"
@@ -91,6 +97,7 @@ export function HealthBanner({
             "These numbers were built in a different timezone than the one configured now."}
         </p>
       ) : null}
+      {schemaMessage ? <p>{schemaMessage}</p> : null}
       {action}
     </div>
   );
