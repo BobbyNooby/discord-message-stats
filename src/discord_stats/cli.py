@@ -11,6 +11,22 @@ import sys
 from pathlib import Path
 
 
+def _checkout_root() -> Path | None:
+    """This dashboard checkout, when the package runs from one.
+
+    The tool resolves its own home by walking up from its installed package,
+    which under this repo is ``vendor/discord-message-scraper`` — a directory
+    that never holds the dashboard's ``config.toml``, ``.env`` or ``output/``.
+    The README keeps all three at the checkout root, so a plain
+    ``discord-stats serve`` has to look here; ``DISCORD_SCRAPER_HOME`` still
+    wins, and a wheel install (no checkout around it) keeps the tool's default.
+    """
+    candidate = Path(__file__).resolve().parents[2]
+    if (candidate / "pyproject.toml").is_file() and (candidate / "src" / "discord_stats").is_dir():
+        return candidate
+    return None
+
+
 def _spa_dir() -> Path | None:
     """The SPA this dashboard checkout built, if it has one.
 
@@ -57,26 +73,36 @@ def _parser() -> argparse.ArgumentParser:
 
 
 def _serve(args: argparse.Namespace) -> int:
+    import os
     from pathlib import Path
 
     from discord_scraper.cli import _find_static
     from discord_scraper.config import PROJECT_DIR, load_config
-    from discord_scraper.scraper.config import DB_PATH
+    from discord_scraper.scraper.config import resolve_db_path
 
-    database = Path(args.db) if args.db else DB_PATH
+    # `DISCORD_SCRAPER_HOME` wins, then this checkout, then the tool's own
+    # walk-up. See `_checkout_root` for why the middle step exists.
+    override = os.environ.get("DISCORD_SCRAPER_HOME")
+    home = Path(override).expanduser() if override else (_checkout_root() or PROJECT_DIR)
+    database = Path(args.db) if args.db else resolve_db_path(home)
     if not database.exists():
         print(
             f"no database at {database} — run `discord-scraper scrape` first",
             file=sys.stderr,
         )
         return 2
-    config_path = Path(args.config) if args.config else PROJECT_DIR / "config.toml"
+    config_path = Path(args.config) if args.config else home / "config.toml"
     try:
         # Serving no worker must not *demand* a Discord token, but the other secrets
         # still have to load or the admin list and OAuth client secret vanish.
         # Nor does it demand a channel: a fresh volume is seeded empty, and
         # refusing to boot would hide the admin board that sets it. The UI warns.
-        cfg = load_config(config_path=config_path, require_token=False, require_channel=False)
+        cfg = load_config(
+            env_path=home / ".env" if (home / ".env").is_file() else None,
+            config_path=config_path,
+            require_token=False,
+            require_channel=False,
+        )
     except SystemExit as exc:
         print(str(exc), file=sys.stderr)
         return 2

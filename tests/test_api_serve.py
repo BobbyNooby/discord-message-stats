@@ -193,6 +193,69 @@ def test_serve_api_without_the_web_extra_names_the_fix(tmp_path, monkeypatch, ca
     assert "Traceback" not in err
 
 
+def test_the_serve_defaults_come_from_this_checkout(tmp_path, monkeypatch):
+    """No --db/--config: the README's root config.toml, .env and output/ are used.
+
+    The tool's default home walks up to `vendor/discord-message-scraper`, which
+    holds neither, so without this the plain `discord-stats serve` the README
+    prints exits 2 on a missing vendor database.
+    """
+    import uvicorn
+
+    from discord_stats import cli as stats_cli
+    from discord_scraper.db import connect_writable
+    from discord_scraper.rollups.schema import create_control_tables
+
+    database = tmp_path / "output" / "messages.db"
+    database.parent.mkdir()
+    conn = connect_writable(database)
+    create_control_tables(conn)
+    conn.close()
+    (tmp_path / "config.toml").write_text(
+        '[source]\nchannel_id = "checkout-channel"\ntimezone = "UTC"\n', encoding="utf-8"
+    )
+    (tmp_path / ".env").write_text("SESSION_SECRET=from-the-checkout\n", encoding="utf-8")
+    monkeypatch.setattr(stats_cli, "_checkout_root", lambda: tmp_path)
+    monkeypatch.delenv("DISCORD_SCRAPER_HOME", raising=False)
+    monkeypatch.delenv("DISCORD_SCRAPER_DB", raising=False)
+    monkeypatch.delenv("SESSION_SECRET", raising=False)
+    seen: dict = {}
+    monkeypatch.setattr(uvicorn, "run", lambda app, **kw: seen.update(app=app, **kw))
+
+    assert stats_main(["serve", "--api", "--port", "8096"]) == 0
+    assert seen["app"].state.db_path == str(database)
+    assert seen["app"].state.cfg.channel_id == "checkout-channel"
+    assert seen["app"].state.cfg.session_secret == "from-the-checkout"
+
+
+def test_an_explicit_home_still_wins_over_the_checkout(tmp_path, monkeypatch):
+    """`DISCORD_SCRAPER_HOME` points the audit/deploy workflows at a copy."""
+    import uvicorn
+
+    from discord_stats import cli as stats_cli
+    from discord_scraper.db import connect_writable
+    from discord_scraper.rollups.schema import create_control_tables
+
+    home = tmp_path / "home"
+    database = home / "output" / "messages.db"
+    database.parent.mkdir(parents=True)
+    conn = connect_writable(database)
+    create_control_tables(conn)
+    conn.close()
+    (home / "config.toml").write_text(
+        '[source]\nchannel_id = "home-channel"\ntimezone = "UTC"\n', encoding="utf-8"
+    )
+    monkeypatch.setenv("DISCORD_SCRAPER_HOME", str(home))
+    monkeypatch.delenv("DISCORD_SCRAPER_DB", raising=False)
+    monkeypatch.setattr(stats_cli, "_checkout_root", lambda: tmp_path / "checkout")
+    seen: dict = {}
+    monkeypatch.setattr(uvicorn, "run", lambda app, **kw: seen.update(app=app, **kw))
+
+    assert stats_main(["serve", "--api", "--port", "8095"]) == 0
+    assert seen["app"].state.db_path == str(database)
+    assert seen["app"].state.cfg.channel_id == "home-channel"
+
+
 def test_the_dashboard_imports_without_the_old_tool_api():
     """The dashboard must not reach for the tool's old api/auth modules."""
     import sys
