@@ -12,7 +12,6 @@ from __future__ import annotations
 import json
 import shutil
 import sqlite3
-from dataclasses import replace
 from datetime import datetime, timezone
 from typing import Any
 from zoneinfo import available_timezones
@@ -31,7 +30,15 @@ from discord_scraper.auth.admins import (
     remove_admin,
 )
 from discord_scraper.auth.session import SESSION_COOKIE, hash_token, require_admin
-from discord_scraper.config import AUTO_TIMEZONE, Config, config_from_settings, is_timezone
+from discord_scraper.config import AUTO_TIMEZONE, Config
+from discord_scraper.overrides import (
+    OVERRIDABLE,
+    InvalidOverride,
+    apply as effective_config,
+    effective_for,
+    read as _overrides,
+    validate as _validate_override,
+)
 from discord_scraper.rollups import query
 from discord_scraper.rollups.build import config_digest
 from discord_scraper.rollups.schema import FAMILIES, is_stale
@@ -40,11 +47,6 @@ from discord_scraper.scraper import api as discord_api
 router = APIRouter(prefix="/api/admin", dependencies=[Depends(require_admin)])
 
 JOB_KINDS = ("catch_up", "backfill", "probe", "rebuild_rollups")
-ALLOWLIST_POLICIES = ("posted", "explicit")
-# The control-plane `config` table holds operator overrides. A fixed key set:
-# an admin endpoint that writes arbitrary rows is a liability, not a feature.
-OVERRIDABLE = ("channel_id", "timezone", "ignore_words", "allowlist_policy",
-               "cron_enabled", "cron_hours")
 
 JOB_STATUSES = ("queued", "running", "done", "failed", "cancelled")
 
@@ -92,39 +94,6 @@ def _log_event(request: Request, *, message: str, scope: str, level: str = "info
         pass   # the action is already done; a missing log line must not 500 it
     finally:
         conn.close()
-
-
-def _overrides(conn: sqlite3.Connection) -> dict[str, str]:
-    return dict(conn.execute("SELECT key, value FROM config"))
-
-
-def effective_config(base: Config, overrides: dict[str, str]) -> Config:
-    """``base`` with the operator's overrides applied."""
-    changes: dict[str, Any] = {}
-    if "channel_id" in overrides:
-        changes["channel_id"] = overrides["channel_id"]
-    if "timezone" in overrides:
-        changes["timezone"] = overrides["timezone"]
-    if "allowlist_policy" in overrides:
-        changes["allowlist"] = overrides["allowlist_policy"]
-    if "ignore_words" in overrides:
-        try:
-            changes["ignore_words"] = json.loads(overrides["ignore_words"])
-        except ValueError:
-            changes["ignore_words"] = []
-    if "cron_enabled" in overrides:
-        changes["cron_enabled"] = str(overrides["cron_enabled"]).lower() in {"1", "true", "yes", "on"}
-    if "cron_hours" in overrides:
-        try:
-            changes["cron_hours"] = int(overrides["cron_hours"])
-        except ValueError:
-            pass
-    return config_from_settings(replace(base.settings, **changes)) if changes else base
-
-
-def effective_for(conn: sqlite3.Connection, base: Config) -> Config:
-    """``base`` with the stored operator overrides — public for other modules."""
-    return effective_config(base, _overrides(conn))
 
 
 def _effective_for(request: Request, conn: sqlite3.Connection) -> Config:
@@ -699,36 +668,11 @@ def put_config(request: Request, payload: dict) -> dict:
 
 
 def _validate(key: str, value: Any) -> None:
-    if key == "timezone":
-        if not is_timezone(str(value)):
-            raise HTTPException(
-                status_code=400,
-                detail=f'unknown timezone: {value} (use an IANA name like '
-                       '"Asia/Kuala_Lumpur", or "auto")',
-            )
-    elif key == "allowlist_policy" and str(value) not in ALLOWLIST_POLICIES:
-        raise HTTPException(
-            status_code=400,
-            detail=f"allowlist_policy must be one of {', '.join(ALLOWLIST_POLICIES)}",
-        )
-    elif key == "ignore_words":
-        # The loader refuses a stopword list that is not words for the same
-        # reason: `text.py` calls `.strip()` on every entry, so anything else
-        # takes the next rebuild down instead of the save that caused it.
-        if not isinstance(value, list) or not all(isinstance(word, str) for word in value):
-            raise HTTPException(status_code=400, detail="ignore_words must be a list of words")
-    elif key == "channel_id":
-        # A list stringifies to "['a']" and reads as non-empty, which is how a
-        # wrong type used to reach the channel the whole dashboard queries.
-        if not isinstance(value, str) or not value.strip():
-            raise HTTPException(status_code=400, detail="channel_id must be a channel id")
-    elif key == "cron_hours":
-        try:
-            hours = int(value)
-        except (TypeError, ValueError):
-            raise HTTPException(status_code=400, detail="cron_hours must be a number") from None
-        if not 1 <= hours <= 24:
-            raise HTTPException(status_code=400, detail="cron_hours must be between 1 and 24")
+    """Refuse a bad value as a 400, using the authority's own rules."""
+    try:
+        _validate_override(key, value)
+    except InvalidOverride as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from None
 
 
 @router.get("/jobs")
