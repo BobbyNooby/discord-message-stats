@@ -96,6 +96,63 @@ def test_an_unbuilt_spa_is_a_hint_not_a_crash(tmp_path, monkeypatch, capsys):
     assert seen["port"] == 8099
 
 
+def test_the_checkout_spa_is_served_without_an_explicit_static_dir(tmp_path, monkeypatch):
+    """`discord-stats serve` with no --static-dir must find this checkout's SPA.
+
+    The tool's own fallbacks look beside the tool install
+    (`vendor/discord-message-scraper`), which never holds the dashboard's build,
+    so the dashboard has to name its own `web/dist`.
+    """
+    import uvicorn
+
+    from discord_scraper import cli as cli_module
+    from discord_stats import cli as stats_cli
+
+    database = _database(tmp_path)
+    config = _config(tmp_path)
+    spa = tmp_path / "web" / "dist"
+    spa.mkdir(parents=True)
+    (spa / "index.html").write_text("<html></html>", encoding="utf-8")
+    monkeypatch.setattr(stats_cli, "_spa_dir", lambda: spa)
+    seen: dict = {}
+    monkeypatch.setattr(
+        cli_module,
+        "_find_static",
+        lambda explicit, **kw: seen.setdefault("explicit", explicit) or spa,
+    )
+    monkeypatch.setattr(uvicorn, "run", lambda app, **kw: None)
+    assert stats_main(["serve", "--api", "--db", str(database),
+                       "--config", str(config)]) == 0
+    assert seen["explicit"] == spa
+
+
+def test_an_explicit_static_dir_still_wins(tmp_path, monkeypatch):
+    import uvicorn
+
+    from discord_scraper import cli as cli_module
+
+    database = _database(tmp_path)
+    config = _config(tmp_path)
+    chosen = tmp_path / "elsewhere"
+    seen: dict = {}
+    monkeypatch.setattr(
+        cli_module,
+        "_find_static",
+        lambda explicit, **kw: seen.setdefault("explicit", explicit) or chosen,
+    )
+    monkeypatch.setattr(uvicorn, "run", lambda app, **kw: None)
+    assert stats_main(["serve", "--api", "--db", str(database),
+                       "--config", str(config), "--static-dir", str(chosen)]) == 0
+    assert str(seen["explicit"]) == str(chosen)
+
+
+def test_the_spa_lookup_never_raises():
+    from discord_stats.cli import _spa_dir
+
+    found = _spa_dir()
+    assert found is None or (found / "index.html").is_file()
+
+
 def test_tls_flags_must_come_as_a_pair(tmp_path, capsys):
     """A certificate without its key would silently serve plain HTTP."""
     from tests.conftest import cfg_fixture
