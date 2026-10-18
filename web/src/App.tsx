@@ -38,6 +38,7 @@ import { useKeyboardShortcuts } from "./lib/shortcuts";
 import { schemaWarning } from "./lib/schemaWarning";
 import { stampLabel, timeFormatOf } from "./lib/timeFormat";
 import { Calendar } from "./panels/Calendar";
+import { CustomSection } from "./panels/CustomSection";
 import { LinksSection } from "./panels/LinksSection";
 import { MediaSection } from "./panels/MediaSection";
 import { RichMediaSection } from "./panels/RichMedia";
@@ -249,6 +250,8 @@ function DashboardBody({
         <LinksSection payload={payload} filters={filters} />
         <RichMediaSection payload={payload} filters={filters} />
         <MediaSection payload={payload} filters={filters} />
+        {/* Fork panels, rendered last. Upstream ships none, so this is silent. */}
+        <CustomSection payload={payload} filters={filters} />
       </PanelScopeProvider>
       <footer className="pb-8 text-[11px] text-[var(--color-muted)]">
         {payload.meta.payload_kb} KB payload ({payload.meta.payload_gzip_kb} KB gzipped) ·{" "}
