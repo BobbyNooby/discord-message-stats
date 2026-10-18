@@ -12,7 +12,8 @@ docs/
 config.toml
 
 # frontend build output and dependencies: generated, never committed
-web/node_modules/
+# `node_modules/` catches both the root pnpm store metadata and web/'s tree.
+node_modules/
 web/dist/
 *.tsbuildinfo
 
