@@ -16,23 +16,28 @@ import type { Payload } from "../api/types";
 import { initialFilters } from "../filters/reducer";
 import { Attachments } from "./Attachments";
 import { ChatHealth } from "./ChatHealth";
+import { Conversational } from "./Conversational";
+import { EditRate } from "./EditRate";
 import { foldPie, pieOption } from "./chartShape";
 import { EmbedTypes } from "./EmbedTypes";
 import { Emoji } from "./Emoji";
+import { LinkDomains } from "./LinkDomains";
 import { MessageTypes } from "./MessageTypes";
 import { MessagesPerYear } from "./MessagesPerYear";
 import { Providers } from "./Providers";
 import { Reactions } from "./Reactions";
 import { RepliesVsStandalone } from "./RepliesVsStandalone";
+import { Season } from "./Season";
 import { TextVsMedia } from "./TextVsMedia";
+import { TopLinks } from "./TopLinks";
 import { WordCloud } from "./WordCloud";
 
 const payload = {
   authors: [{ id: "u1", name: "A", msgs: 5 }],
   days: ["2023-01-01", "2024-01-01"],
   cells: [
-    [0, 0, 2, 10, 1, 0, 0],
-    [1, 0, 3, 20, 1, 0, 0],
+    [0, 0, 2, 10, 1, 0, 1],
+    [1, 0, 3, 20, 1, 0, 1],
   ],
   meta: { types: [[0, "default", 5]], stale: false, can_admin: false, timezone: "UTC", total: 5 },
   types: [
@@ -49,6 +54,10 @@ const payload = {
     ["world", 5],
   ],
   wordAuthors: {},
+  linkDomains: ["example.com"],
+  linkCells: [[0, 0, 0, 5]],
+  linkStats: { msgs: 5, domains: 1, both: 0 },
+  topLinks: [["https://example.com", 4]],
 } as unknown as Payload;
 
 const filters = initialFilters(payload);
@@ -224,5 +233,53 @@ describe("the word cloud reads its slot variables", () => {
     const words = (captured.option as { series: { data: { textStyle: { color: string } }[] }[] })
       .series[0].data;
     expect(words.map((word) => word.textStyle.color)).toEqual(["#ff00ff", "#eb459e"]);
+  });
+});
+
+describe("the remaining palette literals read the theme", () => {
+  type LineSeries = {
+    lineStyle: { color: string };
+    markLine: { lineStyle: { color: string } };
+  };
+
+  it("How conversational draws its line from --chart-5 and its average from --chart-2", () => {
+    cssValues({ "--chart-5": "#111111", "--chart-2": "#222222" });
+    render(<Conversational payload={payload} filters={filters} />);
+
+    const series = (captured.option as { series: LineSeries[] }).series[0];
+    expect(series.lineStyle.color).toBe("#111111");
+    expect(series.markLine.lineStyle.color).toBe("#222222");
+  });
+
+  it("Who proofreads draws its trend from --chart-4 and its average from --chart-2", () => {
+    cssValues({ "--chart-4": "#111111", "--chart-2": "#222222" });
+    render(<EditRate payload={payload} filters={filters} />);
+
+    const series = (captured.option as { series: LineSeries[] }).series[0];
+    expect(series.lineStyle.color).toBe("#111111");
+    expect(series.markLine.lineStyle.color).toBe("#222222");
+  });
+
+  it("Which month of the year draws its peak from --chart-3 and the rest from --chart-8", () => {
+    cssValues({ "--chart-3": "#111111", "--chart-8": "#222222" });
+    render(<Season payload={payload} filters={filters} />);
+
+    const data = (captured.option as { series: { data: { itemStyle: { color: string } }[] }[] })
+      .series[0].data;
+    // January holds every message in the fixture, so it is the peak.
+    expect(data[0].itemStyle.color).toBe("#111111");
+    expect(data[1].itemStyle.color).toBe("#222222");
+  });
+
+  it("Where the chat lives draws its bars from --chart-5", () => {
+    cssValues({ "--chart-5": "#111111" });
+    render(<LinkDomains payload={payload} filters={filters} />);
+    expect(barColor(captured.option)).toBe("#111111");
+  });
+
+  it("Most reposted links draws its bars from --chart-8", () => {
+    cssValues({ "--chart-8": "#111111" });
+    render(<TopLinks payload={payload} />);
+    expect(barColor(captured.option)).toBe("#111111");
   });
 });
