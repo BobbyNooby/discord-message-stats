@@ -18,7 +18,7 @@ from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from discord_scraper.api import admin, progress, viewer
+from discord_scraper.api import admin, logstream, progress, viewer
 from discord_scraper.api.deps import connect, connect_writable
 from discord_scraper.auth import oauth
 from discord_scraper.auth.allowlist import decision_for, record_login_attempt, too_many_attempts
@@ -89,6 +89,7 @@ def create_app(
     app.state.db_path = str(db_path)
     app.include_router(admin.router)
     app.include_router(progress.router)
+    app.include_router(logstream.router)
 
     # Bring the database up to shape once, at boot. `CREATE TABLE IF NOT EXISTS`
     # never adds a column, so an instance started before a schema addition fails
