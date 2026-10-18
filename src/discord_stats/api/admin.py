@@ -10,6 +10,7 @@ being a flag someone could forget to check.
 from __future__ import annotations
 
 import json
+import shutil
 import sqlite3
 from dataclasses import replace
 from datetime import datetime, timezone
@@ -34,6 +35,7 @@ from discord_scraper.config import AUTO_TIMEZONE, Config, config_from_settings, 
 from discord_scraper.rollups import query
 from discord_scraper.rollups.build import config_digest
 from discord_scraper.rollups.schema import FAMILIES, is_stale
+from discord_scraper.scraper import api as discord_api
 
 router = APIRouter(prefix="/api/admin", dependencies=[Depends(require_admin)])
 
@@ -44,7 +46,14 @@ ALLOWLIST_POLICIES = ("posted", "explicit")
 OVERRIDABLE = ("channel_id", "timezone", "ignore_words", "allowlist_policy",
                "cron_enabled", "cron_hours")
 
-JOB_STATUSES = ("queued", "running", "done", "failed")
+JOB_STATUSES = ("queued", "running", "done", "failed", "cancelled")
+
+# An on-demand check is a button, not a job: it must answer in seconds, so it
+# uses a short timeout instead of the scraper's 30 s.
+TOKEN_TEST_TIMEOUT = 10.0
+# The board shows the newest answer; the older ones are only useful as a short
+# failure trail, so the table is pruned to this many rows on every write.
+TOKEN_CHECK_HISTORY = 50
 
 
 class JobRequest(BaseModel):
@@ -204,6 +213,384 @@ def status(request: Request) -> dict:
         conn.close()
 
 
+# --- token and channel health ------------------------------------------------
+#
+# The board shows "token status unknown" because nothing ever asked Discord. The
+# check below is that ask, on a button: `GET /users/@me` proves the token, then
+# `GET /channels/{id}` proves the configured channel is one the token can read.
+# Neither the token nor a fragment of it is ever put in a response or a log — the
+# only thing kept is the account's public identity.
+
+
+def _bot_from(body: Any) -> dict[str, Any] | None:
+    """The account behind a token, or ``None`` when Discord gave nothing usable."""
+    if not isinstance(body, dict):
+        return None
+    ident = str(body.get("id") or "")
+    if not ident:
+        return None
+    avatar = body.get("avatar")
+    avatar_url = None
+    if avatar:
+        suffix = "gif" if str(avatar).startswith("a_") else "png"
+        avatar_url = f"https://cdn.discordapp.com/avatars/{ident}/{avatar}.{suffix}"
+    return {
+        "id": ident,
+        "username": body.get("username"),
+        "global_name": body.get("global_name"),
+        "avatar_url": avatar_url,
+    }
+
+
+def _check_channel(token: str, channel_id: str) -> dict[str, Any]:
+    status, body, error = discord_api.get_channel(token, channel_id, timeout=TOKEN_TEST_TIMEOUT)
+    if status == 200 and isinstance(body, dict):
+        return {
+            "ok": True,
+            "id": str(body.get("id") or channel_id),
+            "name": body.get("name"),
+            "error": None,
+        }
+    return {
+        "ok": False,
+        "id": channel_id,
+        "name": None,
+        "error": error or f"HTTP {status}: unexpected response",
+    }
+
+
+def run_token_check(token: str, channel_id: str) -> dict[str, Any]:
+    """Ask Discord who the token is, then whether it can reach the channel.
+
+    A network failure is a reported result, never an exception: a dead Discord
+    must not turn the admin button into a 500. The channel is only checked when
+    the token worked — a failed token makes every other answer meaningless.
+    """
+    checked_at = _now()
+    status, body, error = discord_api.get_current_user(token, timeout=TOKEN_TEST_TIMEOUT)
+    bot = _bot_from(body) if status == 200 else None
+    if bot is not None:
+        error = None
+        channel = _check_channel(token, channel_id)
+    else:
+        error = error or f"HTTP {status}: unexpected response"
+        channel = {
+            "ok": False,
+            "id": channel_id,
+            "name": None,
+            "error": "token check failed — channel not checked",
+        }
+    return {
+        "ok": bot is not None,
+        "checked_at": checked_at,
+        "http_status": status,
+        "bot": bot,
+        "error": error,
+        "channel": channel,
+    }
+
+
+def _store_token_check(conn: sqlite3.Connection, result: dict[str, Any]) -> None:
+    """Append the result, then keep only the newest few. Pruned on every write."""
+    bot = result.get("bot") or {}
+    channel = result.get("channel") or {}
+    conn.execute(
+        """
+        INSERT INTO token_checks (checked_at, ok, http_status, bot_id, bot_username,
+                                  bot_global_name, bot_avatar_url, error, channel_id,
+                                  channel_ok, channel_name, channel_error)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            result["checked_at"], 1 if result["ok"] else 0, result["http_status"],
+            bot.get("id"), bot.get("username"), bot.get("global_name"), bot.get("avatar_url"),
+            result.get("error"),
+            channel.get("id"), None if "ok" not in channel else (1 if channel["ok"] else 0),
+            channel.get("name"), channel.get("error"),
+        ),
+    )
+    conn.execute(
+        "DELETE FROM token_checks WHERE id NOT IN "
+        "(SELECT id FROM token_checks ORDER BY id DESC LIMIT ?)",
+        (TOKEN_CHECK_HISTORY,),
+    )
+    conn.commit()
+
+
+def _token_result(row: sqlite3.Row) -> dict[str, Any]:
+    """One stored check as the board's shape. ``error`` is only the token's."""
+    bot = None
+    if row["bot_id"]:
+        bot = {
+            "id": row["bot_id"],
+            "username": row["bot_username"],
+            "global_name": row["bot_global_name"],
+            "avatar_url": row["bot_avatar_url"],
+        }
+    channel = None
+    if row["channel_id"]:
+        channel = {
+            "ok": bool(row["channel_ok"]),
+            "id": row["channel_id"],
+            "name": row["channel_name"],
+            "error": row["channel_error"],
+        }
+    return {
+        "status": "ok" if row["ok"] else "failed",
+        "checked_at": row["checked_at"],
+        "bot": bot,
+        "error": row["error"],
+        "channel": channel,
+    }
+
+
+@router.post("/token/test")
+def test_token(request: Request) -> dict:
+    """Run the check now and persist it, so the board need not run it again."""
+    conn = _conn(request)
+    try:
+        cfg = _effective_for(request, conn)
+    finally:
+        conn.close()
+    result = run_token_check(cfg.token, cfg.channel_id)
+    conn = _conn(request)
+    try:
+        try:
+            _store_token_check(conn, result)
+        except sqlite3.OperationalError:
+            # An unwritable control plane must not erase the answer the button
+            # was pressed for; the reply is still honest, just not remembered.
+            pass
+    finally:
+        conn.close()
+    return result
+
+
+@router.get("/token")
+def token_status(request: Request) -> dict:
+    """The stored last check. ``unknown`` is a real state: never checked."""
+    conn = _conn(request)
+    try:
+        row = conn.execute(
+            "SELECT * FROM token_checks ORDER BY id DESC LIMIT 1"
+        ).fetchone()
+    except sqlite3.OperationalError:
+        row = None
+    finally:
+        conn.close()
+    if row is None:
+        return {"status": "unknown", "checked_at": None, "bot": None,
+                "error": None, "channel": None}
+    return _token_result(row)
+
+
+# --- diagnostics -------------------------------------------------------------
+#
+# Everything here is an aggregate: a count, an id, a timestamp, a size or a
+# name. Message content and media URLs never appear — that is the one rule this
+# endpoint shares with the rest of the API, and it is the reason a viewer cannot
+# call it. Counts come from the rollups the rebuild already wrote, never from a
+# fresh scan of `messages`.
+
+
+def _scalar(conn: sqlite3.Connection, sql: str, params: tuple = ()) -> int | None:
+    try:
+        row = conn.execute(sql, params).fetchone()
+    except sqlite3.OperationalError:
+        return None
+    return None if row is None else int(row[0] or 0)
+
+
+def _short(text: Any, limit: int = 300) -> str | None:
+    if text is None:
+        return None
+    text = str(text)
+    return text if len(text) <= limit else text[:limit] + "…"
+
+
+def _git_commit(root: Path) -> str | None:
+    """The short commit, read from ``.git`` directly — no process per call."""
+    git = root / ".git"
+    try:
+        if git.is_file():
+            line = git.read_text(encoding="utf-8").strip()
+            if not line.startswith("gitdir:"):
+                return None
+            git = Path(line.split(":", 1)[1].strip())
+            if not git.is_absolute():
+                git = root / git
+        head = (git / "HEAD").read_text(encoding="utf-8").strip()
+        if head.startswith("ref:"):
+            head = (git / head[4:].strip()).read_text(encoding="utf-8").strip()
+    except OSError:
+        return None
+    return head[:12] or None
+
+
+def _recent_failures(conn: sqlite3.Connection, limit: int = 5) -> list[dict[str, Any]]:
+    """The last few control-plane failures, newest first.
+
+    Jobs are the queue's record; ``rebuild_events`` is the rebuild's. Both carry
+    only an exception string or a phase message — never message text.
+    """
+    found: list[dict[str, Any]] = []
+    for row in conn.execute(
+        "SELECT id, kind, finished_at, error FROM jobs "
+        "WHERE status = 'failed' ORDER BY id DESC LIMIT ?",
+        (int(limit),),
+    ):
+        found.append({"source": "job", "id": int(row[0]), "kind": str(row[1]),
+                      "at": row[2], "error": _short(row[3])})
+    try:
+        for row in conn.execute(
+            "SELECT id, family, finished_at, message FROM rebuild_events "
+            "WHERE phase = 'failed' ORDER BY id DESC LIMIT ?",
+            (int(limit),),
+        ):
+            found.append({"source": "rebuild", "id": int(row[0]),
+                          "kind": str(row[1] or "run"), "at": row[2],
+                          "error": _short(row[3])})
+    except sqlite3.OperationalError:
+        pass
+    found.sort(key=lambda item: (item["at"] or ""), reverse=True)
+    return found[:limit]
+
+
+@router.get("/diagnostics")
+def diagnostics(request: Request) -> dict:
+    """The one screen an admin opens when something looks wrong."""
+    from discord_scraper import __version__
+    from discord_scraper.scraper.config import PROJECT_DIR
+
+    conn = _conn(request)
+    try:
+        cfg = _effective_for(request, conn)
+        overrides = _overrides(conn)
+        digest = config_digest(cfg, conn)
+        database = Path(app_db_path(request))
+        size_bytes = database.stat().st_size if database.exists() else 0
+
+        families: list[dict[str, Any]] = []
+        stale_count = 0
+        for family in FAMILIES:
+            # `cheap=True`: an indexed newest-id lookup, not a message count.
+            family_stale = is_stale(conn, cfg.channel_id, family, config_hash=digest, cheap=True)
+            stale_count += 1 if family_stale else 0
+            meta = query.provenance_row(conn, cfg.channel_id, family)
+            families.append({
+                "family": family,
+                "stale": family_stale,
+                "computed_at": meta["computed_at"] if meta else None,
+            })
+
+        counts = {
+            # Summed from `rollup_type`: a rollup over types covers every counted
+            # message, so no `COUNT(*) FROM messages` and no full-table scan.
+            "messages": _scalar(
+                conn, "SELECT COALESCE(SUM(msgs), 0) FROM rollup_type WHERE channel_id = ?",
+                (cfg.channel_id,)),
+            "media_messages": _scalar(
+                conn, "SELECT COALESCE(SUM(media), 0) FROM rollup_activity WHERE channel_id = ?",
+                (cfg.channel_id,)),
+            "media_urls": _scalar(
+                conn, "SELECT COUNT(*) FROM rollup_media WHERE channel_id = ?",
+                (cfg.channel_id,)),
+            "link_messages": _scalar(
+                conn, "SELECT COALESCE(SUM(value), 0) FROM rollup_stats "
+                      "WHERE channel_id = ? AND key = 'link_msgs'", (cfg.channel_id,)),
+            "authors": _scalar(
+                conn, "SELECT COUNT(DISTINCT author_id) FROM rollup_activity "
+                      "WHERE channel_id = ?", (cfg.channel_id,)),
+        }
+
+        stored = dict(conn.execute("SELECT key, value FROM worker_state"))
+        running = conn.execute(
+            "SELECT id, kind, started_at, phase FROM jobs "
+            "WHERE status = 'running' ORDER BY id LIMIT 1"
+        ).fetchone()
+        running_job = None
+        if running is not None:
+            running_job = {"id": int(running[0]), "kind": str(running[1]),
+                           "started_at": running[2], "phase": running[3]}
+        failures = _recent_failures(conn)
+    finally:
+        conn.close()
+
+    disk: dict[str, Any] | None = None
+    try:
+        usage = shutil.disk_usage(database.parent)
+        disk = {"path": str(database.parent), "free_bytes": usage.free,
+                "total_bytes": usage.total, "used_bytes": usage.used}
+    except OSError:
+        pass
+
+    orphans = [path for path in database.parent.glob(".upload-*") if path.is_file()]
+    orphan_bytes = 0
+    for path in orphans:
+        try:
+            orphan_bytes += path.stat().st_size
+        except OSError:
+            pass
+
+    return {
+        "checked_at": _now(),
+        "version": __version__,
+        "commit": _git_commit(PROJECT_DIR),
+        "config": {
+            "digest": digest,
+            "channel_id": cfg.channel_id,
+            "timezone": cfg.timezone,
+            # The API applies the database's operator overrides on top of the
+            # file, and the rebuild path does not. Saying where this timezone
+            # came from is what keeps that difference visible instead of silent.
+            "timezone_source": "override" if "timezone" in overrides else "file",
+            "channel_id_source": "override" if "channel_id" in overrides else "file",
+            "app_name": cfg.app_name,
+        },
+        "database": {"path": str(database), "size_bytes": size_bytes},
+        "counts": counts,
+        "families": {
+            "stale": stale_count > 0,
+            "stale_count": stale_count,
+            "items": families,
+        },
+        "worker": {
+            "last_seen_at": stored.get("last_seen_at"),
+            "running_job": running_job,
+            "consecutive_failures": stored.get("consecutive_failures"),
+            "last_error": _short(stored.get("last_error")),
+        },
+        "disk": disk,
+        "orphans": {"count": len(orphans), "bytes": orphan_bytes},
+        "failures": failures,
+    }
+
+
+@router.post("/uploads/sweep")
+def sweep_uploads(request: Request) -> dict:
+    """Reclaim staging files a reload orphaned, reporting the bytes recovered.
+
+    ``sweep_orphans`` is the implementation the boot path already uses; this is
+    only a way to reach it on demand.
+    """
+    from discord_scraper.api import upload as staging
+
+    directory = Path(app_db_path(request)).parent
+    sizes: dict[str, int] = {}
+    for path in directory.glob(".upload-*"):
+        if path.is_file():
+            try:
+                sizes[path.name] = path.stat().st_size
+            except OSError:
+                sizes[path.name] = 0
+    removed = staging.sweep_orphans(directory)
+    return {
+        "removed": [path.name for path in removed],
+        "count": len(removed),
+        "bytes_reclaimed": sum(sizes.get(path.name, 0) for path in removed),
+    }
+
+
 @router.get("/config")
 def get_config(request: Request) -> dict:
     conn = _conn(request)
@@ -359,6 +746,28 @@ def create_job(request: Request, body: JobRequest) -> dict:
 def recalculate(request: Request) -> dict:
     """Queue a full rebuild. The worker runs it; the API never rebuilds inline."""
     return create_job(request, JobRequest(kind="rebuild_rollups"))
+
+
+@router.post("/jobs/{job_id}/cancel")
+def cancel_a_job(request: Request, job_id: int) -> dict:
+    """Clear a stuck queued job, or say plainly why it cannot be cleared.
+
+    Only ``queued`` is cancellable. A running rebuild is mid-write, so it is
+    refused with a 409 rather than pretended away; ``claim_next`` only ever takes
+    ``queued`` rows, so a cancelled job is skipped by construction.
+    """
+    from discord_scraper.worker.jobs import JobNotCancellable, JobNotFound, cancel_job
+
+    conn = _conn(request)
+    try:
+        try:
+            return cancel_job(conn, job_id)
+        except JobNotFound as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from None
+        except JobNotCancellable as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from None
+    finally:
+        conn.close()
 
 
 @router.get("/search")

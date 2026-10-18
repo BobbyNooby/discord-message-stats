@@ -14,7 +14,7 @@ def test_status_reports_rollups_worker_and_jobs(admin_client):
     assert body["rollups"]["activity"]["rows"] == 2
     assert body["cache_stale"] is False          # freshly built in the fixture
     assert body["worker"]["token_status"] in {"ok", "dead", "unknown"}
-    assert body["jobs"] == {"queued": 0, "running": 0, "done": 0, "failed": 0}
+    assert body["jobs"] == {"queued": 0, "running": 0, "done": 0, "failed": 0, "cancelled": 0}
     assert body["channel_id"] == "c1"
 
 
