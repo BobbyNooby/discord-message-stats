@@ -339,4 +339,4 @@ def test_no_rollups_is_still_fatal(seeded_db_path, tmp_path, conn):
     client.cookies.set(SESSION_COOKIE, establish_session(conn, "u1", Level.VIEWER))
     response = client.get("/api/bootstrap")
     assert response.status_code == 503
-    assert "rollups rebuild" in response.json()["detail"]
+    assert "have not been built" in response.json()["detail"]

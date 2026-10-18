@@ -58,8 +58,10 @@ SESSION_MAX_AGE = SESSION_DAYS * 24 * 3600
 def _require_rollups(conn: sqlite3.Connection) -> None:
     """Refuse politely when the rollups have never been built.
 
-    A 503 with the command to run beats a 500 with an SQLite traceback, which is
-    what an unbuilt database would otherwise produce.
+    A 503 with a sentence beats a 500 with an SQLite traceback, which is what an
+    unbuilt database would otherwise produce. The sentence is for the browser —
+    the page renders it — so it names the fix in plain words rather than a shell
+    command nobody reading the dashboard is going to run.
     """
     built = conn.execute(
         "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'rollup_meta'"
@@ -69,7 +71,7 @@ def _require_rollups(conn: sqlite3.Connection) -> None:
     if not built:
         raise HTTPException(
             status_code=503,
-            detail="rollups are not built — run: discord-scraper rollups rebuild",
+            detail="the rollups have not been built yet — an admin can rebuild them from here",
         )
 
 
