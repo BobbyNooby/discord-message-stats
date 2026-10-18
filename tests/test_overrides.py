@@ -130,3 +130,15 @@ def test_validate_names_the_offending_setting():
     with pytest.raises(overrides.InvalidOverride) as excinfo:
         overrides.validate("timezone", "Mars/Olympus")
     assert "unknown timezone: Mars/Olympus" in str(excinfo.value)
+
+
+def test_the_api_re_exports_the_single_authority():
+    """The admin surface must not keep a second copy that can drift."""
+    from discord_scraper import overrides
+    from discord_scraper.api import admin
+
+    assert admin.OVERRIDABLE is overrides.OVERRIDABLE
+    assert admin.effective_config is overrides.apply
+    assert admin.effective_for is overrides.effective_for
+    assert admin._overrides is overrides.read
+    assert admin.InvalidOverride is overrides.InvalidOverride
