@@ -29,9 +29,8 @@ WORKDIR /app
 
 COPY pyproject.toml README.md config.example.toml ./
 COPY src/ ./src/
-# The tool arrives as a submodule, so the image installs it from vendor/.
-# Order matters: both packages declare a `discord-stats` script, and the tool's
-# copy points at a module it does not ship, so the dashboard goes on last.
+# The tool arrives as a submodule; it provides `discord-scraper` and the
+# library this dashboard imports. The dashboard itself brings `discord-stats`.
 COPY vendor/ ./vendor/
 RUN pip install --no-cache-dir "./vendor/discord-message-scraper" ".[web]"
 

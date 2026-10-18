@@ -5,11 +5,11 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "discord-stats"
 version = "0.1.0"
-description = "Scrape a Discord channel into SQLite, analyse it, and serve a stats site."
+description = "Render discord-message-scraper's rollups as a local stats dashboard."
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
-keywords = ["discord", "sqlite", "scraper", "statistics", "self-hosted"]
+keywords = ["discord", "sqlite", "dashboard", "statistics", "self-hosted"]
 classifiers = [
   "Development Status :: 3 - Alpha",
   "Environment :: Console",
@@ -22,30 +22,23 @@ classifiers = [
   "Topic :: Database :: Front-Ends",
 ]
 
-# Tier 1 is deliberately dependency-free: the scraper speaks HTTP with urllib
-# from the standard library. Everything web-related lives in the extra below.
+# The tool stays dependency-free; this dashboard is where FastAPI and friends
+# live, so they sit in the `web` extra the entrypoint and the README install.
 dependencies = []
 
 [project.urls]
-Documentation = "https://github.com/BobbyNooby/discord-message-scraper#readme"
-Source = "https://github.com/BobbyNooby/discord-message-scraper"
+Documentation = "https://github.com/BobbyNooby/discord-message-stats#readme"
+Source = "https://github.com/BobbyNooby/discord-message-stats"
 
 [project.optional-dependencies]
 web = ["fastapi", "uvicorn[standard]", "httpx", "itsdangerous", "apscheduler", "python-multipart", "authlib"]
 dev = ["pytest"]
 
 [project.scripts]
-discord-scraper = "discord_scraper.cli:main"
 discord-stats = "discord_stats.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
-
-[tool.setuptools.package-data]
-# The stopword corpora are read at runtime; the SPA is copied here by the release
-# build (`pnpm build && cp -r web/dist src/discord_scraper/static`) so a
-# `pipx install "discord-scraper[web]"` serves the site, not just the API.
-discord_scraper = ["data/*.txt", "static/**/*"]
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]
