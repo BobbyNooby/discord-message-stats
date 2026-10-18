@@ -18,7 +18,7 @@ async function readTokens(): Promise<string> {
 }
 
 /** The variables a theme is allowed to override (spec §The theme surface). */
-const TOKENS_REQUIRED = [
+const TOKENS_DOCUMENTED = [
   "--color-ink",
   "--color-surface",
   "--color-surface-2",
@@ -26,17 +26,31 @@ const TOKENS_REQUIRED = [
   "--color-text",
   "--color-muted",
   "--color-accent",
+  "--chart-1",
+  "--chart-12",
+  "--chart-peak",
+  "--chart-heat-1",
+  "--chart-heat-5",
+  "--chart-heat-edge",
+  "--chart-tooltip-bg",
+  "--chart-axis-dim",
 ];
 
+/** What is left after the comments: the file's real declarations. */
+function declarations(source: string): string {
+  return source.replace(/\/\*[\s\S]*?\*\//g, "").trim();
+}
+
 describe("the theme seam", () => {
-  it("ships the full token set from theme/tokens.css", async () => {
+  it("documents the available tokens without declaring any", async () => {
     const source = await readTokens();
     expect(source, "theme/tokens.css is empty").not.toBe("");
-    // A `:root` block ties the base `:root` on specificity, so later order
-    // is what makes the override win — see the import-order test below.
-    expect(source).toContain(":root");
-    for (const token of TOKENS_REQUIRED) {
-      expect(source, `${token} is not declared in theme/tokens.css`).toContain(token);
+    // Comment-only by design: the defaults live upstream, so an upstream
+    // palette change is not masked by a stale copy in this file.
+    expect(declarations(source), "theme/tokens.css must declare nothing by default").toBe("");
+    for (const token of TOKENS_DOCUMENTED) {
+      // The colon keeps `--chart-1` from matching `--chart-12`.
+      expect(source, `${token} is not documented in theme/tokens.css`).toContain(`${token}:`);
     }
   });
 

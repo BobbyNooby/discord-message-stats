@@ -3,21 +3,54 @@
  * dashboard. Overriding the variables below is the entire integration: no
  * component edits, no build config.
  *
- * It is imported after the base stylesheet (see the import in
- * web/src/main.tsx), and CSS is bundled in import order, so every declaration
- * here wins over the default in web/src/styles.css. The values below are the
- * upstream defaults; a fork changes them in place.
+ * This file declares nothing by default, on purpose. The upstream defaults live
+ * in web/src/styles.css, so an upstream palette change still reaches this
+ * dashboard until a fork overrides it. To re-theme, add a `:root` block with
+ * only the variables you want to change:
  *
- * A theme is overrides of these variables only. Chart series colours are still
- * a TypeScript constant (PALETTE in web/src/lib/palette.ts), not a CSS
- * variable, so recolouring a series means editing that fork-owned file.
+ *   :root {
+ *     --color-accent: #7c5cff;
+ *     --chart-1: #7c5cff;
+ *   }
+ *
+ * It is imported after the base stylesheet (see the import in web/src/main.tsx),
+ * and CSS is bundled in import order. Both blocks are `:root`, so they tie on
+ * specificity and the later one — this file — wins.
+ *
+ * Base colours:
+ *   --color-ink: #0b0e14;
+ *   --color-surface: #141822;
+ *   --color-surface-2: #1b202c;
+ *   --color-line: #2b3244;
+ *   --color-text: #e7eaf2;
+ *   --color-muted: #8a93a8;
+ *   --color-accent: #5865f2;
+ *
+ * Chart series palette, in order, so a series keeps its colour by slot:
+ *   --chart-1: #5865f2;
+ *   --chart-2: #eb459e;
+ *   --chart-3: #57f287;
+ *   --chart-4: #fee75c;
+ *   --chart-5: #00b0f4;
+ *   --chart-6: #f57731;
+ *   --chart-7: #9b59b6;
+ *   --chart-8: #1abc9c;
+ *   --chart-9: #e91e63;
+ *   --chart-10: #8bc34a;
+ *   --chart-11: #ff9800;
+ *   --chart-12: #607d8b;
+ *
+ * Chart-only colours:
+ *   --chart-peak: #c9cdfc;
+ *   --chart-heat-1: #141a2e;
+ *   --chart-heat-2: #28386e;
+ *   --chart-heat-3: #4155c9;
+ *   --chart-heat-4: #7b86f5;
+ *   --chart-heat-5: #c3c8fb;
+ *   --chart-heat-edge: #11141c;
+ *   --chart-tooltip-bg: #171b25;
+ *   --chart-axis-dim: #5b6478;
+ *
+ * web/src/lib/palette.ts reads the `--chart-*` variables and falls back to the
+ * same values, so an override reaches a chart without a component edit.
  */
-:root {
-  --color-ink: #0b0e14;
-  --color-surface: #141822;
-  --color-surface-2: #1b202c;
-  --color-line: #2b3244;
-  --color-text: #e7eaf2;
-  --color-muted: #8a93a8;
-  --color-accent: #5865f2;
-}
