@@ -1,7 +1,7 @@
 import { EmptyState, Panel } from "../components/Panel";
 import { EChart } from "../lib/echart";
 import { providerLabel } from "../lib/mediaLabels";
-import { PALETTE } from "../lib/palette";
+import { swatch } from "../lib/palette";
 import type { Payload } from "../api/types";
 import { allPairRows, fmt, horizontalBarsOption, sumRows } from "./mediaData";
 import type { Filters } from "../filters/reducer";
@@ -53,7 +53,7 @@ export function Providers({ payload, filters }: { panelId?: string; payload: Pay
       {!rows.length ? (
         <EmptyState>No embeds yet — ingest, or upload a database from the Admin board.</EmptyState>
       ) : (
-        <EChart option={horizontalBarsOption(rows, PALETTE[0], 11)} height={340} />
+        <EChart option={horizontalBarsOption(rows, swatch(0), 11)} height={340} />
       )}
     </Panel>
   );

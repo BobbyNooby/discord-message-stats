@@ -1,6 +1,6 @@
 import { EmptyState, Panel } from "../components/Panel";
 import { EChart } from "../lib/echart";
-import { PALETTE } from "../lib/palette";
+import { swatch } from "../lib/palette";
 import type { Payload } from "../api/types";
 import { foldPie, pieNote, pieOption } from "./chartShape";
 import { allPairRows, fmt, horizontalBarsOption, sumRows } from "./mediaData";
@@ -35,7 +35,7 @@ export function EmbedTypes({ payload, }: { panelId?: string; payload: Payload; f
       ) : shape === "pie" ? (
         <EChart option={pieOption(foldPie(rows), "embeds")} height={340} />
       ) : (
-        <EChart option={horizontalBarsOption(rows, PALETTE[5], 11)} height={340} />
+        <EChart option={horizontalBarsOption(rows, swatch(5), 11)} height={340} />
       )}
     </Panel>
   );
