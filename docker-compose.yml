@@ -45,6 +45,11 @@ services:
     depends_on:
       api:
         condition: service_healthy
+    # The image's HTTP healthcheck is for the API; this service serves no port,
+    # so inheriting it would only ever report "unhealthy". Its liveness is the
+    # process staying up, which `restart` already handles.
+    healthcheck:
+      disable: true
     restart: unless-stopped
 
 volumes:
