@@ -4,6 +4,7 @@ import type { ComponentType } from "react";
 import { describe, expect, it } from "vitest";
 
 import type { Payload } from "./api/types";
+import { AppShell } from "./components/AppShell";
 import { CARD_COLUMNS } from "./components/Panel";
 import { JumpNav } from "./components/JumpNav";
 import { MediaTile } from "./panels/MediaTile";
@@ -30,6 +31,9 @@ import type { MediaRow } from "./api/types";
  * still checks the sticky wrapper's offset padding. This file closes the gaps
  * those two leave, and each test names the defect class it keeps out.
  */
+
+/** The padding utilities that move a box's inline start, which the bar must not add. */
+const INLINE_START_PADDING = /(?:^|\s)(?:px|pl|ps)-/;
 
 /** Every non-test source, read the way Vite reads it — the same trick registry.test uses. */
 const SOURCES = import.meta.glob("./**/*.{ts,tsx}", {
@@ -176,6 +180,36 @@ describe("layout guards the browser used to be the only witness to", () => {
       }
       unmount();
     }
+  });
+
+  it("keeps the jump bar's content on the card column's inline start", () => {
+    // The defect: the bar carried its own `px-1` while the column the headings
+    // and cards sit in has none, so its content box started 4px inside that
+    // column (293px against 288px at 1440px) — an inset bar at every scroll
+    // position. jsdom has no layout, so this asserts structure and classes
+    // instead: the bar and a section are children of one column, and neither
+    // the column nor the bar adds inline-start padding. The phone keeps its
+    // trailing clearance for the floating Filters button, which is not padding.
+    const { container, unmount } = render(
+      <QueryClientProvider
+        client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
+      >
+        <AppShell sidebar={<p>filters</p>} header={null}>
+          <JumpNav />
+          <OverviewSection payload={payload} filters={initialFilters(payload)} />
+        </AppShell>
+      </QueryClientProvider>,
+    );
+
+    const nav = container.querySelector('nav[aria-label="Sections"]')!;
+    const column = nav.parentElement!.parentElement!;
+    const section = container.querySelector('section[aria-labelledby="sec-overview"]')!;
+
+    expect(section.parentElement, "the bar and the cards must share one column").toBe(column);
+    expect(column.className, "the column has no inline padding").not.toMatch(INLINE_START_PADDING);
+    expect(nav.className, "the bar must not inset its own content").not.toMatch(INLINE_START_PADDING);
+    expect(nav.className, "the phone clearance stays").toContain("pr-14");
+    unmount();
   });
 
   it("keeps the sticky jump bar pinned above the content it floats over", () => {
