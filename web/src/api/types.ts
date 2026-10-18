@@ -31,6 +31,12 @@ export type Payload = {
     configured_timezone: string;
     /** Both zones in a sentence, or null when they agree. */
     timezone_message: string | null;
+    /** The database's schema stamp, or null when it predates versioning. */
+    schema_version: number | null;
+    /** The schema version this dashboard builds and expects. */
+    schema_expected: number;
+    /** Both versions in a sentence, or null when they agree. */
+    schema_message: string | null;
     /** The calendar's first day, from `ui.week_start`. */
     week_start: "monday" | "sunday";
     /** How clocks are written, from `ui.time_format`. */
