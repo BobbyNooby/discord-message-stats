@@ -460,12 +460,16 @@ def _recent_failures(conn: sqlite3.Connection, limit: int = 5) -> list[dict[str,
 def diagnostics(request: Request) -> dict:
     """The one screen an admin opens when something looks wrong."""
     from discord_scraper import __version__
+    from discord_scraper import overrides as override_authority
     from discord_scraper.scraper.config import PROJECT_DIR
 
     conn = _conn(request)
     try:
         cfg = _effective_for(request, conn)
-        overrides = _overrides(conn)
+        # Read through the override table's single authority, not a local copy,
+        # so the "where did this come from?" answer stays correct when the
+        # rebuild path resolves config the same way.
+        stored_overrides = override_authority.read(conn)
         digest = config_digest(cfg, conn)
         database = Path(app_db_path(request))
         size_bytes = database.stat().st_size if database.exists() else 0
@@ -543,8 +547,8 @@ def diagnostics(request: Request) -> dict:
             # The API applies the database's operator overrides on top of the
             # file, and the rebuild path does not. Saying where this timezone
             # came from is what keeps that difference visible instead of silent.
-            "timezone_source": "override" if "timezone" in overrides else "file",
-            "channel_id_source": "override" if "channel_id" in overrides else "file",
+            "timezone_source": "override" if "timezone" in stored_overrides else "file",
+            "channel_id_source": "override" if "channel_id" in stored_overrides else "file",
             "app_name": cfg.app_name,
         },
         "database": {"path": str(database), "size_bytes": size_bytes},
