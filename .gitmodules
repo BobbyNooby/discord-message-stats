@@ -1,0 +1,3 @@
+[submodule "vendor/discord-message-scraper"]
+	path = vendor/discord-message-scraper
+	url = https://github.com/BobbyNooby/discord-message-scraper.git
