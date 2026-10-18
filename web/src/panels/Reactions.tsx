@@ -1,7 +1,7 @@
 import { EmptyState, Panel } from "../components/Panel";
 import { EChart } from "../lib/echart";
 import {
-  REACTION_COLOR,
+  reactionColor,
   fmt,
   globalEmpty,
   horizontalBarsOption,
@@ -31,7 +31,7 @@ export function Reactions({ payload, filters: fallbackFilters }: MediaPanelProps
       {blank ? (
         <EmptyState>{blank}</EmptyState>
       ) : (
-        <EChart height={330} option={horizontalBarsOption(rows, REACTION_COLOR, 13)} />
+        <EChart height={330} option={horizontalBarsOption(rows, reactionColor(), 13)} />
       )}
     </Panel>
   );

@@ -2,12 +2,12 @@ import { EmptyState, Panel } from "../components/Panel";
 import { EChart } from "../lib/echart";
 import {
   REMAINDER_COLOR,
-  REPLY_COLOR,
   colorBarsOption,
   doughnutOption,
   fmt,
   mediaCells,
   pctOf,
+  replyColor,
   replyShare,
   type MediaPanelProps,
 } from "./mediaData";
@@ -25,7 +25,7 @@ export function RepliesVsStandalone({ payload, filters: fallbackFilters }: Media
   const blank = empty ?? (total > 0 ? null : "No messages match the active filters — widen the time range, or switch an author back on.");
   // Two parts that add up to every filtered message: a nameable whole.
   const rows = [
-    { name: "replies", value: replies, color: REPLY_COLOR },
+    { name: "replies", value: replies, color: replyColor() },
     { name: "standalone", value: standalone, color: REMAINDER_COLOR },
   ];
 

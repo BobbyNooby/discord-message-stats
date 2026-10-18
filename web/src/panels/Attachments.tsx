@@ -1,7 +1,7 @@
 import { EmptyState, Panel } from "../components/Panel";
 import { EChart } from "../lib/echart";
 import {
-  ATTACH_COLOR,
+  attachColor,
   fmt,
   globalEmpty,
   horizontalBarsOption,
@@ -31,7 +31,7 @@ export function Attachments({ payload, filters: fallbackFilters }: MediaPanelPro
       {blank ? (
         <EmptyState>{blank}</EmptyState>
       ) : (
-        <EChart height={300} option={horizontalBarsOption(rows, ATTACH_COLOR, 9.5)} />
+        <EChart height={300} option={horizontalBarsOption(rows, attachColor(), 9.5)} />
       )}
     </Panel>
   );
