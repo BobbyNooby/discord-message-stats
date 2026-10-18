@@ -54,9 +54,18 @@ describe("<HealthBanner>", () => {
     );
     const banner = screen.getByRole("status");
     expect(banner).toHaveTextContent(/5 days old/);
-    expect(banner).toHaveTextContent(/configuration changed since the last rebuild/);
+    expect(banner).toHaveTextContent(/messages or the configuration changed since the last rebuild/);
     // The fix is a control on the page, not a shell command to copy.
     expect(banner).not.toHaveTextContent(/discord-scraper/);
+  });
+
+  it("does not claim a configuration change when a new message caused the staleness", () => {
+    // `stale` fires for a new message as well as an edited config, so the copy
+    // must name both causes and never blame the one that did not happen.
+    render(<HealthBanner banner={null} stale staleAt="2026-10-18T13:54:00Z" />);
+    const banner = screen.getByRole("status");
+    expect(banner).toHaveTextContent(/messages or the configuration changed/i);
+    expect(banner).not.toHaveTextContent(/^The configuration changed/i);
   });
 
   it("names both zones and shows the rebuild control on a timezone mismatch", () => {

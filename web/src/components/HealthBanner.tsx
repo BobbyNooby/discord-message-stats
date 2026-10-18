@@ -19,7 +19,8 @@ function daysSince(stamp: string | null | undefined): number | null {
  *    symptom, so a second sentence would only dilute it.
  * 2. Otherwise both remaining facts may show together, because they are
  *    independent and have different fixes: *never ingested* means the scraper
- *    has not run, while *the configuration changed since the last rebuild* means
+ *    has not run, while *the messages or the configuration changed since the
+ *    last rebuild* means
  *    the scraper is fine and a rebuild is owed. One banner element carries both
  *    rather than either hiding the other. The same rule covers a schema-version
  *    mismatch: it is a third independent fact, so it gets its own sentence and
@@ -87,7 +88,8 @@ export function HealthBanner({
       {age ? <p>{age}</p> : null}
       {stale ? (
         <p>
-          The configuration changed since the last rebuild: these numbers are as of{" "}
+          The messages or the configuration changed since the last rebuild: these
+          numbers are as of{" "}
           {staleAt ? stampLabel(staleAt, timeFormat) : "the last rebuild"}.
         </p>
       ) : null}
