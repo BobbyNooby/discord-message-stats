@@ -3,7 +3,7 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "discord-scraper"
+name = "discord-stats"
 version = "0.1.0"
 description = "Scrape a Discord channel into SQLite, analyse it, and serve a stats site."
 readme = "README.md"
