@@ -28,6 +28,8 @@
  * cards: they carry no controls and no scope, so they have no spec here.
  */
 
+import { customPanels } from "./custom";
+
 export type Dimension = "time" | "author" | "word" | "provider" | "kind";
 export type ChartKind = "bar" | "pie";
 
@@ -50,7 +52,7 @@ const NONE: readonly Dimension[] = [];
 const BAR = ["bar"] as const;
 const BAR_PIE = ["bar", "pie"] as const;
 
-const SPECS = [
+const builtInSpecs = [
   // Overview
   { id: "stat-cards", label: "Stat cards", honours: TA, shapes: BAR, defaultShape: "bar" },
   { id: "share-of-voice", label: "Share of voice", honours: TA, shapes: BAR_PIE, defaultShape: "pie" },
@@ -165,6 +167,9 @@ const SPECS = [
     defaultShape: "bar",
   },
 ] as const satisfies readonly PanelSpec[];
+
+/** The built-ins first, then whatever the fork's `panels/custom` exports. */
+export const SPECS = [...builtInSpecs, ...customPanels];
 
 export type PanelId = (typeof SPECS)[number]["id"];
 
