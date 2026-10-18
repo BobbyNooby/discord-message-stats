@@ -2,7 +2,7 @@
 
 from fastapi.testclient import TestClient
 
-from discord_scraper.api.app import create_app
+from discord_stats.api.app import create_app
 from tests.conftest import cfg_fixture
 
 

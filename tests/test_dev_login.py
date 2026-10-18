@@ -15,7 +15,7 @@ import inspect
 import pytest
 from fastapi.testclient import TestClient
 
-from discord_scraper.api.app import create_app
+from discord_stats.api.app import create_app
 from discord_scraper.cli import build_parser
 from tests.conftest import cfg_fixture
 

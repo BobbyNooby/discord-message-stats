@@ -9,7 +9,7 @@ from discord_scraper.rollups.build import rebuild_all
 
 
 def test_the_second_request_does_not_reassemble_the_payload(client, monkeypatch):
-    from discord_scraper.api import viewer
+    from discord_stats.api import viewer
 
     calls = {"n": 0}
     original = viewer.bootstrap
@@ -28,7 +28,7 @@ def test_the_second_request_does_not_reassemble_the_payload(client, monkeypatch)
 
 
 def test_a_rebuild_invalidates_the_cached_payload(client, conn, cfg, monkeypatch):
-    from discord_scraper.api import viewer
+    from discord_stats.api import viewer
 
     calls = {"n": 0}
     original = viewer.bootstrap

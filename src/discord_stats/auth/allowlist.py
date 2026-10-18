@@ -10,8 +10,8 @@ from __future__ import annotations
 import sqlite3
 from datetime import datetime, timedelta, timezone
 
-from discord_scraper.auth.admins import is_admin
-from discord_scraper.auth.session import Level
+from discord_stats.auth.admins import is_admin
+from discord_stats.auth.session import Level
 from discord_scraper.config import Config
 
 LOGIN_WINDOW_MINUTES = 15

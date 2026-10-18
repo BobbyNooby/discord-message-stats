@@ -4,7 +4,7 @@ import json
 
 import pytest
 
-from discord_scraper.api.recent import BODY_LIMIT
+from discord_stats.api.recent import BODY_LIMIT
 
 
 def test_recent_returns_the_newest_first_with_names(client):
@@ -33,8 +33,8 @@ def test_recent_never_ships_raw_or_embeds(client):
 def test_show_recent_zero_restores_the_strict_rule(seeded_db_path, tmp_path):
     from fastapi.testclient import TestClient
 
-    from discord_scraper.api.app import create_app
-    from discord_scraper.auth.session import SESSION_COOKIE, Level, establish_session
+    from discord_stats.api.app import create_app
+    from discord_stats.auth.session import SESSION_COOKIE, Level, establish_session
     from tests.conftest import cfg_fixture
 
     cfg = cfg_fixture(tmp_path, ui={"show_recent": 0})
@@ -61,7 +61,7 @@ def test_a_limit_outside_one_to_two_hundred_is_refused(client, limit):
 def _viewer(path):
     import sqlite3
 
-    from discord_scraper.auth.session import Level, establish_session
+    from discord_stats.auth.session import Level, establish_session
     from discord_scraper.rollups.schema import create_control_tables
 
     conn = sqlite3.connect(path)

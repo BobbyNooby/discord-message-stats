@@ -8,7 +8,7 @@ The hosts are exactly what the reference data contains.
 import httpx
 from fastapi.testclient import TestClient
 
-from discord_scraper.api.app import create_app
+from discord_stats.api.app import create_app
 
 
 class FakeStream:
@@ -106,7 +106,7 @@ def _urls(*names):
 
 def test_the_cache_ceiling_counts_bytes_not_just_entries(client, monkeypatch):
     """400 entries at the 25 MB fetch cap would be 10 GB of resident memory."""
-    import discord_scraper.api.app as app_module
+    import discord_stats.api.app as app_module
 
     monkeypatch.setattr(app_module, "THUMB_CACHE_BYTES", 2500, raising=False)
     seen = use(monkeypatch, chunks=[b"x" * 1000])
@@ -122,7 +122,7 @@ def test_the_cache_ceiling_counts_bytes_not_just_entries(client, monkeypatch):
 
 
 def test_a_recently_read_entry_is_evicted_last(client, monkeypatch):
-    import discord_scraper.api.app as app_module
+    import discord_stats.api.app as app_module
 
     monkeypatch.setattr(app_module, "THUMB_CACHE_BYTES", 2500, raising=False)
     seen = use(monkeypatch, chunks=[b"x" * 1000])
@@ -182,7 +182,7 @@ def _clock(monkeypatch):
     Only `app.py`'s view of `time` is replaced, the way the semaphore tests
     replace its view of `threading`.
     """
-    import discord_scraper.api.app as app_module
+    import discord_stats.api.app as app_module
 
     class Clock:
         def __init__(self):
@@ -230,7 +230,7 @@ def test_a_transport_error_is_remembered_too(client, monkeypatch):
 
 def test_a_later_success_wins_over_a_remembered_failure(client, monkeypatch):
     """The refusal is short-lived: once its window lapses, a success takes over."""
-    import discord_scraper.api.app as app_module
+    import discord_stats.api.app as app_module
 
     clock = _clock(monkeypatch)
     url = "https://media.tenor.com/revived.gif"
@@ -255,7 +255,7 @@ def test_a_later_success_wins_over_a_remembered_failure(client, monkeypatch):
 
 
 def test_a_remembered_failure_expires_after_its_ttl(client, monkeypatch):
-    import discord_scraper.api.app as app_module
+    import discord_stats.api.app as app_module
 
     assert app_module.THUMB_FAIL_TTL == 600, "the refusal TTL is not the documented one"
     clock = _clock(monkeypatch)
@@ -272,7 +272,7 @@ def test_a_remembered_failure_expires_after_its_ttl(client, monkeypatch):
 
 
 def test_the_negative_cache_is_bounded_to_its_newest_entries(client, monkeypatch):
-    import discord_scraper.api.app as app_module
+    import discord_stats.api.app as app_module
 
     monkeypatch.setattr(app_module, "THUMB_FAILURES", 3, raising=False)
     seen = use(monkeypatch, headers={"content-type": "text/html"}, chunks=[b"<html>"])
@@ -296,7 +296,7 @@ def test_the_negative_cache_is_bounded_to_its_newest_entries(client, monkeypatch
 
 
 def test_reading_a_remembered_failure_makes_it_the_last_evicted(client, monkeypatch):
-    import discord_scraper.api.app as app_module
+    import discord_stats.api.app as app_module
 
     monkeypatch.setattr(app_module, "THUMB_FAILURES", 2, raising=False)
     seen = use(monkeypatch, headers={"content-type": "text/html"}, chunks=[b"<html>"])
@@ -337,8 +337,8 @@ def test_concurrent_stores_leave_the_counter_equal_to_the_bytes_held(db_cfg, con
     import threading
     import types
 
-    import discord_scraper.api.app as app_module
-    from discord_scraper.auth.session import SESSION_COOKIE, Level, establish_session
+    import discord_stats.api.app as app_module
+    from discord_stats.auth.session import SESSION_COOKIE, Level, establish_session
 
     class NoopSemaphore:
         """All the fetches at once: the fetch cap is not what guards the store."""
@@ -420,8 +420,8 @@ def test_at_most_four_fetches_run_at_once_and_a_slot_is_always_freed(db_cfg, con
     import threading
     import types
 
-    import discord_scraper.api.app as app_module
-    from discord_scraper.auth.session import SESSION_COOKIE, Level, establish_session
+    import discord_stats.api.app as app_module
+    from discord_stats.auth.session import SESSION_COOKIE, Level, establish_session
 
     made = []
 
