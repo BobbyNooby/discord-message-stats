@@ -5,6 +5,10 @@ from __future__ import annotations
 import sqlite3
 from pathlib import Path
 
+# The write handle belongs to the tool that owns the schema and the locks; this
+# re-export keeps every existing dashboard caller importing the same name.
+from discord_scraper.db import connect_writable
+
 
 def connect(db_path: str | Path) -> sqlite3.Connection:
     """Open the database **read-only**.
@@ -15,20 +19,5 @@ def connect(db_path: str | Path) -> sqlite3.Connection:
     """
     conn = sqlite3.connect(f"file:{Path(db_path)}?mode=ro", uri=True)
     conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA busy_timeout=10000")
-    return conn
-
-
-def connect_writable(db_path: str | Path) -> sqlite3.Connection:
-    """A read/write handle, for the control plane only.
-
-    Message data is read through ``connect`` (read-only). Sessions, jobs and
-    worker state are rows this process must write, so they need a second handle;
-    keeping them separate is what preserves "the API cannot alter message data" —
-    the guarantee is the file handle, not a coding convention.
-    """
-    conn = sqlite3.connect(str(db_path))
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA busy_timeout=10000")
     return conn
