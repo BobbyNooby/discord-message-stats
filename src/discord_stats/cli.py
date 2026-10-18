@@ -11,6 +11,19 @@ import sys
 from pathlib import Path
 
 
+def _spa_dir() -> Path | None:
+    """The SPA this dashboard checkout built, if it has one.
+
+    ``_find_static`` looks for the page beside the *tool* install, which in a
+    checkout is ``vendor/discord-message-scraper`` — a directory that never
+    holds the dashboard's build. Without this the README's plain
+    ``discord-stats serve`` serves the API and 404s the page; only the
+    container worked, because it sets ``DISCORD_SCRAPER_STATIC``.
+    """
+    candidate = Path(__file__).resolve().parents[2] / "web" / "dist"
+    return candidate if (candidate / "index.html").is_file() else None
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="discord-stats",
@@ -90,7 +103,7 @@ def _serve(args: argparse.Namespace) -> int:
         )
         return 2
 
-    static = _find_static(args.static_dir)
+    static = _find_static(args.static_dir or _spa_dir())
     if static is None:
         print(
             "no built SPA found — serving the API only (build it with: cd web && pnpm build)",
