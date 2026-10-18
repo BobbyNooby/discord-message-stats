@@ -309,6 +309,41 @@ def test_progress_says_how_far_behind_the_data_is(admin_client, conn):
     assert activity["stale"] is True
 
 
+def test_the_behind_count_uses_the_message_primary_key_index(seeded_db, cfg):
+    """The unforced query scans every row of the channel (14 s on the reference db).
+
+    The planner prefers `idx_channel` and then reads each row to compare the id,
+    so the SQL pins the implicit primary-key index — the same trick
+    `_newest_message_id` already uses.
+    """
+    from discord_stats.api.progress import _TAIL_COUNT_SQL
+
+    plan = " ".join(
+        str(row[3])
+        for row in seeded_db.execute(
+            "EXPLAIN QUERY PLAN " + _TAIL_COUNT_SQL[0], (cfg.channel_id, "0")
+        )
+    )
+    assert "sqlite_autoindex_messages_1" in plan
+    assert "idx_channel" not in plan
+
+
+def test_the_behind_count_only_counts_messages_in_the_channel(seeded_db, cfg):
+    from discord_stats.api.progress import _added_since
+
+    seeded_db.execute(
+        "INSERT INTO messages (id, channel_id, author_id, content, created_at, type) "
+        "VALUES ('m8', 'c1', 'u1', 'new', '2026-01-05T10:00:00+00:00', 0)"
+    )
+    seeded_db.execute(
+        "INSERT INTO messages (id, channel_id, author_id, content, created_at, type) "
+        "VALUES ('m9', 'other', 'u1', 'elsewhere', '2026-01-05T11:00:00+00:00', 0)"
+    )
+    seeded_db.commit()
+
+    assert _added_since(seeded_db, "c1", "m7", "m9") == 1
+
+
 def test_progress_answers_without_rollups_at_all(seeded_db_path, tmp_path):
     """No rollups built means no ``rollup_meta``; the endpoint says so, not 500."""
     cfg = cfg_fixture(tmp_path, access={
