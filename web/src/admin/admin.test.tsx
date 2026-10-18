@@ -24,7 +24,7 @@ import type { AdminConfig, AdminRow, AdminStatus, MergeEntry, Progress } from ".
 const STATUS: AdminStatus = {
   app: "Discord Scraper",
   channel_id: "c1",
-  timezone: "Asia/Kuala_Lumpur",
+  timezone: "UTC",
   cache_stale: false,
   database: { size_bytes: 5242880, path: "/data/messages.db" },
   admin: { discord_id: "4242", known: true },
@@ -36,7 +36,7 @@ const STATUS: AdminStatus = {
       computed_at: "2026-10-14T20:00:00+00:00",
       built_from_rows: 480,
       built_from_newest: "900",
-      built_in_timezone: "Asia/Kuala_Lumpur",
+      built_in_timezone: "UTC",
       added_since: 3,
       config_changed: false,
     },
@@ -46,7 +46,7 @@ const STATUS: AdminStatus = {
       computed_at: "2026-10-15T20:00:00+00:00",
       built_from_rows: 483,
       built_from_newest: "903",
-      built_in_timezone: "Asia/Kuala_Lumpur",
+      built_in_timezone: "UTC",
       added_since: 0,
       config_changed: false,
     },
@@ -113,7 +113,7 @@ const PROGRESS: Progress = {
 const CONFIG: AdminConfig = {
   effective: {
     channel_id: "c1",
-    timezone: "Asia/Kuala_Lumpur",
+    timezone: "UTC",
     ignore_words: ["bro"],
     allowlist_policy: "posted",
     app_name: "Discord Scraper",
@@ -126,10 +126,10 @@ const CONFIG: AdminConfig = {
 };
 
 const TIMEZONES = {
-  zones: ["UTC", "Asia/Kuala_Lumpur", "Europe/London", "America/New_York"],
-  configured: "Asia/Kuala_Lumpur",
-  effective: "Asia/Kuala_Lumpur",
-  auto_zone: "Asia/Kuala_Lumpur",
+  zones: ["UTC", "Europe/London", "America/New_York", "Australia/Sydney"],
+  configured: "UTC",
+  effective: "UTC",
+  auto_zone: "UTC",
 };
 
 const PAYLOAD = {
@@ -141,9 +141,9 @@ const PAYLOAD = {
       msgs: 400,
       accounts: ["1", "2"],
     },
-    { id: "3", name: "vei", msgs: 120, accounts: ["3"] },
-    { id: "4", name: "Kenon", msgs: 50, accounts: ["4"] },
-    { id: "5", name: "Jetkenon", msgs: 10, accounts: ["5"] },
+    { id: "3", name: "dave", msgs: 120, accounts: ["3"] },
+    { id: "4", name: "carol", msgs: 50, accounts: ["4"] },
+    { id: "5", name: "caroline", msgs: 10, accounts: ["5"] },
     { id: "6", name: "angelina", msgs: 40, accounts: ["6"] },
     { id: "7", name: "angelica", msgs: 30, accounts: ["7"] },
   ],
@@ -464,7 +464,7 @@ describe("<Admin>", () => {
   });
 
   it("names what an identity absorbs before a canonical is added as an alt", async () => {
-    // Jetkenon (5) heads its own identity with the alt Kenon (4). Adding it to
+    // caroline (5) heads its own identity with the alt carol (4). Adding it to
     // alice silently used to absorb both; now it must be confirmed first.
     identityState = [
       { canonical: "1", accounts: ["1", "2"] },
@@ -485,15 +485,15 @@ describe("<Admin>", () => {
     await openTask(user, "Fix the data");
     const select = await screen.findByLabelText(/add an alt account to alice/i);
     // The picker itself announces the extra accounts before selection.
-    expect(within(select).getByRole("option", { name: /jetkenon.*brings 1 alt/i })).toBeInTheDocument();
+    expect(within(select).getByRole("option", { name: /caroline.*brings 1 alt/i })).toBeInTheDocument();
 
     await user.selectOptions(select, "5");
     const aliceRow = select.closest("article") as HTMLElement;
     await user.click(within(aliceRow).getByRole("button", { name: /add alt/i }));
 
     const confirm = await screen.findByRole("alertdialog");
-    expect(confirm).toHaveTextContent(/jetkenon will be merged into alice/i);
-    expect(confirm).toHaveTextContent(/including its alt kenon/i);
+    expect(confirm).toHaveTextContent(/caroline will be merged into alice/i);
+    expect(confirm).toHaveTextContent(/including its alt carol/i);
     expect(confirm).toHaveTextContent(/1 account/i);
     // Nothing is written until the operator confirms, and the keyboard lands on
     // the confirm button so the notice is announced and the next Tab is safe.
@@ -601,12 +601,12 @@ describe("<Admin>", () => {
     await openTask(user, "Fix the data");
     await user.selectOptions(await screen.findByLabelText("First account"), "3");
     await user.selectOptions(screen.getByLabelText("Second account"), "2");
-    await user.type(screen.getByLabelText(/or type a name/i), "Veibot");
+    await user.type(screen.getByLabelText(/or type a name/i), "Daisy");
     await user.click(screen.getByRole("button", { name: /merge these accounts/i }));
 
     await waitFor(() => expect(recorded("PUT", "/api/admin/identity")).toBe(true));
     expect(recordedCall("PUT", "/api/admin/identity")?.body).toEqual({
-      merges: [{ canonical: "1", accounts: ["1", "2", "3"], name: "Veibot" }],
+      merges: [{ canonical: "1", accounts: ["1", "2", "3"], name: "Daisy" }],
     });
   });
 
@@ -617,10 +617,10 @@ describe("<Admin>", () => {
     await openTask(user, "Fix the data");
     await user.selectOptions(await screen.findByLabelText("First account"), "3");
     await user.selectOptions(screen.getByLabelText("Second account"), "2");
-    // Kenon (4) is a different person; naming the merge "Kenon" collides.
-    await user.type(screen.getByLabelText(/or type a name/i), "Kenon");
+    // carol (4) is a different person; naming the merge "carol" collides.
+    await user.type(screen.getByLabelText(/or type a name/i), "carol");
 
-    expect(await screen.findByText(/another person already goes by Kenon/i)).toBeInTheDocument();
+    expect(await screen.findByText(/another person already goes by carol/i)).toBeInTheDocument();
     // A warning, not a refusal: the merge still goes through.
     expect(screen.getByRole("button", { name: /merge these accounts/i })).toBeEnabled();
   });
@@ -682,7 +682,7 @@ describe("<Admin>", () => {
       (call) => call.method === "PUT" && call.url === "/api/admin/identity",
     );
     expect(writes[0].body).toEqual({
-      merges: [{ canonical: "3", accounts: ["3", "2"], name: "vei" }],
+      merges: [{ canonical: "3", accounts: ["3", "2"], name: "dave" }],
     });
     expect(writes[1].body).toEqual({ merges: [], clear_names: ["3"] });
   });
@@ -710,7 +710,7 @@ describe("<Admin>", () => {
 
     const scores = await screen.findAllByText(/match \d+%/);
     expect(scores.map((node) => node.textContent)).toEqual(["match 91%", "match 75%"]);
-    expect(scores[0].closest("li")).toHaveTextContent(/Jetkenon.*Kenon/i);
+    expect(scores[0].closest("li")).toHaveTextContent(/caroline.*carol/i);
     expect(scores[1].closest("li")).toHaveTextContent(/angelina.*angelica/i);
   });
 
@@ -727,7 +727,7 @@ describe("<Admin>", () => {
     expect(values).toContain("Europe/London");
     expect(values).not.toContain("GMT+8"); // the free-text mistake this replaces
     expect(screen.queryByRole("textbox", { name: /timezone/i })).not.toBeInTheDocument();
-    expect(await screen.findByText(/effective zone now/i)).toHaveTextContent("Asia/Kuala_Lumpur");
+    expect(await screen.findByText(/effective zone now/i)).toHaveTextContent("UTC");
   });
 
   it("states the rebuild consequence when the zone changes, before anything is saved", async () => {
@@ -963,7 +963,7 @@ describe("<Admin> admins", () => {
     await openTask(user, "Access");
     const section = await adminsSection();
     const picker = within(section).getByLabelText(/from the author list/i);
-    expect(within(picker).getByRole("option", { name: /vei.*\b3\b/i })).toBeInTheDocument();
+    expect(within(picker).getByRole("option", { name: /dave.*\b3\b/i })).toBeInTheDocument();
 
     await user.selectOptions(picker, "3");
     await user.click(within(section).getByRole("button", { name: /add admin/i }));

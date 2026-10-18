@@ -64,13 +64,13 @@ describe("<HealthBanner>", () => {
       <HealthBanner
         banner={null}
         timezoneMismatch
-        timezoneMessage="These numbers were built in UTC; the configured timezone is Asia/Kuala_Lumpur. Recalculate to rebuild them."
+        timezoneMessage="These numbers were built in UTC; the configured timezone is Europe/London. Recalculate to rebuild them."
         action={<button type="button">Recalculate now</button>}
       />,
     );
     const banner = screen.getByRole("status");
     expect(banner).toHaveTextContent(/built in UTC/);
-    expect(banner).toHaveTextContent(/configured timezone is Asia\/Kuala_Lumpur/);
+    expect(banner).toHaveTextContent(/configured timezone is Europe\/London/);
     expect(screen.getByRole("button", { name: /recalculate now/i })).toBeInTheDocument();
   });
 

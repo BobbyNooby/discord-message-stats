@@ -265,7 +265,7 @@ def test_a_merge_refuses_an_account_that_is_already_in_another_merge(admin_clien
 
 
 def test_a_merge_refuses_a_canonical_offered_as_a_plain_alt(admin_client):
-    """The exact screenshot bug: Jetkenon is a canonical with its own alt, and was
+    """The exact screenshot bug: carol is a canonical with its own alt, and was
     offered as a free account. The refusal names the identity to absorb instead."""
     response = admin_client.put(
         "/api/admin/identity",
@@ -375,7 +375,7 @@ def test_undo_restores_a_two_level_chain_and_the_names_it_had(admin_client, conn
     identity groups and the display-name pins come back."""
     first = admin_client.put(
         "/api/admin/identity",
-        json={"merges": [{"canonical": "u2", "accounts": ["u4"], "name": "Kenon"}]},
+        json={"merges": [{"canonical": "u2", "accounts": ["u4"], "name": "carol"}]},
     ).json()
     assert first["previous"] == []
 
@@ -385,7 +385,7 @@ def test_undo_restores_a_two_level_chain_and_the_names_it_had(admin_client, conn
     ).json()
     assert chained["merges"] == [{"canonical": "u1", "accounts": ["u1", "u2", "u4"]}]
     assert chained["previous"] == [
-        {"canonical": "u2", "accounts": ["u2", "u4"], "name": "Kenon"}
+        {"canonical": "u2", "accounts": ["u2", "u4"], "name": "carol"}
     ]
 
     undone = admin_client.put(
@@ -401,4 +401,4 @@ def test_undo_restores_a_two_level_chain_and_the_names_it_had(admin_client, conn
     kept = conn.execute(
         "SELECT name, renamed FROM author_names WHERE channel_id = 'c1' AND author_id = 'u2'"
     ).fetchone()
-    assert (kept[0], kept[1]) == ("Kenon", 1)
+    assert (kept[0], kept[1]) == ("carol", 1)

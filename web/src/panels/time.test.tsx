@@ -70,9 +70,9 @@ function makePayload(over: Partial<Payload> = {}): Payload {
       total: 6,
       source_count: 4,
       stale: false, can_admin: false,
-      timezone: "Asia/Kuala_Lumpur",
+      timezone: "Europe/London",
       timezone_mismatch: false,
-      configured_timezone: "Asia/Kuala_Lumpur",
+      configured_timezone: "Europe/London",
       timezone_message: null,
       week_start: "monday",
       time_format: "24h",
@@ -124,7 +124,7 @@ function makePayload(over: Partial<Payload> = {}): Payload {
     emoji: [],
     reactions: [],
     types: [],
-    tz: { name: "Asia/Kuala_Lumpur", label: "Asia/Kuala_Lumpur (UTC+8)" },
+    tz: { name: "Europe/London", label: "Europe/London (UTC+0)" },
     channel_hint: "#general",
   };
   return { ...base, ...over };
@@ -255,11 +255,11 @@ describe("when the chat comes alive", () => {
   it("reads rollup_heat and honours the year filter", () => {
     const payload = makePayload();
     const { rerender } = render(<Heat payload={payload} filters={all(payload)} />);
-    expect(screen.getByText(/^7 messages · Asia\/Kuala_Lumpur \(UTC\+8\)/)).toBeInTheDocument();
+    expect(screen.getByText(/^7 messages · Europe\/London \(UTC\+0\)/)).toBeInTheDocument();
     expect(lastOption().series[0].data).toHaveLength(7 * 24);
 
     rerender(<Heat payload={payload} filters={{ ...all(payload), years: [2023] }} />);
-    expect(screen.getByText(/^5 messages · Asia\/Kuala_Lumpur \(UTC\+8\)/)).toBeInTheDocument();
+    expect(screen.getByText(/^5 messages · Europe\/London \(UTC\+0\)/)).toBeInTheDocument();
   });
 
   it("marks the busiest hour on the map", () => {

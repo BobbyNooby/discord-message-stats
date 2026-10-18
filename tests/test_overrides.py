@@ -31,8 +31,8 @@ def test_read_returns_every_stored_row():
 
     conn = _config_table(sqlite3.connect(":memory:"))
     conn.executemany("INSERT INTO config (key, value) VALUES (?, ?)",
-                     [("timezone", "Asia/Kuala_Lumpur"), ("stray", "x")])
-    assert overrides.read(conn) == {"timezone": "Asia/Kuala_Lumpur", "stray": "x"}
+                     [("timezone", "Europe/London"), ("stray", "x")])
+    assert overrides.read(conn) == {"timezone": "Europe/London", "stray": "x"}
 
 
 def test_read_survives_a_database_with_no_config_table():
@@ -46,8 +46,8 @@ def test_a_valid_override_wins_over_the_file(tmp_path):
     from discord_scraper import overrides
 
     base = cfg_fixture(tmp_path, timezone="UTC")
-    effective = overrides.apply(base, {"timezone": "Asia/Kuala_Lumpur"})
-    assert effective.timezone == "Asia/Kuala_Lumpur"
+    effective = overrides.apply(base, {"timezone": "Europe/London"})
+    assert effective.timezone == "Europe/London"
     assert base.timezone == "UTC"          # the file's value is untouched
 
 
@@ -83,7 +83,7 @@ def test_apply_keeps_the_base_secrets(tmp_path):
     from discord_scraper import overrides
 
     base = cfg_fixture(tmp_path, admin_id="admin-1")
-    effective = overrides.apply(base, {"timezone": "Asia/Kuala_Lumpur"})
+    effective = overrides.apply(base, {"timezone": "Europe/London"})
     assert effective.token == base.token
     assert effective.admin_id == base.admin_id
 
@@ -107,7 +107,7 @@ def test_bad_values_are_rejected(key, value):
 
 
 @pytest.mark.parametrize("key, value", [
-    ("timezone", "Asia/Kuala_Lumpur"),
+    ("timezone", "Europe/London"),
     ("timezone", "auto"),
     ("allowlist_policy", "posted"),
     ("allowlist_policy", "explicit"),

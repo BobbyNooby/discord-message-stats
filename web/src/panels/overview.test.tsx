@@ -19,9 +19,9 @@ function makePayload(over: Partial<Payload> = {}): Payload {
       total: 6,
       source_count: 4,
       stale: false, can_admin: false,
-      timezone: "Asia/Kuala_Lumpur",
+      timezone: "Europe/London",
       timezone_mismatch: false,
-      configured_timezone: "Asia/Kuala_Lumpur",
+      configured_timezone: "Europe/London",
       timezone_message: null,
       week_start: "monday",
       time_format: "24h",
@@ -73,7 +73,7 @@ function makePayload(over: Partial<Payload> = {}): Payload {
     emoji: [],
     reactions: [],
     types: [],
-    tz: { name: "Asia/Kuala_Lumpur", label: "Asia/Kuala_Lumpur (UTC+8)" },
+    tz: { name: "Europe/London", label: "Europe/London (UTC+0)" },
     channel_hint: "#general",
   };
   return { ...base, ...over };
