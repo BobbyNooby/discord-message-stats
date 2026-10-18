@@ -24,9 +24,9 @@ def test_config_change_marks_the_cache_stale(admin_client):
 
 
 def test_config_round_trip_shows_what_is_overridden(admin_client):
-    admin_client.put("/api/admin/config", json={"timezone": "Asia/Kuala_Lumpur"})
+    admin_client.put("/api/admin/config", json={"timezone": "Europe/London"})
     body = admin_client.get("/api/admin/config").json()
-    assert body["effective"]["timezone"] == "Asia/Kuala_Lumpur"
+    assert body["effective"]["timezone"] == "Europe/London"
     assert body["overridden"] == ["timezone"]
 
 
@@ -104,7 +104,7 @@ def test_the_zone_picker_lists_real_zones_and_the_zone_in_force(admin_client):
     says which zone is actually bucketing the messages right now."""
     body = admin_client.get("/api/admin/timezones").json()
     assert len(body["zones"]) > 100
-    assert "Asia/Kuala_Lumpur" in body["zones"]
+    assert "Europe/London" in body["zones"]
     assert "GMT+8" not in body["zones"]
     assert body["configured"] == "UTC"
     assert body["effective"] == "UTC"
@@ -139,7 +139,7 @@ def test_status_says_what_changed_since_each_family_was_built(admin_client, conn
 
 
 def test_status_blames_the_config_when_it_changed_after_a_build(admin_client):
-    admin_client.put("/api/admin/config", json={"timezone": "Asia/Kuala_Lumpur"})
+    admin_client.put("/api/admin/config", json={"timezone": "Europe/London"})
     body = admin_client.get("/api/admin/status").json()
     assert body["rollups"]["activity"]["config_changed"] is True
     assert body["cache_stale"] is True
