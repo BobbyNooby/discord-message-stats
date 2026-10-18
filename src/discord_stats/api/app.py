@@ -75,6 +75,37 @@ def _require_rollups(conn: sqlite3.Connection) -> None:
         )
 
 
+def _schema_meta(conn: sqlite3.Connection) -> dict:
+    """The database's schema stamp versus what this library expects.
+
+    The dashboard serves regardless: a disagreement means some numbers may be
+    from a different revision, not that none of them are readable. So this
+    returns a warning line rather than raising — and ``schema_message`` is null
+    exactly when the two agree. An unstamped database (built before the stamp
+    existed) gets its own honest sentence: unknown, never a made-up number.
+    """
+    from discord_scraper.rollups.schema import SCHEMA_VERSION, schema_version
+
+    actual = schema_version(conn)
+    if actual is None:
+        message = (
+            "this database has no schema version stamped — it predates versioning; "
+            f"this dashboard expects v{SCHEMA_VERSION} — rebuild the rollups to match"
+        )
+    elif actual != SCHEMA_VERSION:
+        message = (
+            f"this database was built by library schema v{actual}; this dashboard "
+            f"expects v{SCHEMA_VERSION} — rebuild the rollups to match"
+        )
+    else:
+        message = None
+    return {
+        "schema_version": actual,
+        "schema_expected": SCHEMA_VERSION,
+        "schema_message": message,
+    }
+
+
 def create_app(
     cfg: Config,
     db_path: str | Path,
@@ -463,6 +494,9 @@ def create_app(
                     f"timezone is {effective.timezone}. Recalculate to rebuild them."
                     if mismatch else None
                 ),
+                # Same shape as the zone warning: what the database says, what
+                # this library expects, and one line the browser can print.
+                **_schema_meta(conn),
             }
             return body
         finally:
