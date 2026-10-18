@@ -55,7 +55,28 @@ describe("<HealthBanner>", () => {
     const banner = screen.getByRole("status");
     expect(banner).toHaveTextContent(/5 days old/);
     expect(banner).toHaveTextContent(/configuration changed since the last rebuild/);
-    expect(banner).toHaveTextContent(/discord-scraper rollups rebuild/);
+    // The fix is a control on the page, not a shell command to copy.
+    expect(banner).not.toHaveTextContent(/discord-scraper/);
+  });
+
+  it("names both zones and shows the rebuild control on a timezone mismatch", () => {
+    render(
+      <HealthBanner
+        banner={null}
+        timezoneMismatch
+        timezoneMessage="These numbers were built in UTC; the configured timezone is Asia/Kuala_Lumpur. Recalculate to rebuild them."
+        action={<button type="button">Recalculate now</button>}
+      />,
+    );
+    const banner = screen.getByRole("status");
+    expect(banner).toHaveTextContent(/built in UTC/);
+    expect(banner).toHaveTextContent(/configured timezone is Asia\/Kuala_Lumpur/);
+    expect(screen.getByRole("button", { name: /recalculate now/i })).toBeInTheDocument();
+  });
+
+  it("says nothing when the zones agree and the data is current", () => {
+    const { container } = render(<HealthBanner banner={null} timezoneMismatch={false} />);
+    expect(container).toBeEmptyDOMElement();
   });
 
   it("a dead token outranks stale data", () => {

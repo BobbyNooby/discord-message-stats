@@ -13,6 +13,7 @@ import { GlobalSearch } from "./components/GlobalSearch";
 import { HealthBanner } from "./components/HealthBanner";
 import { JumpNav } from "./components/JumpNav";
 import { NoticeProvider, useNotice } from "./components/Notice";
+import { RecalculateNow } from "./components/RecalculateNow";
 import { RecentStrip } from "./components/RecentStrip";
 import {
   DashboardSkeleton,
@@ -83,7 +84,15 @@ function Dashboard() {
       bootstrap.error instanceof ServerErrorResponse
         ? bootstrap.error.message
         : (bootstrap.error as Error)?.message;
-    return <ServerErrorScreen detail={detail} onRetry={() => void bootstrap.refetch()} />;
+    return (
+      <ServerErrorScreen
+        detail={detail}
+        onRetry={() => void bootstrap.refetch()}
+        // "Rollups are not built" is a 5xx an admin can actually clear, so the
+        // screen offers the rebuild instead of a shell command.
+        action={<RecalculateNow />}
+      />
+    );
   }
 
   // Mounted only once the payload exists: the reducer seeds `active` from the
@@ -211,6 +220,11 @@ function DashboardBody({
         stale={payload.meta.stale}
         staleAt={payload.meta.computed_at}
         timeFormat={timeFormatOf(payload.meta)}
+        timezoneMismatch={payload.meta.timezone_mismatch}
+        timezoneMessage={payload.meta.timezone_message}
+        // A viewer can read the warning but cannot queue the rebuild; only an
+        // admin gets the control, so the button never leads to a 403.
+        action={payload.meta.can_admin ? <RecalculateNow /> : null}
       />
       <JumpNav />
       <RecentStrip messages={recent?.messages ?? []} truncated={recent?.truncated} />

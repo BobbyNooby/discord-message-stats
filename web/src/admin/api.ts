@@ -355,10 +355,15 @@ export const createJob = (kind: JobKind) =>
 
 /** The 202 endpoint the two save buttons differ over (§11.6). */
 export const recalculate = () =>
-  request<{ id: number; channel_id: string; kind: string; status: string }>(
-    "/api/admin/recalculate",
-    { method: "POST" },
-  );
+  request<{
+    id: number;
+    channel_id: string;
+    kind: string;
+    status: string;
+    /** True when this click landed on a rebuild already queued or running. */
+    already?: boolean;
+    message?: string;
+  }>("/api/admin/recalculate", { method: "POST" });
 
 /**
  * The live rebuild feed. `since` is the previous response's `latest_id`, so a

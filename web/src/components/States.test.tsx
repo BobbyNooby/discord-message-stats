@@ -26,10 +26,10 @@ describe("fetch states", () => {
 
   it("shows the server's own message and offers a retry", () => {
     const retry = vi.fn();
-    render(<ServerError detail="rollups are not built — run: discord-scraper rollups rebuild" onRetry={retry} />);
+    render(<ServerError detail="the rollups have not been built yet" onRetry={retry} />);
 
     expect(screen.getByRole("heading", { name: /could not build the dashboard/i })).toBeInTheDocument();
-    expect(screen.getByText(/rollups are not built/)).toBeInTheDocument();
+    expect(screen.getByText(/have not been built/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /try again/i }));
     expect(retry).toHaveBeenCalled();
   });

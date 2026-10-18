@@ -87,7 +87,16 @@ export function Forbidden({ what = "the admin board" }: { what?: string }) {
 }
 
 /** 5xx: the server accepted the request and then could not answer it. */
-export function ServerError({ detail, onRetry }: { detail?: string; onRetry?: () => void }) {
+export function ServerError({
+  detail,
+  onRetry,
+  action,
+}: {
+  detail?: string;
+  onRetry?: () => void;
+  /** A control that can actually fix the state, e.g. queueing a rebuild. */
+  action?: ReactNode;
+}) {
   return (
     <Screen
       icon={<AlertTriangle size={18} aria-hidden />}
@@ -96,6 +105,7 @@ export function ServerError({ detail, onRetry }: { detail?: string; onRetry?: ()
     >
       <p>{detail || "Something went wrong on the server."}</p>
       <p>Nothing you did caused it. Try again in a moment; if it persists, check the server log.</p>
+      {action}
     </Screen>
   );
 }
