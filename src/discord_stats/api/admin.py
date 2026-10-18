@@ -702,13 +702,29 @@ def create_job(request: Request, body: JobRequest) -> dict:
     conn = _conn(request)
     try:
         cfg = _effective_for(request, conn)
+        if body.kind == "rebuild_rollups":
+            # A rebuild takes minutes and writes every family; a second identical
+            # one behind it is pure delay. Recalculate returns the job already in
+            # flight rather than stacking another copy on top of it.
+            existing = conn.execute(
+                "SELECT id, channel_id, kind, status FROM jobs "
+                "WHERE kind = 'rebuild_rollups' AND channel_id = ? "
+                "AND status IN ('queued', 'running') ORDER BY id LIMIT 1",
+                (cfg.channel_id,),
+            ).fetchone()
+            if existing is not None:
+                state = "running" if existing["status"] == "running" else "queued"
+                return {"id": int(existing["id"]), "channel_id": existing["channel_id"],
+                        "kind": existing["kind"], "status": existing["status"],
+                        "already": True,
+                        "message": f"already {state} as job #{existing['id']}"}
         cursor = conn.execute(
             "INSERT INTO jobs (channel_id, kind, status, requested_at) VALUES (?, ?, 'queued', ?)",
             (cfg.channel_id, body.kind, _now()),
         )
         conn.commit()
         return {"id": int(cursor.lastrowid), "channel_id": cfg.channel_id,
-                "kind": body.kind, "status": "queued"}
+                "kind": body.kind, "status": "queued", "already": False}
     finally:
         conn.close()
 
