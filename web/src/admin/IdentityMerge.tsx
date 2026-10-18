@@ -90,7 +90,7 @@ export const SUGGESTION_THRESHOLD = 0.55;
  * Containment is the strongest evidence and scales with how much of the longer
  * name the shorter one covers; a shared run is weaker and scales with the share
  * of the shorter name it covers. Zero means "no evidence", which is what a
- * handle under four characters always is — "vei" appears inside "alice", and a
+ * handle under four characters always is — "bob" appears inside "bobby", and a
  * boolean would have called that a match.
  */
 export function mergeScore(a: string, b: string): number {
