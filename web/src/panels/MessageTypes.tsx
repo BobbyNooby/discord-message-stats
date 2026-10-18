@@ -1,6 +1,6 @@
 import { EmptyState, Panel } from "../components/Panel";
 import { EChart } from "../lib/echart";
-import { PALETTE } from "../lib/palette";
+import { swatch } from "../lib/palette";
 import { foldPie, pieNote, pieOption } from "./chartShape";
 import {
   allTypeRows,
@@ -46,7 +46,7 @@ export function MessageTypes({ payload, filters: fallbackFilters }: MediaPanelPr
       ) : shape === "pie" ? (
         <EChart height={300} option={pieOption(foldPie(rows), "messages")} />
       ) : (
-        <EChart height={300} option={horizontalBarsOption(rows, PALETTE[1], 11)} />
+        <EChart height={300} option={horizontalBarsOption(rows, swatch(1), 11)} />
       )}
     </Panel>
   );

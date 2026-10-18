@@ -6,11 +6,11 @@ import { selectVisibleCells, yearOf } from "../filters/selectors";
 import { EChart } from "../lib/echart";
 import { swatch } from "../lib/palette";
 import {
-  OTHER_COLOR,
   TOOLTIP,
   emptyLabel,
   fmt,
   foldSlices,
+  otherColor,
   yearCountLabel,
   type PanelProps,
   type Slice,
@@ -84,7 +84,7 @@ export function ShareOfVoiceByYear({ payload, filters: fallbackFilters }: PanelP
         data: slices.map((slice) => ({
           name: slice.name,
           value: slice.value,
-          itemStyle: { color: slice.index >= 0 ? swatch(slice.index) : OTHER_COLOR },
+          itemStyle: { color: slice.index >= 0 ? swatch(slice.index) : otherColor() },
         })),
       };
     }),

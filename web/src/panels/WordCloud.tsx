@@ -5,7 +5,7 @@ import type { Payload } from "../api/types";
 import { EmptyState, Panel } from "../components/Panel";
 import type { Filters } from "../filters/reducer";
 import { EChart } from "../lib/echart";
-import { PALETTE } from "../lib/palette";
+import { swatch } from "../lib/palette";
 import { usePanelFilters } from "./panelScope";
 
 /**
@@ -102,11 +102,11 @@ export function WordCloud({
             gridSize: 7,
             drawOutOfBound: false,
             textStyle: { fontFamily: "-apple-system, Segoe UI, Inter, sans-serif", fontWeight: 600 },
-            emphasis: { textStyle: { color: "#e7eaf2", textShadowBlur: 9, textShadowColor: "#5865f2" } },
+            emphasis: { textStyle: { color: "#e7eaf2", textShadowBlur: 9, textShadowColor: swatch(0) } },
             data: rows.map(([word, uses], index) => ({
               name: word,
               value: uses,
-              textStyle: { color: PALETTE[index % PALETTE.length] },
+              textStyle: { color: swatch(index) },
             })),
           },
         ],

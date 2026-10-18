@@ -6,11 +6,11 @@ import { EChart } from "../lib/echart";
 import { swatch } from "../lib/palette";
 import {
   LEGEND,
-  OTHER_COLOR,
   TOOLTIP,
   emptyLabel,
   fmt,
   foldSlices,
+  otherColor,
   type PanelProps,
   type Slice,
 } from "./timeAggregates";
@@ -70,7 +70,7 @@ export function ShareOfVoice({ payload, filters: fallbackFilters }: PanelProps &
         data: slices.map((slice) => ({
           name: slice.name,
           value: slice.value,
-          itemStyle: { color: slice.index >= 0 ? swatch(slice.index) : OTHER_COLOR },
+          itemStyle: { color: slice.index >= 0 ? swatch(slice.index) : otherColor() },
         })),
       },
     ],

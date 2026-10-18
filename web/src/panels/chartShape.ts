@@ -12,13 +12,14 @@
  */
 import type { EChartsOption } from "echarts";
 
-import { PALETTE } from "../lib/palette";
+import { swatch } from "../lib/palette";
 
 /** Eight named slices + "Other". A ninth colour is already indistinguishable. */
 export const MAX_PIE_SLICES = 8;
 export const OTHER_SLICE = "Other";
-/** Deliberately outside `PALETTE`'s first eight, so no slice repeats a colour. */
-export const OTHER_COLOR = "#607d8b";
+/** A slot past the first eight, so no slice repeats a colour. Read at draw
+ * time, so a fork's `--chart-12` reaches the folded tail too. */
+export const otherColor = () => swatch(11);
 
 const MUTED_TEXT = "#8a93a8";
 
@@ -92,7 +93,7 @@ export function pieOption(slices: readonly ShapeRow[], unit: string): EChartsOpt
           name: slice.name,
           value: slice.value,
           itemStyle: {
-            color: slice.name === OTHER_SLICE ? OTHER_COLOR : PALETTE[index % PALETTE.length],
+            color: slice.name === OTHER_SLICE ? otherColor() : swatch(index),
           },
         })),
       },

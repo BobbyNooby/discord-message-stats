@@ -2,6 +2,7 @@ import { C_AUTHOR, C_DAY, C_MSGS, type Payload } from "../api/types";
 import type { Filters } from "../filters/reducer";
 import { bucketOf, selectVisibleCells } from "../filters/selectors";
 import { EMPTY_AUTHORS, EMPTY_DATABASE, EMPTY_FILTER } from "../lib/empty";
+import { swatch } from "../lib/palette";
 
 /**
  * The shapes the Overview and Time & rhythm panels share.
@@ -172,8 +173,10 @@ export const LEGEND = {
   itemHeight: 8,
 } as const;
 
-/** The neutral slice a folded tail gets, so it never looks like a real author. */
-export const OTHER_COLOR = "#607d8b";
+/** The neutral slice a folded tail gets, so it never looks like a real author.
+ * A function so a fork's `--chart-12` reaches it — a constant would freeze the
+ * fallback at import time. */
+export const otherColor = () => swatch(11);
 
 export type Slice = { name: string; value: number; index: number };
 
