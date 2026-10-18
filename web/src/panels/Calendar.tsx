@@ -4,6 +4,7 @@ import type { Payload } from "../api/types";
 import { EmptyState, Panel } from "../components/Panel";
 import type { Filters } from "../filters/reducer";
 import { EChart } from "../lib/echart";
+import { swatch, token } from "../lib/palette";
 import {
   DEFAULT_WEEKS,
   MIN_WEEKS,
@@ -102,7 +103,7 @@ export function Calendar({ payload, filters: fallbackFilters }: { panelId?: stri
       min: 0,
       max: peak,
       show: false,
-      inRange: { color: ["#141822", "#5865f2"] },
+      inRange: { color: [token("--color-surface"), swatch(0)] },
     },
     series: [{ type: "heatmap" as const, data, itemStyle: { borderWidth: 0 } }],
   };

@@ -4,6 +4,7 @@ import { C_DAY, C_MSGS } from "../api/types";
 import { EmptyState, Panel } from "../components/Panel";
 import { selectVisibleCells, yearOf } from "../filters/selectors";
 import { EChart } from "../lib/echart";
+import { chartPeak, swatch, token } from "../lib/palette";
 import { AXIS, TOOLTIP, emptyLabel, fmt, kfmt, yearCountLabel, type PanelProps } from "./timeAggregates";
 import type { WithPanelId } from "./panelScope";
 import { usePanelFilters } from "./panelScope";
@@ -49,7 +50,7 @@ export function MessagesPerYear({ payload, filters: fallbackFilters }: PanelProp
     xAxis: { ...AXIS, type: "category", data: years.map(String) },
     yAxis: {
       type: "value",
-      axisLabel: { color: "#8a93a8", fontSize: 10.5, formatter: kfmt },
+      axisLabel: { color: token("--color-muted"), fontSize: 10.5, formatter: kfmt },
       splitLine: AXIS.splitLine,
     },
     series: [
@@ -59,14 +60,14 @@ export function MessagesPerYear({ payload, filters: fallbackFilters }: PanelProp
         label: {
           show: true,
           position: "top",
-          color: "#8a93a8",
+          color: token("--color-muted"),
           fontSize: 10.5,
           formatter: (p: any) => kfmt(Number(p.value)),
         },
         data: years.map((year) => ({
           value: byYear.get(year) ?? 0,
           itemStyle: {
-            color: (byYear.get(year) ?? 0) === peak ? "#c9cdfc" : "#5865f2",
+            color: (byYear.get(year) ?? 0) === peak ? chartPeak() : swatch(0),
             borderRadius: [4, 4, 0, 0],
           },
         })),

@@ -4,6 +4,7 @@ import type { EChartsOption } from "echarts";
 import { Chip } from "../components/AppShell";
 import { EmptyState, Panel } from "../components/Panel";
 import { EChart } from "../lib/echart";
+import { chartAxisDim, chartPeak, swatch, token } from "../lib/palette";
 import { hourLabel, timeFormatOf } from "../lib/timeFormat";
 import { TOOLTIP, byHour, emptyLabel, fmt, heatGrid, kfmt, type PanelProps } from "./timeAggregates";
 import type { WithPanelId } from "./panelScope";
@@ -46,7 +47,7 @@ export function TimeOfDay({ payload, filters: fallbackFilters }: PanelProps & Wi
   const data = hours.map((value) => ({
     value,
     itemStyle: {
-      color: value === peak ? "#c9cdfc" : "#5865f2",
+      color: value === peak ? chartPeak() : swatch(0),
       borderRadius: [3, 3, 0, 0] as [number, number, number, number],
     },
   }));
@@ -64,14 +65,14 @@ export function TimeOfDay({ payload, filters: fallbackFilters }: PanelProps & Wi
             type: "category",
             data: HOURS,
             startAngle: 90,
-            axisLabel: { color: "#8a93a8", fontSize: 9, interval: 1 },
-            axisLine: { lineStyle: { color: "#2b3244" } },
+            axisLabel: { color: token("--color-muted"), fontSize: 9, interval: 1 },
+            axisLine: { lineStyle: { color: token("--color-line") } },
             axisTick: { show: false },
             splitLine: { show: false },
           },
           radiusAxis: {
-            axisLabel: { color: "#5b6478", fontSize: 9, formatter: kfmt },
-            splitLine: { lineStyle: { color: "#1b202c" } },
+            axisLabel: { color: chartAxisDim(), fontSize: 9, formatter: kfmt },
+            splitLine: { lineStyle: { color: token("--color-surface-2") } },
             axisLine: { show: false },
           },
           series: [{ type: "bar", coordinateSystem: "polar", barWidth: "72%", data }],
@@ -82,14 +83,14 @@ export function TimeOfDay({ payload, filters: fallbackFilters }: PanelProps & Wi
           xAxis: {
             type: "category",
             data: HOURS,
-            axisLabel: { color: "#8a93a8", fontSize: 10, interval: 3 },
-            axisLine: { lineStyle: { color: "#2b3244" } },
+            axisLabel: { color: token("--color-muted"), fontSize: 10, interval: 3 },
+            axisLine: { lineStyle: { color: token("--color-line") } },
             axisTick: { show: false },
           },
           yAxis: {
             type: "value",
-            axisLabel: { color: "#8a93a8", fontSize: 10.5, formatter: kfmt },
-            splitLine: { lineStyle: { color: "#1b202c" } },
+            axisLabel: { color: token("--color-muted"), fontSize: 10.5, formatter: kfmt },
+            splitLine: { lineStyle: { color: token("--color-surface-2") } },
           },
           series: [{ type: "bar", barWidth: "74%", data }],
         };
