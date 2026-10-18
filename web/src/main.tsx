@@ -4,6 +4,8 @@ import { createRoot } from "react-dom/client";
 
 import App from "./App";
 import "./styles.css";
+// The fork-owned theme surface. Imported last so its overrides win.
+import "../../theme/tokens.css";
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: false, refetchOnWindowFocus: false } },

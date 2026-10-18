@@ -1,0 +1,23 @@
+/*
+ * The theme surface — the one file a private fork edits to re-theme the
+ * dashboard. Overriding the variables below is the entire integration: no
+ * component edits, no build config.
+ *
+ * It is imported after the base stylesheet (see the import in
+ * web/src/main.tsx), and CSS is bundled in import order, so every declaration
+ * here wins over the default in web/src/styles.css. The values below are the
+ * upstream defaults; a fork changes them in place.
+ *
+ * A theme is overrides of these variables only. Chart series colours are still
+ * a TypeScript constant (PALETTE in web/src/lib/palette.ts), not a CSS
+ * variable, so recolouring a series means editing that fork-owned file.
+ */
+:root {
+  --color-ink: #0b0e14;
+  --color-surface: #141822;
+  --color-surface-2: #1b202c;
+  --color-line: #2b3244;
+  --color-text: #e7eaf2;
+  --color-muted: #8a93a8;
+  --color-accent: #5865f2;
+}
