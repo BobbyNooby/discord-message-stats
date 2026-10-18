@@ -23,7 +23,14 @@ export type Payload = {
     source_count: number;
     stale: boolean;
     can_admin: boolean;
+    /** The zone the numbers were built in, not necessarily the configured one. */
     timezone: string;
+    /** True when the rollups' zone differs from the one configured now. */
+    timezone_mismatch: boolean;
+    /** The zone in force now (file, plus any operator override). */
+    configured_timezone: string;
+    /** Both zones in a sentence, or null when they agree. */
+    timezone_message: string | null;
     /** The calendar's first day, from `ui.week_start`. */
     week_start: "monday" | "sunday";
     /** How clocks are written, from `ui.time_format`. */

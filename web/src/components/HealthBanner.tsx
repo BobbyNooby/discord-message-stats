@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import { stampLabel, type TimeFormat } from "../lib/timeFormat";
 
 function daysSince(stamp: string | null | undefined): number | null {
@@ -18,8 +20,11 @@ function daysSince(stamp: string | null | undefined): number | null {
  * 2. Otherwise both remaining facts may show together, because they are
  *    independent and have different fixes: *never ingested* means the scraper
  *    has not run, while *the configuration changed since the last rebuild* means
- *    the scraper is fine and `discord-scraper rollups rebuild` is owed. One
- *    banner element carries both rather than either hiding the other.
+ *    the scraper is fine and a rebuild is owed. One banner element carries both
+ *    rather than either hiding the other.
+ *
+ * The rebuild is offered as a control (`action`), never as the shell command an
+ * operator would type — the person reading this page is not running a terminal.
  */
 export function HealthBanner({
   banner,
@@ -27,6 +32,9 @@ export function HealthBanner({
   stale,
   staleAt,
   timeFormat,
+  timezoneMismatch,
+  timezoneMessage,
+  action,
 }: {
   banner: "stale" | "token_dead" | null;
   lastIngestAt?: string | null;
@@ -34,6 +42,12 @@ export function HealthBanner({
   staleAt?: string | null;
   /** `ui.time_format`, for the "as of" stamp. */
   timeFormat?: TimeFormat;
+  /** The rollups were built in a different zone than the one configured now. */
+  timezoneMismatch?: boolean;
+  /** Both zones, in a sentence the API already phrased. */
+  timezoneMessage?: string | null;
+  /** "Recalculate now", when the caller may queue one. */
+  action?: ReactNode;
 }) {
   if (banner === "token_dead") {
     return (
@@ -58,20 +72,26 @@ export function HealthBanner({
           ? "Data is of unknown age."
           : `Data is ${daysSince(lastIngestAt)} days old.`
       : null;
-  if (!age && !stale) return null;
+  if (!age && !stale && !timezoneMismatch) return null;
   return (
     <div
       role="status"
-      className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-2 text-xs text-amber-200"
+      className="space-y-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-2 text-xs text-amber-200"
     >
       {age ? <p>{age}</p> : null}
       {stale ? (
         <p>
           The configuration changed since the last rebuild: these numbers are as of{" "}
-          {staleAt ? stampLabel(staleAt, timeFormat) : "the last rebuild"}. Run{" "}
-          <code>discord-scraper rollups rebuild</code>.
+          {staleAt ? stampLabel(staleAt, timeFormat) : "the last rebuild"}.
         </p>
       ) : null}
+      {timezoneMismatch ? (
+        <p>
+          {timezoneMessage ??
+            "These numbers were built in a different timezone than the one configured now."}
+        </p>
+      ) : null}
+      {action}
     </div>
   );
 }
