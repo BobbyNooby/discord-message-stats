@@ -332,7 +332,7 @@ discord-stats serve                                    # the dashboard API and S
 `rollups` reads a database you name with `--db`, so it works against a copy
 without touching the live one. `serve` defaults to `output/messages.db`.
 
-**The API never aggregates on request.** It reads fourteen rollup tables and
+**The API never aggregates on request.** It reads fifteen rollup tables and
 reports when they were built; a request never scans `messages` and never touches
 the 483 MB of raw JSON. That is why the rebuild is a separate step, and why
 `rollups status` matters: after a timezone change, an identity merge or a
@@ -342,7 +342,7 @@ stopword edit, the tables are **stale** until you rebuild.
 
 | Route | Who | What |
 |---|---|---|
-| `/` | signed-in viewer | the dashboard: 36 panels in six sections |
+| `/` | signed-in viewer | the dashboard: 36 panels in seven sections |
 | `/login` | anyone | Discord OAuth, scope `identify` only |
 | `/admin` | admin | data source, who shows, identity merge, ingest, rollup cache, access |
 | `/api/health` | anyone | liveness plus the banner state |
