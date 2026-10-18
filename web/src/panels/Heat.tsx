@@ -2,6 +2,7 @@ import type { EChartsOption } from "echarts";
 
 import { EmptyState, Panel } from "../components/Panel";
 import { EChart } from "../lib/echart";
+import { chartHeat, chartHeatEdge, token } from "../lib/palette";
 import { hourLabel, timeFormatOf } from "../lib/timeFormat";
 import { DOW, TOOLTIP, emptyLabel, fmt, heatGrid, type PanelProps } from "./timeAggregates";
 import type { WithPanelId } from "./panelScope";
@@ -49,15 +50,15 @@ export function Heat({ payload, filters: fallbackFilters }: PanelProps & WithPan
     xAxis: {
       type: "category",
       data: HOURS,
-      axisLabel: { color: "#8a93a8", fontSize: 10, interval: 2 },
-      axisLine: { lineStyle: { color: "#2b3244" } },
+      axisLabel: { color: token("--color-muted"), fontSize: 10, interval: 2 },
+      axisLine: { lineStyle: { color: token("--color-line") } },
       axisTick: { show: false },
     },
     yAxis: {
       type: "category",
       data: [...DOW],
-      axisLabel: { color: "#8a93a8", fontSize: 10.5, interval: 0 },
-      axisLine: { lineStyle: { color: "#2b3244" } },
+      axisLabel: { color: token("--color-muted"), fontSize: 10.5, interval: 0 },
+      axisLine: { lineStyle: { color: token("--color-line") } },
       axisTick: { show: false },
     },
     visualMap: {
@@ -68,15 +69,15 @@ export function Heat({ payload, filters: fallbackFilters }: PanelProps & WithPan
       bottom: 2,
       itemWidth: 120,
       itemHeight: 10,
-      textStyle: { color: "#8a93a8", fontSize: 10 },
-      inRange: { color: ["#141a2e", "#28386e", "#4155c9", "#7b86f5", "#c3c8fb"] },
+      textStyle: { color: token("--color-muted"), fontSize: 10 },
+      inRange: { color: chartHeat() },
     },
     series: [
       {
         type: "heatmap",
         data,
         progressive: 2000,
-        itemStyle: { borderColor: "#11141c", borderWidth: 1 },
+        itemStyle: { borderColor: chartHeatEdge(), borderWidth: 1 },
       },
     ],
   };

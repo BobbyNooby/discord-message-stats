@@ -4,6 +4,7 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { useWords } from "../api/queries";
 import { EmptyState, Panel } from "../components/Panel";
 import { EChart } from "../lib/echart";
+import { chartPeak, chartTooltipBg, swatch, token } from "../lib/palette";
 import { WORD_SEARCH_ID } from "../lib/shortcuts";
 import { usePanelFilters } from "./panelScope";
 
@@ -72,16 +73,16 @@ export function WordIndex({ words, selected, onSelect }: WordIndexProps) {
       const rows = shown.slice().reverse();
       return {
         tooltip: {
-          backgroundColor: "#171b25",
-          borderColor: "#2b3244",
-          textStyle: { color: "#e7eaf2", fontSize: 12 },
+          backgroundColor: chartTooltipBg(),
+          borderColor: token("--color-line"),
+          textStyle: { color: token("--color-text"), fontSize: 12 },
           formatter: (p: any) => `“${p.name}”<br><b>${fmt(p.value)}</b> uses — click to see who`,
         },
         grid: { left: 6, right: 46, top: 4, bottom: 4, containLabel: true },
         xAxis: {
           type: "value",
-          splitLine: { lineStyle: { color: "#1b202c" } },
-          axisLabel: { color: "#8a93a8", fontSize: 10.5, formatter: (v: number) => kfmt(v) },
+          splitLine: { lineStyle: { color: token("--color-surface-2") } },
+          axisLabel: { color: token("--color-muted"), fontSize: 10.5, formatter: (v: number) => kfmt(v) },
         },
         yAxis: {
           type: "category",
@@ -89,7 +90,7 @@ export function WordIndex({ words, selected, onSelect }: WordIndexProps) {
           // One label per bar, always: `interval: "auto"` hides every
           // other word, which reads as a broken axis.
           axisLabel: {
-            color: "#8a93a8",
+            color: token("--color-muted"),
             fontSize: 10.5,
             interval: 0,
             width: 74,
@@ -99,7 +100,7 @@ export function WordIndex({ words, selected, onSelect }: WordIndexProps) {
             // and it fills the row.
             triggerEvent: true,
           },
-          axisLine: { lineStyle: { color: "#2b3244" } },
+          axisLine: { lineStyle: { color: token("--color-line") } },
           axisTick: { show: false },
         },
         series: [
@@ -109,14 +110,14 @@ export function WordIndex({ words, selected, onSelect }: WordIndexProps) {
             data: rows.map(([word, uses]) => ({
               value: uses,
               itemStyle: {
-                color: word === shownWord ? "#eb459e" : word === shown[cursor]?.[0] ? "#c9cdfc" : "#5865f2",
+                color: word === shownWord ? swatch(1) : word === shown[cursor]?.[0] ? chartPeak() : swatch(0),
                 borderRadius: [0, 4, 4, 0] as [number, number, number, number],
               },
             })),
             label: {
               show: true,
               position: "right",
-              color: "#8a93a8",
+              color: token("--color-muted"),
               fontSize: 10,
               formatter: (p: any) => kfmt(p.value as number),
             },

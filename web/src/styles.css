@@ -17,6 +17,37 @@
   --color-accent: #5865f2;
 }
 
+/* The chart series palette, in order, so a series colour is a theme decision
+   like any other. `web/src/lib/palette.ts` reads these and carries the same
+   values as fallbacks, so a fork overriding `--chart-1` recolours a series
+   without touching a component, and a missing variable never changes what is
+   drawn. Kept out of `@theme`: these are read with `var()`/`getComputedStyle`,
+   not turned into utility classes. */
+:root {
+  --chart-1: #5865f2;
+  --chart-2: #eb459e;
+  --chart-3: #57f287;
+  --chart-4: #fee75c;
+  --chart-5: #00b0f4;
+  --chart-6: #f57731;
+  --chart-7: #9b59b6;
+  --chart-8: #1abc9c;
+  --chart-9: #e91e63;
+  --chart-10: #8bc34a;
+  --chart-11: #ff9800;
+  --chart-12: #607d8b;
+  /* Colours the charts use beyond the twelve series slots. */
+  --chart-peak: #c9cdfc;
+  --chart-heat-1: #141a2e;
+  --chart-heat-2: #28386e;
+  --chart-heat-3: #4155c9;
+  --chart-heat-4: #7b86f5;
+  --chart-heat-5: #c3c8fb;
+  --chart-heat-edge: #11141c;
+  --chart-tooltip-bg: #171b25;
+  --chart-axis-dim: #5b6478;
+}
+
 html,
 body,
 #root {
