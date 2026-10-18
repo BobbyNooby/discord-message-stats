@@ -424,15 +424,13 @@ def create_app(
             # Admin overrides count as "the configured timezone" (§7.1).
             effective = admin.effective_for(conn, cfg)
             recorded = query.provenance_row(conn, effective.channel_id, "activity")
-            if recorded and recorded["timezone"] != effective.timezone:
-                raise HTTPException(
-                    status_code=409,
-                    detail=(
-                        f"rollups were built in {recorded['timezone']}, the configured "
-                        f"timezone is {effective.timezone} — run: discord-scraper "
-                        "rollups rebuild"
-                    ),
-                )
+            # A zone disagreement is not unusable data: the buckets are correct
+            # for the zone they were built in, and every other panel's numbers
+            # are right. Served with a warning in `meta` instead of a 409, which
+            # used to blank the whole dashboard — and with an override the
+            # rebuild path ignored, could never be cleared at all.
+            built_zone = (recorded or {}).get("timezone") or effective.timezone
+            mismatch = bool(recorded) and recorded["timezone"] != effective.timezone
 
             key = _payload_key(conn, effective)
             cached = app.state.payload_cache.get(key)
@@ -454,6 +452,15 @@ def create_app(
                 # question here; the exact count is the CLI's audit.
                 "stale": is_stale(conn, effective.channel_id, "activity",
                                   config_hash=key_config_hash(key), cheap=True),
+                # The frontend's contract for the warning banner: a flag, both
+                # zones, and a line it can show without knowing the details.
+                "timezone_mismatch": mismatch,
+                "configured_timezone": effective.timezone,
+                "timezone_message": (
+                    f"These numbers were built in {built_zone}; the configured "
+                    f"timezone is {effective.timezone}. Recalculate to rebuild them."
+                    if mismatch else None
+                ),
             }
             return body
         finally:
