@@ -9,7 +9,7 @@
  * 5. every write an admin makes — an include toggle, a merge, revoke-all, the
  *    cron switch — really goes to the API and marks the cache stale.
  *
- * The fetch stub returns the exact shapes from `src/discord_scraper/api/admin.py`.
+ * The fetch stub returns the exact shapes from `src/discord_stats/api/admin.py`.
  */
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";

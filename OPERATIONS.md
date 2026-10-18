@@ -7,8 +7,8 @@ everything that bites in production.
 
 | Shape | Command | Why |
 |---|---|---|
-| One process | `discord-scraper serve --all` | the default on a home box: API, worker and SPA together |
-| Split | `discord-scraper serve --api` **and** `discord-scraper serve --worker` | the Discord token lives on the machine that serves no HTTP |
+| One process | `discord-stats serve` | the default on a home box: API, worker and SPA together |
+| Split | `discord-stats serve --api` **and** `discord-scraper serve --worker` | the Discord token lives on the machine that serves no HTTP |
 
 `docker-compose.yml` runs the split shape with a shared `./data` volume. The
 worker is the only writer; the API is the only reader of message data.
