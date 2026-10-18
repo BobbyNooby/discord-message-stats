@@ -42,9 +42,13 @@ export function JumpNav() {
       className="sticky top-0 z-20 bg-[var(--color-ink)]"
       style={{ paddingTop: "max(0.75rem, env(safe-area-inset-top))" }}
     >
+      {/* No inline padding of its own: the column the headings and cards sit in
+          has none, so a left inset would start the bar's content inside that
+          column while the cards start on its edge. The trailing padding is the
+          phone's clearance for the floating Filters button, not a gutter. */}
       <nav
         aria-label="Sections"
-        className="flex items-center gap-1 overflow-x-auto rounded-lg border border-[var(--color-line)] bg-[var(--color-ink)]/95 px-1 py-1 pr-14 text-xs backdrop-blur md:pr-1"
+        className="flex items-center gap-1 overflow-x-auto rounded-lg border border-[var(--color-line)] bg-[var(--color-ink)]/95 py-1 pr-14 text-xs backdrop-blur md:pr-0"
       >
         {SECTIONS.map((section) => {
           const Icon = section.icon;
