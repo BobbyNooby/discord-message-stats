@@ -4,6 +4,7 @@
   "description": "Renders discord-message-scraper's rollups as a local dashboard.",
   "scripts": {
     "postinstall": "node scripts/setup.mjs",
+    "setup": "node scripts/setup.mjs",
     "dev": "pnpm -C web dev",
     "build": "pnpm -C web build",
     "test": "pnpm -C web test",

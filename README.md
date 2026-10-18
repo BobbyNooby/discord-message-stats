@@ -1,100 +1,101 @@
-# discord-scraper
+# discord-message-stats
 
-Scrape a Discord channel into a local SQLite database, analyse it from the CLI,
-and optionally serve a stats site over it.
+Serve [discord-message-scraper](https://github.com/BobbyNooby/discord-message-scraper)
+as a stats dashboard: the API, the React SPA and the OAuth login. The scraper is
+pinned as a submodule under `vendor/`, so this repo owns everything web-shaped
+while the tool stays dependency-free.
 
-**Install one of three ways, depending on how much you want:**
+**Install one of two ways:**
 
-| Tier | Install | What you get |
+| | Install | What you get |
 |---|---|---|
-| 1 — CLI only | `pipx install discord-scraper` | scrape a channel; the text analysis CLI. No dependencies at all — HTTP is stdlib `urllib` |
-| 2 — CLI + site | `pipx install "discord-scraper[web]"` then `discord-stats serve` | the stats site on localhost |
-| 3 — Container | `docker run -v ./data:/data --env-file .env discord-scraper` | the same site, with neither Python nor Node installed on the host |
+| Local | `pnpm install` | one venv with the tool *and* this dashboard; the API and the worker run as two processes |
+| Container | `docker compose up` | the same pair from one image and one named volume, with neither Python nor Node on the host |
 
 The container's home is the volume (`DISCORD_SCRAPER_HOME=/data`), so
-`config.toml` belongs in `./data` beside `messages.db`; `--env-file .env`
-injects the secrets and nothing else.
+`config.toml` and `messages.db` live there and a rebuild never loses them.
+[deploy/coolify.md](deploy/coolify.md) is the deploy contract.
 
-The CLI is tier 1 and stays a first-class interface, not a leftover: it is how
-the tool is useful with zero infrastructure. The web is additive.
+The CLI is still a first-class interface, not a leftover: `discord-scraper`
+scrapes and rebuilds with no web code at all, and that is how the tool is useful
+with zero infrastructure. The web is additive.
 
 > **ToS caveat, read it:** scraping uses a **user-account token** against
 > Discord's private REST API, which violates Discord's Terms of Service
 > ("self-botting") and can get the account actioned. Use a dedicated alt
 > account, throttle conservatively, and accept that risk knowingly. The
 > compliant alternative is Discord's own data export
-> (Settings → Privacy & Safety → Request Data), which this tool can also import.
+> (Settings → Privacy & Safety → Request Data), which the tool can also import.
 
 **Jump to:** [quickstart](#quickstart) · [the stats site](#the-stats-site) ·
-[operations](OPERATIONS.md) · [schema](#schema) · [analysis CLI](#analysis)
+[deploying](deploy/coolify.md) · [operations](OPERATIONS.md) · [schema](#schema)
+· [analysis CLI](#analysis)
 
 ## Quickstart
 
 ```bash
-git clone <this repo> && cd discord-scraper
-python3 -m venv .venv && . .venv/bin/activate
+git clone --recurse-submodules https://github.com/BobbyNooby/discord-message-stats
+cd discord-message-stats
 
-# 1. secrets in .env, settings in config.toml — never the other way round
-cp .env.example .env                 # then put DISCORD_TOKEN in it
+pnpm install                         # submodule, .venv, both packages, web deps, .env
+
 cp config.example.toml config.toml   # then set source.channel_id
-
-# 2. tier 1: scrape, then analyse. Nothing to install for either.
-python3 main.py scrape               # needs the real token; resumes if interrupted
-python3 analysis.py                  # default report: charts + text dump
-
-# 3. tier 2: the site
-pip install -e ".[web]"
-discord-scraper rollups rebuild --db output/messages.db
-discord-stats serve                # http://127.0.0.1:8000
+# .env was created for you — put DISCORD_TOKEN in it
 ```
 
-Only the scrape needs `DISCORD_TOKEN`; the analysis and the site read the local
-database. An empty database is not a crash: the analysis prints
-`no messages yet — run a scrape first`, so run the scrape to completion first.
-The named analyses (`stats`, `top-authors`, …) are in [Analysis](#analysis).
+That is the whole setup. `pnpm install` is idempotent, so re-run it any time.
+`DSH_SKIP_PY_SETUP=1` leaves the Python environment alone (for anyone managing
+their own interpreter), `DSH_SKIP_JS_SETUP=1` leaves the web dependencies alone.
+
+```bash
+.venv/bin/discord-scraper scrape        # needs the real token; resumes if interrupted
+.venv/bin/discord-stats serve --api     # http://127.0.0.1:8000
+```
+
+Run the worker as a second process — same venv, same database:
+
+```bash
+.venv/bin/discord-scraper serve --worker
+```
+
+(On Windows the scripts are under `.venv\Scripts\`.) Only the scrape and the
+worker need `DISCORD_TOKEN`; the dashboard reads the local database and serves
+without it. The named analyses (`stats`, `top-authors`, …) are in
+[Analysis](#analysis).
 
 ## Layout
 
 ```
-main.py               `python3 main.py scrape` — puts src/ on the path, no install
-analysis.py           `python3 analysis.py` — shim for the analysis CLI, no install
-config.example.toml   copy to config.toml (settings; gitignored)
-.env.example          copy to .env (secrets only; gitignored)
-stopwords.d/          your own *.txt word lists, if any (optional)
-src/discord_scraper/
-  cli.py              the `discord-scraper` console script: scrape/analyze/rollups/serve
-  config.py           secrets from .env, settings from config.toml
-  overrides.py        operator overrides stored beside the database
-  pipeline.py         the scrape itself (catch-up + backfill, resume points)
-  scraper/            Discord REST client, schema, transform, constants
-  analysis/           read-only queries, text report and matplotlib charts
-  api/                the FastAPI app, auth, and the SPA it serves
-  worker/             the scheduled ingest worker
-  rollups/            the precomputed rollup tables the API reads
-  data/               packaged stopword packs (+ their licence)
-output/
-  messages.db         the database (created on first run)
-sql/
-  analysis.sql        starter queries for analysis
-web/                  the React frontend (pnpm)
-tests/                the pytest suite
+vendor/discord-message-scraper/   the pinned tool (submodule)
+  src/discord_scraper/            `discord-scraper` — scrape/analyze/rollups/serve --worker
+src/discord_stats/                the dashboard
+  cli.py                          `discord-stats` — serve --api (HTTP only)
+  api/                            the FastAPI app: viewer payload, admin, upload, logs
+  auth/                           Discord OAuth, sessions, the allowlist
+web/                              the React frontend (pnpm); builds to web/dist
+theme/tokens.css                  the one file a fork overrides (CSS variables only)
+docker/entrypoint.sh              seeds an empty /data volume before either service
+config.example.toml               copy to config.toml (settings; gitignored)
+.env.example                      copy to .env (secrets only; gitignored)
+output/messages.db                the database (created on first run; gitignored)
+tests/                            the pytest suite
 ```
 
 ## Setup
 
-```sh
-cp .env.example .env                 # secrets: just the token
-cp config.example.toml config.toml   # everything else
-```
+`pnpm install` creates `.env` from `.env.example` if it is missing, and never
+overwrites one you already have. `.env` holds secrets:
 
-`.env` holds secrets only, and the one it needs is:
-
-- `DISCORD_TOKEN` — a **user** token (bots can't read DMs they weren't added to)
+- `DISCORD_TOKEN` — the token that scrapes. A **bot** token can read a server
+  channel it has been invited to; a user token also works but see the ToS
+  caveat above.
+- `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`, `SESSION_SECRET`,
+  `ADMIN_DISCORD_ID` — only needed to sign in to the site
 
 `config.toml` holds every setting. The ones a first run needs are:
 
-- `source.channel_id` — the DM/group channel ID (visible in the browser client
-  URL: `/channels/@me/<id>`)
+- `source.channel_id` — the channel ID (the number in the client URL
+  `/channels/@me/<id>` for a DM, or right-click a channel → Copy Channel ID)
 - `source.batch_size` — messages per request (1–100; default 50)
 
 The rest — timezone, counted message types, the bot rule, stopword packs,
@@ -108,20 +109,19 @@ different `config.toml` with `--config`, and ignores stored overrides entirely
 with `--ignore-overrides`:
 
 ```sh
-python3 main.py scrape --config /path/to/config.toml
-python3 main.py scrape --ignore-overrides
+.venv/bin/discord-scraper scrape --config /path/to/config.toml
+.venv/bin/discord-scraper scrape --ignore-overrides
 ```
 
 ## Run
 
 ```sh
-python3 main.py scrape                 # full scrape
-python3 main.py scrape --max-batches 3 # quick test run (3 batches of 50)
-python3 main.py scrape --batch-size 25 # gentler on the API (1-100; default 50)
+.venv/bin/discord-scraper scrape                 # full scrape
+.venv/bin/discord-scraper scrape --max-batches 3 # quick test run (3 batches of 50)
+.venv/bin/discord-scraper scrape --batch-size 25 # gentler on the API (1-100; default 50)
 ```
 
-`scrape` is a subcommand: bare `python3 main.py` prints the available commands.
-Once installed, the same flags work on `discord-scraper scrape`.
+`scrape` is a subcommand: bare `discord-scraper` prints the available commands.
 
 Safe to interrupt (Ctrl-C) and re-run at any time:
 
@@ -156,10 +156,14 @@ months slowly — and it hovers below 100% until the first message is reached.
 ## Tests
 
 ```sh
-# the suite spans both tiers, so it needs the web extra beside the test runner
-python3 -m pip install -e ".[dev,web]"
-python3 -m pytest -q
+# the dashboard suite imports the tool from the submodule
+PYTHONPATH=vendor/discord-message-scraper/src .venv/bin/python -m pytest -q
+
+cd web && pnpm test && pnpm typecheck && pnpm build
 ```
+
+`pnpm install` already provides everything these need: the `[web,dev]` extras in
+`pyproject.toml` are FastAPI/uvicorn/authlib plus pytest.
 
 No network: the catch-up tests run against a temp SQLite file with only the
 HTTP call faked, and the rollup tests run against an in-memory database with
@@ -216,14 +220,11 @@ discord-scraper analyze top-words --author exampleuser  # word frequency
 discord-scraper analyze emoji               # emoji used in message text
 ```
 
-From a bare checkout the same commands run as a module with `src/` on the path
-(`PYTHONPATH=src python3 -m discord_scraper.analysis stats`), or through the
-checkout shim, which forwards its arguments:
+The analysis code lives in the tool, so it imports from the submodule. From a
+bare checkout, run it with the submodule on the path:
 
 ```sh
-python3 analysis.py stats
-python3 analysis.py activity --by month
-python3 analysis.py            # no command = the default report
+PYTHONPATH=vendor/discord-message-scraper/src .venv/bin/python -m discord_scraper.analysis stats
 ```
 
 `discord-scraper analyze` (or `discord-scraper analyze report`) with no other
@@ -237,10 +238,10 @@ arguments generates `output/report/` in both **words** and **messages** modes:
 Charts need matplotlib (`python3 -m pip install --user matplotlib`); the text
 report works without it.
 
-Ready-made SQL also lives in `sql/analysis.sql`:
+Ready-made SQL also lives in the tool's repo:
 
 ```sh
-sqlite3 output/messages.db < sql/analysis.sql
+sqlite3 output/messages.db < vendor/discord-message-scraper/sql/analysis.sql
 ```
 
 ### As a library
@@ -373,21 +374,25 @@ search. Everything else returns numbers.
 
 ### Deploying
 
-`Dockerfile` is a two-stage build (Node builds the SPA, Python runs the
-server) and `docker-compose.yml` runs the API and the worker as separate
-services over one shared volume, so the Discord token can live on the machine
-that serves no HTTP. Backup, restore, the serve shapes and the tunnel are in
+`Dockerfile` is a two-stage build: Node builds `web/dist`, then Python installs
+the tool from `vendor/` plus this dashboard and serves the SPA. One **image**,
+two services: `docker-compose.yml` runs the API on port 8000 and the worker with
+no port at all, sharing one named volume at `/data`, so the Discord token can
+live on the worker. The Coolify contract — port, volume, healthcheck, env vars
+and the https redirect rule — is in [deploy/coolify.md](deploy/coolify.md).
+Backup, restore, the serve shapes and the tunnel are in
 [OPERATIONS.md](OPERATIONS.md).
 
 ## Development
 
 ```bash
-# backend
-python3 -m pytest -q
+# backend — the dashboard tests import the tool from the submodule
+PYTHONPATH=vendor/discord-message-scraper/src .venv/bin/python -m pytest -q
 
 # frontend (Vite dev server proxies /api to :8000)
-cd web && pnpm install && pnpm dev
-cd web && pnpm test && pnpm typecheck
+pnpm dev
+pnpm test
+pnpm typecheck
 ```
 
 The design spec and the implementation plans live in `docs/superpowers/`, which
@@ -398,7 +403,7 @@ shipped tool.
 
 English stopwords come from [stopwords-iso](https://github.com/stopwords-iso/stopwords-iso)
 (MIT, © 2020 Gene Diaz); the licence ships beside the data in
-`src/discord_scraper/data/LICENSE-stopwords.txt`, along with an opt-in Malay
-pack. Charting is [ECharts](https://echarts.apache.org/) (Apache-2.0) and its
+`vendor/discord-message-scraper/src/discord_scraper/data/LICENSE-stopwords.txt`,
+along with an opt-in Malay pack. Charting is [ECharts](https://echarts.apache.org/) (Apache-2.0) and its
 word-cloud extension. UI chrome follows [shadcn/ui](https://ui.shadcn.com/)
 conventions over Radix primitives.
