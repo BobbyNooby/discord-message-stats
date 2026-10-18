@@ -73,6 +73,27 @@ def _conn(request: Request) -> sqlite3.Connection:
     return connect_writable(request.app.state.db_path)
 
 
+def _log_event(request: Request, *, message: str, scope: str, level: str = "info",
+               phase: str | None = None, rows: int | None = None,
+               seconds: float | None = None) -> None:
+    """Write one control-plane log line about an admin action.
+
+    On its own connection, after the action has committed, so the audit line is
+    never swept into the action's transaction — and a logging failure can never
+    undo the change it describes.
+    """
+    from discord_scraper.rollups.build import record_event
+
+    conn = _conn(request)
+    try:
+        record_event(conn, source="api", scope=scope, level=level, phase=phase,
+                     message=message, rows=rows, seconds=seconds)
+    except sqlite3.Error:
+        pass   # the action is already done; a missing log line must not 500 it
+    finally:
+        conn.close()
+
+
 def _overrides(conn: sqlite3.Connection) -> dict[str, str]:
     return dict(conn.execute("SELECT key, value FROM config"))
 
@@ -672,6 +693,8 @@ def put_config(request: Request, payload: dict) -> dict:
         conn.commit()
     finally:
         conn.close()
+    _log_event(request, scope="config", phase="changed",
+               message=f"config changed: {', '.join(sorted(payload))}")
     return get_config(request)
 
 
@@ -875,6 +898,9 @@ def upload_database(request: Request, file: UploadFile = File(...)) -> dict:
         raise HTTPException(status_code=400, detail=str(exc)) from None
 
     PENDING_UPLOADS[staged.upload_id] = staged
+    _log_event(request, scope="upload", phase="staged", rows=staged.rows,
+               message=(f"upload staged: {staged.rows} rows, +{staged.added} "
+                        f"-{staged.lost} against the live database"))
     return {
         "upload_id": staged.upload_id,
         "rows": staged.rows,
@@ -913,6 +939,9 @@ def commit_upload(request: Request, upload_id: str) -> dict:
         raise HTTPException(status_code=404, detail="no such upload — stage it again")
     backup = staging.commit(staged)
     job = create_job(request, JobRequest(kind="rebuild_rollups"))
+    _log_event(request, scope="upload", phase="committed", rows=staged.rows,
+               message=(f"upload committed: {staged.rows} rows, "
+                        f"job {job['id']} queued"))
     return {
         "rows": staged.rows,
         "first": staged.first,
@@ -923,12 +952,14 @@ def commit_upload(request: Request, upload_id: str) -> dict:
 
 
 @router.delete("/upload/{upload_id}", status_code=204)
-def discard_upload(upload_id: str) -> None:
+def discard_upload(request: Request, upload_id: str) -> None:
     from discord_scraper.api import upload as staging
 
     staged = PENDING_UPLOADS.pop(upload_id, None)
     if staged is not None:
         staging.discard(staged)
+        _log_event(request, scope="upload", phase="discarded", rows=staged.rows,
+                   message=f"upload discarded: {staged.rows} rows staged, never committed")
 
 
 def app_db_path(request: Request) -> str:
@@ -1105,6 +1136,12 @@ def put_identity(request: Request, body: IdentityRequest) -> dict:
             {"canonical": canonical, "accounts": members}
             for canonical, members in sorted(_grouped_merges(conn, cfg.channel_id).items())
         ]
+        added, removed = _identity_delta(previous, merges)
+        phase = "merged" if added > removed else ("unmerged" if removed else "updated")
+        moved = f", {len(admins_moved)} admin moved" if admins_moved else ""
+        _log_event(request, scope="identity", phase=phase,
+                   message=(f"identity {phase}: +{added} -{removed} accounts across "
+                            f"{len(merges)} identities{moved}"))
         return {
             "merges": merges,
             "cache_stale": True,
@@ -1113,6 +1150,13 @@ def put_identity(request: Request, body: IdentityRequest) -> dict:
         }
     finally:
         conn.close()
+
+
+def _identity_delta(previous: list[dict], merges: list[dict]) -> tuple[int, int]:
+    """How many accounts this call added to, and removed from, the merge map."""
+    before = {str(account) for group in previous for account in group.get("accounts") or []}
+    after = {str(account) for group in merges for account in group.get("accounts") or []}
+    return len(after - before), len(before - after)
 
 
 def _grouped_merges(conn: sqlite3.Connection, channel_id: str) -> dict[str, list[str]]:
@@ -1162,9 +1206,12 @@ def revoke_all_sessions(request: Request) -> dict:
             "UPDATE sessions SET revoked = 1 WHERE revoked = 0 AND id != ?", (hash_token(token),)
         )
         conn.commit()
-        return {"revoked": int(cursor.rowcount or 0)}
+        revoked = int(cursor.rowcount or 0)
     finally:
         conn.close()
+    _log_event(request, scope="session", level="warn", phase="revoked",
+               message=f"revoked {revoked} session(s)")
+    return {"revoked": revoked}
 
 
 class AdminRequest(BaseModel):
@@ -1202,11 +1249,12 @@ def add_an_admin(request: Request, body: AdminRequest) -> dict:
     conn = _conn(request)
     try:
         cfg = _effective_for(request, conn)
-        return add_admin(
+        actor = _actor(request, conn)
+        added = add_admin(
             conn,
             discord_id=body.discord_id,
             channel_id=cfg.channel_id,
-            added_by=_actor(request, conn),
+            added_by=actor,
             force=body.force,
         )
     except UnknownAdmin as exc:
@@ -1215,6 +1263,9 @@ def add_an_admin(request: Request, body: AdminRequest) -> dict:
         raise HTTPException(status_code=400, detail=str(exc)) from None
     finally:
         conn.close()
+    _log_event(request, scope="admin", phase="added",
+               message=f"admin added: {added['discord_id']} by {actor}")
+    return added
 
 
 @router.delete("/admins/{discord_id}")
@@ -1229,6 +1280,8 @@ def remove_an_admin(request: Request, discord_id: str) -> dict:
             raise HTTPException(status_code=404, detail=str(exc)) from None
         except AdminLocked as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from None
-        return {"removed": discord_id, "revoked": revoked}
     finally:
         conn.close()
+    _log_event(request, scope="admin", level="warn", phase="removed",
+               message=f"admin removed: {discord_id} ({revoked} session(s) revoked)")
+    return {"removed": discord_id, "revoked": revoked}

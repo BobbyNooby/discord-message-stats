@@ -37,6 +37,60 @@ LOG_CAP = 200
 # working session. Past it the endpoint reports `abandoned: true`.
 ABANDONED_AFTER_SECONDS = 2 * 60 * 60
 
+# The log line's shape, shared by `/api/admin/progress` and the SSE stream so the
+# frontend needs one type rather than two. `level`, `source` and `scope` are the
+# severity and provenance the verbose log added; a row written before those
+# columns existed selects as NULL and reads as an unnamed info line.
+EVENT_FIELDS: tuple[str, ...] = (
+    "id", "started_at", "finished_at", "kind", "family", "phase", "message",
+    "level", "source", "scope",
+)
+
+
+def event_columns(conn: sqlite3.Connection) -> str:
+    """The event select list, with NULLs for columns a pre-migration db lacks.
+
+    The API reads through a read-only handle, so it cannot migrate a database
+    itself; naming an absent column would turn a stale file into a 500 on the
+    board instead of a log line with no provenance.
+    """
+    present = {str(row[1]) for row in conn.execute("PRAGMA table_info(rebuild_events)")}
+    return ", ".join(
+        field if field in present else f"NULL AS {field}" for field in EVENT_FIELDS
+    )
+
+
+def event_entry(row: sqlite3.Row | tuple) -> dict:
+    """One log line in the shared shape."""
+    return {
+        "id": int(row["id"]),
+        "at": row["finished_at"] or row["started_at"],
+        "kind": row["kind"],
+        "family": row["family"],
+        "phase": row["phase"],
+        "message": row["message"],
+        "level": row["level"],
+        "source": row["source"],
+        "scope": row["scope"],
+    }
+
+
+def read_events(conn: sqlite3.Connection, *, since: int = 0, limit: int = LOG_CAP,
+                ascending: bool = False) -> list[dict]:
+    """Log lines newer than ``since``, newest-first by default.
+
+    One indexed range scan of the small control-plane table: no ``COUNT(*)`` over
+    ``messages`` and nothing that grows with the size of the conversation, which
+    is what lets the stream poll this twice a second.
+    """
+    order = "ASC" if ascending else "DESC"
+    rows = conn.execute(
+        f"SELECT {event_columns(conn)} FROM rebuild_events "
+        f"WHERE id > ? ORDER BY id {order} LIMIT ?",
+        (int(since), int(limit)),
+    )
+    return [event_entry(row) for row in rows]
+
 
 @router.get("/progress")
 def progress(request: Request, since: int = Query(0, ge=0)) -> dict:
@@ -69,16 +123,7 @@ def build_progress(conn: sqlite3.Connection, cfg: Config, *,
 
     latest_id = int(conn.execute(
         "SELECT COALESCE(MAX(id), 0) FROM rebuild_events").fetchone()[0])
-    log = [
-        {"id": int(row["id"]), "at": row["finished_at"] or row["started_at"],
-         "kind": row["kind"], "family": row["family"], "phase": row["phase"],
-         "message": row["message"]}
-        for row in conn.execute(
-            "SELECT id, started_at, finished_at, kind, family, phase, message "
-            "FROM rebuild_events WHERE id > ? ORDER BY id DESC LIMIT ?",
-            (int(since), int(log_cap)),
-        )
-    ]
+    log = read_events(conn, since=since, limit=log_cap)
 
     latest = conn.execute(
         "SELECT id, started_at, finished_at, phase, message, rows, seconds "
