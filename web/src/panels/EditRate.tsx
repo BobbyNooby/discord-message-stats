@@ -5,6 +5,7 @@ import { Chip } from "../components/AppShell";
 import { EmptyState, GlobalOnlyBadge, Panel } from "../components/Panel";
 import type { Filters } from "../filters/reducer";
 import { EChart } from "../lib/echart";
+import { swatch } from "../lib/palette";
 import {
   AXIS_TEXT,
   dur,
@@ -134,16 +135,16 @@ export function EditRate({ payload, filters: fallbackFilters }: { panelId?: stri
                 type: "line",
                 name: "edited %",
                 showSymbol: false,
-                lineStyle: { width: 2, color: "#fee75c" },
-                itemStyle: { color: "#fee75c" },
-                areaStyle: { opacity: 0.12, color: "#fee75c" },
+                lineStyle: { width: 2, color: swatch(3) },
+                itemStyle: { color: swatch(3) },
+                areaStyle: { opacity: 0.12, color: swatch(3) },
                 data: trend.pct,
                 markLine: {
                   silent: true,
                   symbol: "none",
-                  lineStyle: { color: "#eb459e", type: "dashed", width: 1 },
+                  lineStyle: { color: swatch(1), type: "dashed", width: 1 },
                   label: {
-                    color: "#eb459e",
+                    color: swatch(1),
                     fontSize: 10,
                     formatter: `avg ${trend.overall.toFixed(1)}%`,
                   },

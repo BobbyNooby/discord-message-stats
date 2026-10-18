@@ -4,6 +4,7 @@ import type { EChartsOption } from "echarts";
 import { EmptyState, Panel } from "../components/Panel";
 import { bucketOf, selectVisibleCells } from "../filters/selectors";
 import { EChart } from "../lib/echart";
+import { swatch } from "../lib/palette";
 import { AXIS, TOOLTIP, bucketCountLabel, emptyLabel, fmt, pct, type PanelProps } from "./timeAggregates";
 import type { WithPanelId } from "./panelScope";
 import { usePanelFilters } from "./panelScope";
@@ -65,15 +66,15 @@ export function Conversational({ payload, filters: fallbackFilters }: PanelProps
         type: "line",
         name: "replies %",
         showSymbol: false,
-        lineStyle: { width: 2, color: "#00b0f4" },
-        itemStyle: { color: "#00b0f4" },
-        areaStyle: { opacity: 0.12, color: "#00b0f4" },
+        lineStyle: { width: 2, color: swatch(4) },
+        itemStyle: { color: swatch(4) },
+        areaStyle: { opacity: 0.12, color: swatch(4) },
         data: series,
         markLine: {
           silent: true,
           symbol: "none",
-          lineStyle: { color: "#eb459e", type: "dashed", width: 1 },
-          label: { color: "#eb459e", fontSize: 10, formatter: `avg ${mean.toFixed(0)}%` },
+          lineStyle: { color: swatch(1), type: "dashed", width: 1 },
+          label: { color: swatch(1), fontSize: 10, formatter: `avg ${mean.toFixed(0)}%` },
           data: [{ yAxis: Number(mean.toFixed(2)) }],
         },
       },
