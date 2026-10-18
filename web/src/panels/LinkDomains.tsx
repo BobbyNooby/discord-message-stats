@@ -6,6 +6,7 @@ import { EmptyState, Panel } from "../components/Panel";
 import type { Filters } from "../filters/reducer";
 import { inRange } from "../filters/selectors";
 import { EChart } from "../lib/echart";
+import { swatch } from "../lib/palette";
 import { usePanelFilters } from "./panelScope";
 
 /**
@@ -84,7 +85,7 @@ export function LinkDomains({ payload, filters: fallbackFilters }: { panelId?: s
             type: "bar",
             barWidth: "62%",
             data: sorted.map(([, uses]) => uses),
-            itemStyle: { color: "#00b0f4", borderRadius: [0, 4, 4, 0] },
+            itemStyle: { color: swatch(4), borderRadius: [0, 4, 4, 0] },
             label: {
               show: true,
               position: "right",

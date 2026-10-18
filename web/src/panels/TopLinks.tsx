@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import type { Payload } from "../api/types";
 import { EmptyState, Panel } from "../components/Panel";
 import { EChart } from "../lib/echart";
+import { swatch } from "../lib/palette";
 import type { Filters } from "../filters/reducer";
 
 /**
@@ -59,7 +60,7 @@ export function TopLinks({ payload, }: { panelId?: string; payload: Payload; fil
             type: "bar",
             barWidth: "62%",
             data: sorted.map(([, posts]) => posts),
-            itemStyle: { color: "#1abc9c", borderRadius: [0, 4, 4, 0] },
+            itemStyle: { color: swatch(7), borderRadius: [0, 4, 4, 0] },
             label: {
               show: true,
               position: "right",

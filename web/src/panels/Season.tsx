@@ -4,6 +4,7 @@ import type { EChartsOption } from "echarts";
 import { EmptyState, Panel } from "../components/Panel";
 import { selectVisibleCells } from "../filters/selectors";
 import { EChart } from "../lib/echart";
+import { swatch } from "../lib/palette";
 import { AXIS, MON, TOOLTIP, emptyLabel, fmt, kfmt, type PanelProps } from "./timeAggregates";
 import type { WithPanelId } from "./panelScope";
 import { usePanelFilters } from "./panelScope";
@@ -63,7 +64,7 @@ export function Season({ payload, filters: fallbackFilters }: PanelProps & WithP
         data: months.map((value) => ({
           value,
           itemStyle: {
-            color: value === peak ? "#57f287" : "#1abc9c",
+            color: value === peak ? swatch(2) : swatch(7),
             borderRadius: [3, 3, 0, 0],
           },
         })),
