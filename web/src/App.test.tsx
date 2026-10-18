@@ -221,6 +221,58 @@ describe("the health payload through the dashboard", () => {
   });
 });
 
+describe("the schema-version warning through the dashboard", () => {
+  const withSchema = (canAdmin: boolean, message: string | null) => ({
+    ...payload,
+    meta: {
+      ...payload.meta,
+      can_admin: canAdmin,
+      schema_version: null,
+      schema_expected: 1,
+      schema_message: message,
+    },
+  });
+
+  it("warns an admin and lets them rebuild", async () => {
+    server.bootstrap
+      .mockReset()
+      .mockResolvedValue(
+        withSchema(
+          true,
+          "This database was built by an older revision. Recalculate to rebuild them.",
+        ),
+      );
+    renderApp();
+
+    expect(await screen.findByText(/built by an older revision/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Recalculate now" })).toBeInTheDocument();
+  });
+
+  it("warns a viewer without offering a control they cannot use", async () => {
+    server.bootstrap
+      .mockReset()
+      .mockResolvedValue(
+        withSchema(
+          false,
+          "This database was built by an older revision. Recalculate to rebuild them.",
+        ),
+      );
+    renderApp();
+
+    expect(await screen.findByText(/built by an older revision/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Recalculate now" })).not.toBeInTheDocument();
+  });
+
+  it("shows nothing for an older payload that has no schema_message", async () => {
+    // The default fixture predates the field entirely; it must render, not throw.
+    renderApp();
+
+    expect(await screen.findByText(/as of 2026-10-17 00:00/)).toBeInTheDocument();
+    expect(screen.queryByText(/older revision/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/newer revision/i)).not.toBeInTheDocument();
+  });
+});
+
 describe("ui.time_format through the dashboard", () => {
   it("writes the header's 'as of' line on the configured clock", async () => {
     server.bootstrap.mockReset().mockResolvedValue({

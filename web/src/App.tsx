@@ -35,6 +35,7 @@ import {
 import { PanelScopeProvider } from "./panels/panelScope";
 import { PANELS, specFor, type ChartKind, type PanelId } from "./panels/registry";
 import { useKeyboardShortcuts } from "./lib/shortcuts";
+import { schemaWarning } from "./lib/schemaWarning";
 import { stampLabel, timeFormatOf } from "./lib/timeFormat";
 import { Calendar } from "./panels/Calendar";
 import { LinksSection } from "./panels/LinksSection";
@@ -222,6 +223,9 @@ function DashboardBody({
         timeFormat={timeFormatOf(payload.meta)}
         timezoneMismatch={payload.meta.timezone_mismatch}
         timezoneMessage={payload.meta.timezone_message}
+        // The versions disagree; `schemaWarning` tolerates a payload written
+        // before this field existed, so nothing renders in that case.
+        schemaMessage={schemaWarning(payload.meta)}
         // A viewer can read the warning but cannot queue the rebuild; only an
         // admin gets the control, so the button never leads to a 403.
         action={payload.meta.can_admin ? <RecalculateNow /> : null}
