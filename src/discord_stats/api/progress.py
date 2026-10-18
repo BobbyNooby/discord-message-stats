@@ -300,6 +300,18 @@ def _rollup_meta(conn: sqlite3.Connection, channel_id: str) -> dict[str, dict]:
     }
 
 
+# The tail count has to range-scan the primary key. Left to itself the planner
+# prefers `idx_channel`, then reads every row of the channel to compare the id —
+# 14 s on the reference database against 20 ms here. `_newest_message_id` below
+# pins the same implicit index for the same reason; the second entry is the
+# unforced shape, kept as a fallback for a database whose index name differs.
+_TAIL_COUNT_SQL = (
+    "SELECT COUNT(*) FROM messages INDEXED BY sqlite_autoindex_messages_1 "
+    " WHERE channel_id = ? AND id > ?",
+    "SELECT COUNT(*) FROM messages WHERE channel_id = ? AND id > ?",
+)
+
+
 def _added_since(conn: sqlite3.Connection, channel_id: str, built_newest: str | None,
                  newest: str | None) -> int | None:
     """How many messages arrived after the build.
@@ -309,13 +321,12 @@ def _added_since(conn: sqlite3.Connection, channel_id: str, built_newest: str | 
     """
     if not built_newest or not newest or built_newest == newest:
         return 0
-    try:
-        return int(conn.execute(
-            "SELECT COUNT(*) FROM messages WHERE channel_id = ? AND id > ?",
-            (channel_id, built_newest),
-        ).fetchone()[0] or 0)
-    except sqlite3.OperationalError:
-        return None
+    for sql in _TAIL_COUNT_SQL:
+        try:
+            return int(conn.execute(sql, (channel_id, built_newest)).fetchone()[0] or 0)
+        except sqlite3.OperationalError:
+            continue
+    return None
 
 
 def _newest_message_id(conn: sqlite3.Connection, channel_id: str) -> str | None:
