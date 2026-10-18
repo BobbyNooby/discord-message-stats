@@ -1,12 +1,12 @@
 import { EmptyState, Panel } from "../components/Panel";
 import { EChart } from "../lib/echart";
 import {
-  MEDIA_COLOR,
   REMAINDER_COLOR,
   colorBarsOption,
   doughnutOption,
   fmt,
   mediaCells,
+  mediaColor,
   mediaShare,
   pctOf,
   type MediaPanelProps,
@@ -26,7 +26,7 @@ export function TextVsMedia({ payload, filters: fallbackFilters }: MediaPanelPro
   // Both shapes read the same two numbers, and together they are the whole of
   // the filtered total, which is why this card declares a pie.
   const rows = [
-    { name: "with media", value: media, color: MEDIA_COLOR },
+    { name: "with media", value: media, color: mediaColor() },
     { name: "text only", value: textOnly, color: REMAINDER_COLOR },
   ];
 

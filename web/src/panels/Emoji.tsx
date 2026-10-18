@@ -1,7 +1,7 @@
 import { EmptyState, Panel } from "../components/Panel";
 import { EChart } from "../lib/echart";
 import {
-  EMOJI_COLOR,
+  emojiColor,
   fmt,
   globalEmpty,
   horizontalBarsOption,
@@ -31,7 +31,7 @@ export function Emoji({ payload, filters: fallbackFilters }: MediaPanelProps & W
       {blank ? (
         <EmptyState>{blank}</EmptyState>
       ) : (
-        <EChart height={330} option={horizontalBarsOption(rows, EMOJI_COLOR, 14)} />
+        <EChart height={330} option={horizontalBarsOption(rows, emojiColor(), 14)} />
       )}
     </Panel>
   );

@@ -23,7 +23,7 @@ import {
 import type { Filters } from "../filters/reducer";
 import { selectVisibleCells } from "../filters/selectors";
 import { EMPTY_AUTHORS, EMPTY_DATABASE, EMPTY_FILTER } from "../lib/empty";
-import { PALETTE } from "../lib/palette";
+import { swatch } from "../lib/palette";
 
 export type MediaPanelProps = { payload: Payload; filters: Filters };
 export type Row = { name: string; value: number };
@@ -32,13 +32,17 @@ export type Gauge = { name: string; value: number; color: string };
 
 /* Colours come from the one palette, except the remainder of a two-part
  * doughnut: that slice is deliberately muted so "text only" and "standalone"
- * never read as a category of their own. */
-export const MEDIA_COLOR = PALETTE[1];
-export const REPLY_COLOR = PALETTE[4];
-export const ATTACH_COLOR = PALETTE[5];
-export const EMOJI_COLOR = PALETTE[1];
-export const REACTION_COLOR = PALETTE[2];
-export const ACTIVE_DAYS_COLOR = PALETTE[2];
+ * never read as a category of their own.
+ *
+ * These are functions, not constants, on purpose: a module-scope constant would
+ * freeze the fallback at import time and never see a fork's `--chart-N`
+ * override. They read the variable when a panel renders. */
+export const mediaColor = () => swatch(1);
+export const replyColor = () => swatch(4);
+export const attachColor = () => swatch(5);
+export const emojiColor = () => swatch(1);
+export const reactionColor = () => swatch(2);
+export const activeDaysColor = () => swatch(2);
 export const REMAINDER_COLOR = "#2a3145";
 
 const MUTED_TEXT = "#8a93a8";
@@ -120,12 +124,12 @@ export function healthGauges(cells: Cell[]): Gauge[] {
   // handful of active days against six years of history.
   const span = days.size > 0 ? last - first + 1 : 0;
   return [
-    { name: "Replies", value: msgs > 0 ? (100 * replies) / msgs : 0, color: REPLY_COLOR },
-    { name: "With media", value: msgs > 0 ? (100 * media) / msgs : 0, color: MEDIA_COLOR },
+    { name: "Replies", value: msgs > 0 ? (100 * replies) / msgs : 0, color: replyColor() },
+    { name: "With media", value: msgs > 0 ? (100 * media) / msgs : 0, color: mediaColor() },
     {
       name: "Active days",
       value: span > 0 ? Math.min(100, (100 * days.size) / span) : 0,
-      color: ACTIVE_DAYS_COLOR,
+      color: activeDaysColor(),
     },
   ];
 }
