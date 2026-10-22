@@ -176,6 +176,16 @@ function DashboardBody({
     saveCharts(charts);
   }, [charts]);
 
+  // A reload or a shared link lands on its section. The browser looks for the
+  // heading before the payload has drawn anything, finds none, and stays at the
+  // top — which on a phone means scrolling all the way back down.
+  useEffect(() => {
+    const id = decodeURIComponent(window.location.hash.slice(1));
+    if (!id) return;
+    const frame = requestAnimationFrame(() => document.getElementById(id)?.scrollIntoView?.({ block: "start" }));
+    return () => cancelAnimationFrame(frame);
+  }, []);
+
   const pruned = describeDropped(saved.dropped, (panelId) =>
     panelId in PANELS ? PANELS[panelId as PanelId].label : panelId,
   );
