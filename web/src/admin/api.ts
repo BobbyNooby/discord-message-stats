@@ -7,7 +7,8 @@
  *
  * Response shapes are read from `src/discord_stats/api/admin.py`, not guessed.
  * One rule holds here as everywhere: the bot token's value is never sent to the
- * browser, so nothing in this file accepts or returns one.
+ * browser, so nothing in this file returns one. `saveToken` is the one call
+ * that sends a token up; the server checks it, stores it and never echoes it.
  */
 
 import { Forbidden, Offline, Unauthorized } from "../api/client";
@@ -346,6 +347,29 @@ export const removeAdmin = (discordId: string) =>
 
 export const listJobs = (limit = 50) =>
   request<{ jobs: Job[] }>(`/api/admin/jobs?limit=${limit}`);
+
+/** Where the token in use comes from: saved from this board, the environment, or nowhere. */
+export type TokenSource = "saved" | "environment" | "none";
+
+export type TokenCheck = {
+  status: "ok" | "failed" | "unknown";
+  checked_at: string | null;
+  bot: { id: string; username: string | null; global_name: string | null } | null;
+  error: string | null;
+  channel: { ok: boolean; id: string; name: string | null; error: string | null } | null;
+  source: TokenSource;
+};
+
+export const getTokenCheck = () => request<TokenCheck>("/api/admin/token");
+
+/** Checked with Discord first; a token Discord refuses is a 400 and is not saved. */
+export const saveToken = (token: string) =>
+  request<{ ok: boolean; bot: TokenCheck["bot"]; channel: TokenCheck["channel"] }>(
+    "/api/admin/token",
+    json("PUT", { token }),
+  );
+
+export const forgetToken = () => request<void>("/api/admin/token", { method: "DELETE" });
 
 export const createJob = (kind: JobKind) =>
   request<{ id: number; channel_id: string; kind: string; status: string }>(
