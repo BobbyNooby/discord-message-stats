@@ -72,6 +72,21 @@ function tokenTone(status: string): "ok" | "warn" | "error" {
   return "warn";
 }
 
+/**
+ * What the worker will actually do. A value saved from this board wins; until
+ * one is saved the worker falls back to config.toml, so "nothing stored" is
+ * not "off" — reading it that way showed "off" over a schedule that was running.
+ */
+export function scheduleLabel(
+  worker: Pick<AdminStatus["worker"], "cron_enabled" | "cron_hours">,
+  config: AdminConfig | null,
+): string {
+  const stored = worker.cron_enabled?.trim().toLowerCase();
+  const enabled = stored == null ? (config?.effective.cron_enabled ?? true) : !["0", "false", "no", "off"].includes(stored);
+  if (!enabled) return "off";
+  return `every ${worker.cron_hours ?? config?.effective.cron_hours ?? 6} h`;
+}
+
 function stateTone(state: FamilyProgress["state"]): string {
   if (state === "done") return "text-emerald-300";
   if (state === "running") return "text-amber-300";
@@ -371,7 +386,8 @@ export function RefreshCache({
             <div className="mt-2">
               <Notice tone={tokenTone(worker.token_status)}>
                 Token status: <strong>{worker.token_status}</strong>
-                {worker.consecutive_failures ? ` · ${worker.consecutive_failures} consecutive failures` : ""}
+                {/* The count arrives as text, and "0" is truthy. */}
+                {Number(worker.consecutive_failures) > 0 ? ` · ${worker.consecutive_failures} consecutive failures` : ""}
                 {worker.token_status === "dead" ? " · scheduled scrapes are paused until a token works" : ""}
               </Notice>
             </div>
@@ -392,11 +408,7 @@ export function RefreshCache({
                 <Def label="Messages added">{worker.last_ingest_added ?? "—"}</Def>
                 <Def label="Worker last seen">{formatStamp(worker.last_seen_at)}</Def>
                 <Def label="Last backup">{formatStamp(worker.last_backup_at ?? null)}</Def>
-                <Def label="Schedule">
-                  {worker.cron_enabled === "true" || worker.cron_enabled === "1"
-                    ? `every ${worker.cron_hours ?? "?"} h`
-                    : "off"}
-                </Def>
+                <Def label="Schedule">{scheduleLabel(worker, config)}</Def>
               </DefList>
             </div>
             <p className="mt-2 text-[11px] text-[var(--color-muted)]">
