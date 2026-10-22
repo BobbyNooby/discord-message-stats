@@ -21,6 +21,8 @@ CHANNEL_BODY = {"id": "c1", "name": "general"}
 OPS = (
     ("post", "/api/admin/token/test"),
     ("get", "/api/admin/token"),
+    ("put", "/api/admin/token"),
+    ("delete", "/api/admin/token"),
     ("get", "/api/admin/diagnostics"),
     ("post", "/api/admin/uploads/sweep"),
     ("post", "/api/admin/jobs/1/cancel"),
@@ -62,6 +64,73 @@ def test_the_token_test_reports_the_account_behind_it(admin_client, monkeypatch)
     assert body["channel"] == {"ok": True, "id": "c1", "name": "general", "error": None}
 
 
+def _saved_token(client):
+    from discord_scraper.config import token_file_for
+
+    path = token_file_for(client.app.state.db_path)
+    return path.read_text() if path.exists() else None
+
+
+def test_a_working_token_is_saved_owner_only_and_never_echoed(admin_client, monkeypatch):
+    import os
+    import stat
+
+    from discord_scraper.config import token_file_for
+
+    seen = []
+    monkeypatch.setattr(admin.discord_api, "get_current_user",
+                        lambda token, timeout=10.0: seen.append(token) or (200, USER_BODY, None))
+    monkeypatch.setattr(admin.discord_api, "get_channel",
+                        lambda token, channel_id, timeout=10.0: (200, CHANNEL_BODY, None))
+    response = admin_client.put("/api/admin/token", json={"token": "  new.secret-token \n"})
+    assert response.status_code == 200
+    assert "new.secret-token" not in response.text
+    assert seen == ["new.secret-token"]
+    assert _saved_token(admin_client) == "new.secret-token"
+    path = token_file_for(admin_client.app.state.db_path)
+    assert stat.S_IMODE(os.stat(path).st_mode) == 0o600
+    assert admin_client.get("/api/admin/token").json()["source"] == "saved"
+    queued = admin_client.get("/api/admin/jobs").json()
+    assert "probe" in [job["kind"] for job in queued["jobs"]]
+
+
+def test_a_rejected_token_is_not_saved(admin_client, monkeypatch):
+    _mock(monkeypatch, user=(401, None, "HTTP 401: token is invalid or revoked"))
+    response = admin_client.put("/api/admin/token", json={"token": "typo"})
+    assert response.status_code == 400
+    assert "nothing was saved" in response.json()["detail"]
+    assert _saved_token(admin_client) is None
+
+
+def test_a_token_that_cannot_be_checked_is_not_saved(admin_client, monkeypatch):
+    _mock(monkeypatch, user=(None, None, "network error: no route to host"))
+    response = admin_client.put("/api/admin/token", json={"token": "maybe-fine"})
+    assert response.status_code == 502
+    assert _saved_token(admin_client) is None
+
+
+def test_a_token_with_spaces_inside_is_refused_without_asking_discord(admin_client, monkeypatch):
+    monkeypatch.setattr(admin.discord_api, "get_current_user",
+                        lambda *a, **k: pytest.fail("Discord should not be asked"))
+    assert admin_client.put("/api/admin/token", json={"token": "two words"}).status_code == 400
+
+
+def test_the_saved_token_is_what_the_test_button_checks_and_can_be_forgotten(
+    admin_client, monkeypatch
+):
+    seen = []
+    monkeypatch.setattr(admin.discord_api, "get_current_user",
+                        lambda token, timeout=10.0: seen.append(token) or (200, USER_BODY, None))
+    monkeypatch.setattr(admin.discord_api, "get_channel",
+                        lambda token, channel_id, timeout=10.0: (200, CHANNEL_BODY, None))
+    admin_client.put("/api/admin/token", json={"token": "saved-one"})
+    admin_client.post("/api/admin/token/test")
+    assert seen[-1] == "saved-one"
+    assert admin_client.delete("/api/admin/token").status_code == 204
+    assert _saved_token(admin_client) is None
+    assert admin_client.get("/api/admin/token").json()["source"] == "environment"
+
+
 def test_an_animated_avatar_keeps_its_gif(admin_client, monkeypatch):
     _mock(monkeypatch, user=(200, {**USER_BODY, "avatar": "a_xyz"}, None))
     body = admin_client.post("/api/admin/token/test").json()
@@ -98,6 +167,7 @@ def test_the_stored_status_is_unknown_until_it_is_checked(admin_client):
     """`unknown` is a defined state — never checked — not an error."""
     assert admin_client.get("/api/admin/token").json() == {
         "status": "unknown", "checked_at": None, "bot": None, "error": None, "channel": None,
+        "source": "environment",
     }
 
 

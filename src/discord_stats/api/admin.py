@@ -334,15 +334,7 @@ def _token_result(row: sqlite3.Row) -> dict[str, Any]:
     }
 
 
-@router.post("/token/test")
-def test_token(request: Request) -> dict:
-    """Run the check now and persist it, so the board need not run it again."""
-    conn = _conn(request)
-    try:
-        cfg = _effective_for(request, conn)
-    finally:
-        conn.close()
-    result = run_token_check(cfg.token, cfg.channel_id)
+def _remember_check(request: Request, result: dict[str, Any]) -> None:
     conn = _conn(request)
     try:
         try:
@@ -353,7 +345,88 @@ def test_token(request: Request) -> dict:
             pass
     finally:
         conn.close()
+
+
+def _token_source(request: Request) -> str:
+    """Where the token in use comes from — never the token itself."""
+    if _read_saved_token(request):
+        return "saved"
+    return "environment" if request.app.state.cfg.token else "none"
+
+
+def _read_saved_token(request: Request) -> str:
+    from discord_scraper.config import token_file_for
+
+    try:
+        return token_file_for(request.app.state.db_path).read_text(encoding="utf-8").strip()
+    except OSError:
+        return ""
+
+
+@router.post("/token/test")
+def test_token(request: Request) -> dict:
+    """Run the check now and persist it, so the board need not run it again."""
+    from discord_scraper.config import current_token
+
+    conn = _conn(request)
+    try:
+        cfg = _effective_for(request, conn)
+    finally:
+        conn.close()
+    # Read at click time, so a token saved a moment ago is the one tested.
+    result = run_token_check(current_token(cfg, request.app.state.db_path), cfg.channel_id)
+    _remember_check(request, result)
     return result
+
+
+class TokenRequest(BaseModel):
+    token: str
+
+
+@router.put("/token")
+def save_token(request: Request, payload: TokenRequest) -> dict:
+    """Check a new token with Discord, then keep it beside the database.
+
+    Saved only if Discord accepts it, so a typo cannot replace a working token.
+    The file is owner-only, never in the database, a log or a response; the
+    worker reads it on its next job, and the probe queued here lets a schedule
+    paused by a dead token resume without a restart.
+    """
+    from discord_scraper.config import save_token as write_token
+    from discord_scraper.worker.jobs import enqueue
+
+    token = payload.token.strip()
+    if not token or len(token) > 200 or any(ch.isspace() for ch in token):
+        raise HTTPException(status_code=400, detail="that does not look like a Discord token")
+    conn = _conn(request)
+    try:
+        cfg = _effective_for(request, conn)
+    finally:
+        conn.close()
+    result = run_token_check(token, cfg.channel_id)
+    if not result["ok"]:
+        status = result.get("http_status")
+        detail = ("Discord rejected that token — nothing was saved" if status == 401
+                  else f"could not check that token ({result.get('error')}) — nothing was saved")
+        raise HTTPException(status_code=400 if status == 401 else 502, detail=detail)
+    write_token(request.app.state.db_path, token)
+    _remember_check(request, result)
+    conn = _conn(request)
+    try:
+        enqueue(conn, cfg.channel_id, "probe")
+    finally:
+        conn.close()
+    _log_event(request, scope="token", message="token replaced from the admin board")
+    return {**result, "source": "saved"}
+
+
+@router.delete("/token", status_code=204)
+def forget_token(request: Request) -> None:
+    """Drop the saved token, falling back to DISCORD_TOKEN from the environment."""
+    from discord_scraper.config import token_file_for
+
+    token_file_for(request.app.state.db_path).unlink(missing_ok=True)
+    _log_event(request, scope="token", message="saved token removed from the admin board")
 
 
 @router.get("/token")
@@ -370,8 +443,8 @@ def token_status(request: Request) -> dict:
         conn.close()
     if row is None:
         return {"status": "unknown", "checked_at": None, "bot": None,
-                "error": None, "channel": None}
-    return _token_result(row)
+                "error": None, "channel": None, "source": _token_source(request)}
+    return {**_token_result(row), "source": _token_source(request)}
 
 
 # --- diagnostics -------------------------------------------------------------
