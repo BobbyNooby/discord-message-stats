@@ -16,6 +16,7 @@ vi.mock("echarts", () => ({
 
 import * as echarts from "echarts";
 
+import { PanelCsvContext } from "../components/panelCsv";
 import { EChart } from "./echart";
 
 describe("<EChart>", () => {
@@ -33,6 +34,25 @@ describe("<EChart>", () => {
 
     unmount();
     expect(instance.dispose).toHaveBeenCalledTimes(1);
+  });
+
+  it("leaves the card's export to the main chart when told it is a second one", () => {
+    const register = vi.fn();
+    const bars = { xAxis: { type: "category" as const, data: ["Ada"] }, series: [{ type: "bar" as const, data: [3] }] };
+    const months = { xAxis: { type: "category" as const, data: ["2026-01"] }, series: [{ type: "bar" as const, data: [9] }] };
+    const { unmount } = render(
+      <PanelCsvContext.Provider value={register}>
+        <EChart option={bars} />
+        <EChart option={months} exportsCsv={false} />
+      </PanelCsvContext.Provider>,
+    );
+    const published = register.mock.calls.map(([rows]) => JSON.stringify(rows));
+    expect(published.some((rows) => rows.includes("Ada"))).toBe(true);
+    expect(published.some((rows) => rows.includes("2026-01"))).toBe(false);
+    register.mockClear();
+    unmount();
+    // Only the chart that published clears its rows on the way out.
+    expect(register).toHaveBeenCalledTimes(1);
   });
 
   it("passes notMerge so a removed series really disappears", () => {
