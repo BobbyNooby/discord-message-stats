@@ -48,6 +48,12 @@ THUMB_CACHE_BYTES = 256 * 1024 * 1024
 THUMB_FAILURES = 512
 THUMB_FAIL_TTL = 600
 
+# A local month, as the word-by-month rollup keys it.
+MONTH_PATTERN = r"^\d{4}-(0[1-9]|1[0-2])$"
+# One answer per period someone looked at, retired with the payload on a
+# rebuild. Each is a payload's word fields, tens of kilobytes, so a few dozen.
+PERIOD_CACHE_ENTRIES = 32
+
 
 def _now() -> str:
     from datetime import datetime, timezone
@@ -439,6 +445,23 @@ def create_app(
         print(f"payload {why} in {time.monotonic() - started:.2f}s", file=sys.stderr)
         return payload
 
+    period_cache: dict[tuple, dict] = {}
+    period_lock = threading.Lock()
+
+    def period_for(conn: sqlite3.Connection, effective, key: tuple, first: str | None,
+                   last: str | None, picked: tuple[int, ...]) -> dict:
+        """Compute one period's word fields and keep them under ``key``."""
+        author_rows = query.authors(conn, effective.channel_id, effective)
+        uses = query.word_author_uses_between(
+            conn, effective.channel_id, query.author_index(author_rows), first, last, picked)
+        body = {"built": uses is not None, "from": first, "to": last, "years": list(picked),
+                **viewer.period_words(uses or {}, len(author_rows))}
+        with period_lock:
+            if len(period_cache) >= PERIOD_CACHE_ENTRIES:
+                period_cache.pop(next(iter(period_cache)))
+            period_cache[key] = body
+        return body
+
     def warm_the_payload() -> None:
         """Assemble once, in the background, so the first page load is not the one
         that pays for it.
@@ -648,6 +671,36 @@ def create_app(
                     for month, author, count in timeline
                 ],
             }
+        finally:
+            conn.close()
+
+    @app.get("/api/words/period")
+    def words_for_period(
+        first: str | None = Query(None, alias="from", pattern=MONTH_PATTERN),
+        last: str | None = Query(None, alias="to", pattern=MONTH_PATTERN),
+        years: str | None = Query(None, pattern=r"^\d{4}(,\d{4})*$", max_length=200),
+        _level: Level = Depends(require_viewer),
+    ) -> dict:
+        """The payload's word fields for a stretch of months and/or some years.
+
+        What the word cards draw while a time filter is on; with none they use
+        the payload and never ask. Month grain, because that is what the rollup
+        keeps: the caller rounds a day range out to whole months. ``built`` is
+        false until a rebuild has written the month table.
+        """
+        picked = tuple(sorted({int(year) for year in years.split(",")})) if years else ()
+        conn = connection()
+        try:
+            _require_rollups(conn)
+            effective = admin.effective_for(conn, cfg)
+            # Keyed on the payload's own key, so a rebuild or a merge retires
+            # every cached period along with the payload it was computed beside.
+            key = (_payload_key(conn, effective), first, last, picked)
+            with period_lock:
+                cached = period_cache.get(key)
+            if cached is not None:
+                return cached
+            return period_for(conn, effective, key, first, last, picked)
         finally:
             conn.close()
 

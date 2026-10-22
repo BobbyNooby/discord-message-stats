@@ -10,6 +10,7 @@ silently, which is why the tests assert the widths.
 from __future__ import annotations
 
 import gzip
+import heapq
 import json
 import sqlite3
 from typing import Any
@@ -24,6 +25,39 @@ from discord_scraper.text import load_stopwords
 # payload, it is a database (spec §5.4, §9.1).
 WORD_SLICE = 500
 WORD_AUTHOR_SLICE = 420
+
+
+def period_words(uses: dict[tuple[str, int], int], authors: int) -> dict[str, Any]:
+    """The payload's four word fields, for whatever stretch ``uses`` covers.
+
+    Same slices and the same order as ``bootstrap`` (most used first, then
+    alphabetical), so a word card draws a period from exactly the shape it
+    draws all time from — only the numbers change.
+    """
+    by_total: dict[str, int] = {}
+    author_totals = [0] * authors
+    author_distinct = [0] * authors
+    for (word, index), count in uses.items():
+        by_total[word] = by_total.get(word, 0) + count
+        author_totals[index] += count
+        author_distinct[index] += 1
+    # The top slice only: a year holds tens of thousands of words, and sorting
+    # every one of them was a fifth of the request.
+    words = heapq.nsmallest(WORD_SLICE, by_total.items(), key=lambda row: (-row[1], row[0]))
+    indexed = {word for word, _count in words[:WORD_AUTHOR_SLICE]}
+    by_word: dict[str, list[list[int]]] = {}
+    for (word, index), count in uses.items():
+        if word in indexed:
+            by_word.setdefault(word, []).append([index, count])
+    for entries in by_word.values():
+        entries.sort()
+    return {
+        "words": [[word, count] for word, count in words],
+        "wordAuthors": by_word,
+        "authorWordTotals": author_totals,
+        "authorDistinct": author_distinct,
+        "kept_words": len(by_total),
+    }
 
 
 def bootstrap(conn: sqlite3.Connection, cfg: Config) -> dict[str, Any]:
