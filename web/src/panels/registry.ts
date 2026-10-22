@@ -45,8 +45,8 @@ export type PanelSpec = {
 
 const TA = ["time", "author"] as const;
 const A = ["author"] as const;
-const W = ["word"] as const;
-const WA = ["word", "author"] as const;
+const WT = ["word", "time"] as const;
+const WTA = ["word", "time", "author"] as const;
 const RICH = ["provider", "kind"] as const;
 const NONE: readonly Dimension[] = [];
 const BAR = ["bar"] as const;
@@ -130,11 +130,12 @@ const builtInSpecs = [
   },
   { id: "who-proofreads", label: "Who proofreads", honours: TA, shapes: BAR, defaultShape: "bar" },
 
-  // Words
-  { id: "word-lift", label: "Whose word is it", honours: A, shapes: BAR, defaultShape: "bar" },
-  { id: "word-index", label: "Word index", honours: W, shapes: BAR, defaultShape: "bar" },
-  { id: "who-says-it", label: "Who says it", honours: WA, shapes: BAR, defaultShape: "bar" },
-  { id: "word-cloud", label: "Word cloud", honours: A, shapes: BAR, defaultShape: "bar" },
+  // Words: under a time filter they read `rollup_word_month` through
+  // `/api/words/period`, so years are exact and a day range is whole months.
+  { id: "word-lift", label: "Whose word is it", honours: TA, shapes: BAR, defaultShape: "bar" },
+  { id: "word-index", label: "Word index", honours: WT, shapes: BAR, defaultShape: "bar" },
+  { id: "who-says-it", label: "Who says it", honours: WTA, shapes: BAR, defaultShape: "bar" },
+  { id: "word-cloud", label: "Word cloud", honours: TA, shapes: BAR, defaultShape: "bar" },
 
   // Links & embeds
   // `rollup_link` is keyed by day, and the card filters its cells with

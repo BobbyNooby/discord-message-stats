@@ -9,6 +9,7 @@ import { EChart } from "../lib/echart";
 import { swatch } from "../lib/palette";
 import { authorIndexById, monthLabel, MonthlyBars, monthlyStacks } from "./MonthlyBars";
 import { usePanelFilters } from "./panelScope";
+import { answerFor, inPeriod, periodLabel, periodOf } from "./wordPeriod";
 
 /**
  * "Who says it" — the mockup's `drawWordLead`, plus when they said it.
@@ -68,11 +69,20 @@ export function WhoSaysIt({
   word: string | null;
 }) {
   const filters = usePanelFilters("who-says-it", fallbackFilters);
-  const inSlice = Boolean(word && payload.wordAuthors[word]);
+  const yearsKey = filters.years.join(",");
+  const period = useMemo(
+    () => periodOf({ from: filters.from, to: filters.to, years: yearsKey ? yearsKey.split(",").map(Number) : [] }),
+    [filters.from, filters.to, yearsKey],
+  );
   // One request per picked word (never per keystroke): the timeline for any
   // word, and the breakdown too when the slice has none.
   const remote = useWords(word ?? "", Boolean(word));
-  const found = remote.data;
+  // Under a time filter the all-time payload slice is the wrong count, so
+  // every number comes from the word's own months, cut to the period.
+  const found = answerFor(remote.data, period);
+  const inSlice = !period && Boolean(word && payload.wordAuthors[word]);
+  const waiting = Boolean(period && word && !remote.data);
+  const unbuilt = Boolean(period && remote.data && !remote.data.months);
   const rows = useMemo(
     () =>
       inSlice || !found ? whoSaysItRows(payload, filters, word) : remoteRows(payload, filters, found.authors),
@@ -80,8 +90,11 @@ export function WhoSaysIt({
   );
   const indexed = inSlice || Boolean(found && found.total > 0);
   const stacks = useMemo(
-    () => (found?.months ? monthlyStacks(found.months, payload.authors, filters.active) : null),
-    [found, payload.authors, filters.active],
+    () =>
+      found?.months
+        ? monthlyStacks(found.months.filter((row) => inPeriod(row.month, period)), payload.authors, filters.active)
+        : null,
+    [found, period, payload.authors, filters.active],
   );
   // The bars honour the author selection, so the total has to as well or the
   // subtitle would disagree with the chart beside it.
@@ -136,13 +149,27 @@ export function WhoSaysIt({
       // The title names the selected word, so the card states its own id.
       panelId="who-says-it"
       title={word ? `Who says “${word}”` : "Who says it"}
-      subtitle={word ? `${fmt(total)} uses total` : "click a word in the index"}
+      subtitle={
+        word
+          ? period
+            ? `${fmt(total)} uses in ${periodLabel(period)}`
+            : `${fmt(total)} uses total`
+          : "click a word in the index"
+      }
     >
       {!word ? (
         <EmptyState>Click a word in the index to see who says it.</EmptyState>
+      ) : waiting ? (
+        <EmptyState>{`Counting “${word}” for ${periodLabel(period!)}…`}</EmptyState>
+      ) : unbuilt ? (
+        <EmptyState>Words by year need one rebuild — Recalculate on the Admin board.</EmptyState>
       ) : !indexed ? (
         <EmptyState>
-          {remote.isFetching ? `Looking “${word}” up in the full index…` : OUTSIDE_SLICE}
+          {remote.isFetching
+            ? `Looking “${word}” up in the full index…`
+            : period
+              ? `Nobody said “${word}” in ${periodLabel(period)}.`
+              : OUTSIDE_SLICE}
         </EmptyState>
       ) : allOff ? (
         <EmptyState>No authors selected — switch one back on in the filters.</EmptyState>

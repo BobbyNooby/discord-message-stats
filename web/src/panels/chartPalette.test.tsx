@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -227,7 +228,13 @@ describe("the health gauges read their slot variables", () => {
 describe("the word cloud reads its slot variables", () => {
   it("colours the words from --chart-1 onwards", async () => {
     cssValues({ "--chart-1": "#ff00ff" });
-    render(<WordCloud payload={payload} filters={filters} loadPlugin={() => Promise.resolve()} />);
+    // A word card can ask for a period's words, so it sits under the query
+    // client the app always provides.
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <WordCloud payload={payload} filters={filters} loadPlugin={() => Promise.resolve()} />
+      </QueryClientProvider>,
+    );
 
     await waitFor(() => expect(captured.option).not.toBeNull());
     const words = (captured.option as { series: { data: { textStyle: { color: string } }[] }[] })

@@ -27,7 +27,7 @@ export function WordsSection({
       <div className={CARD_COLUMNS}>
         <WordLift payload={payload} filters={filters} />
         <WordIndex
-          words={payload.words}
+          payload={payload}
           selected={filters.word}
           onSelect={(word) => dispatch({ type: "setWord", word })}
         />

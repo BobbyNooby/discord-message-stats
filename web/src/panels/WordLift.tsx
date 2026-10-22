@@ -8,6 +8,7 @@ import { EmptyState, Panel } from "../components/Panel";
 import type { Filters } from "../filters/reducer";
 import { EChart } from "../lib/echart";
 import { usePanelFilters } from "./panelScope";
+import { periodNote, periodPrefix, useWordView } from "./wordPeriod";
 
 /**
  * "Whose word is it" — the mockup's `drawLift`, ported as a pure function of
@@ -50,8 +51,12 @@ export function liftGrid(payload: Payload, filters: Filters, top = TOP_WORDS): L
   return { names: active.map((index) => payload.authors[index].name), words: words.map((w) => w[0]), cells };
 }
 
-export function WordLift({ payload, filters: fallbackFilters }: { panelId?: string; payload: Payload; filters?: Filters }) {
+export function WordLift({ payload: full, filters: fallbackFilters }: { panelId?: string; payload: Payload; filters?: Filters }) {
   const filters = usePanelFilters("word-lift", fallbackFilters);
+  // The payload's words, or the period's while a time filter is on.
+  const view = useWordView(full, filters);
+  const payload = view.payload;
+  const note = periodNote(view);
   const grid = useMemo(() => liftGrid(payload, filters), [payload, filters]);
   const anyActive = payload.authors.some((_, index) => filters.active[index] !== false);
 
@@ -114,10 +119,12 @@ export function WordLift({ payload, filters: fallbackFilters }: { panelId?: stri
   return (
     <Panel
       title="Whose word is it"
-      subtitle="lift = how much more this person uses a word than their share of all words · 1.0 = exactly average"
+      subtitle={`${periodPrefix(view)}lift = how much more this person uses a word than their share of all words · 1.0 = exactly average`}
       help={TERMS.lift}
     >
-      {!payload.words.length ? (
+      {note ? (
+        <EmptyState>{note}</EmptyState>
+      ) : !payload.words.length ? (
         <EmptyState>No words yet — ingest, or upload a database from the Admin board.</EmptyState>
       ) : !anyActive ? (
         <EmptyState>No authors selected — switch one back on in the filters.</EmptyState>

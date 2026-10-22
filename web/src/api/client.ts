@@ -70,6 +70,23 @@ export const getWords = (query: string, limit = 50) =>
     months?: WordMonth[] | null;
   }>(`/api/words?q=${encodeURIComponent(query)}&limit=${limit}`);
 
+/** A stretch of local months and/or some years, as `/api/words/period` takes it. */
+export type Period = { from: string | null; to: string | null; years: number[] };
+
+/** The payload's four word fields for one period (`built` is false before a rebuild). */
+export type WordPeriod = Pick<
+  import("./types").Payload,
+  "words" | "wordAuthors" | "authorWordTotals" | "authorDistinct"
+> & { built: boolean; kept_words: number };
+
+export const getWordPeriod = (period: Period) => {
+  const params = new URLSearchParams();
+  if (period.from) params.set("from", period.from);
+  if (period.to) params.set("to", period.to);
+  if (period.years.length) params.set("years", period.years.join(","));
+  return request<WordPeriod>(`/api/words/period?${params.toString()}`);
+};
+
 /** Words in the full index starting with what was typed, most used first. */
 export const getWordSuggestions = (prefix: string) =>
   request<{ words: [string, number][] }>(`/api/words/suggest?q=${encodeURIComponent(prefix)}`);

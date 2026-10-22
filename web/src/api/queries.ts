@@ -7,8 +7,10 @@ import {
   getMedia,
   getMediaDetail,
   getRecent,
+  getWordPeriod,
   getWords,
   getWordSuggestions,
+  type Period,
   Unauthorized,
 } from "./client";
 
@@ -45,6 +47,22 @@ export function useWords(query: string, enabled: boolean) {
     enabled: enabled && word.length > 0,
     // Rollups only change on a rebuild; a word looked up once stays answered.
     staleTime: 5 * 60_000,
+  });
+}
+
+/**
+ * The word cards' data for a period. Keyed on the period, so four cards under
+ * the same filter share one request; `null` (no time filter) asks nothing.
+ */
+export function useWordPeriod(period: Period | null) {
+  return useQuery({
+    queryKey: ["word-period", period?.from ?? null, period?.to ?? null, period?.years.join(",") ?? ""],
+    queryFn: () => getWordPeriod(period as Period),
+    enabled: period !== null,
+    staleTime: 5 * 60_000,
+    // The previous period stays drawn while the next one loads, instead of
+    // every word card flashing empty on each click of a year chip.
+    placeholderData: (previous) => previous,
   });
 }
 
