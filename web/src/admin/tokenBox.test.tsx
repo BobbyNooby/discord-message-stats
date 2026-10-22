@@ -36,9 +36,11 @@ describe("<TokenBox>", () => {
       channel: { ok: true, id: "c1", name: "general", error: null },
     });
     renderBox();
-    expect(await screen.findByText(/from DISCORD_TOKEN in the environment/)).toBeInTheDocument();
+    expect(await screen.findByText(/from the environment/)).toBeInTheDocument();
     const field = screen.getByLabelText("New token");
-    expect(field).toHaveAttribute("type", "password");
+    // Not a password field, so the browser has nothing to offer to save.
+    expect(field).not.toHaveAttribute("type", "password");
+    expect(field).toHaveAttribute("autocomplete", "off");
     await user.type(field, "abc.def");
     await user.click(screen.getByRole("button", { name: "Check & save" }));
     expect(api.saveToken).toHaveBeenCalledWith("abc.def");
