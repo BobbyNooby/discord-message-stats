@@ -571,7 +571,11 @@ def create_app(
     @app.get("/api/words")
     def words(q: str = Query(..., min_length=1), limit: int = Query(50, ge=1, le=500),
               _level: Level = Depends(require_viewer)) -> dict:
-        """Search the **full** word index, which the payload only slices."""
+        """Search the **full** word index, which the payload only slices.
+
+        ``months`` is the word's timeline; ``null`` means the month table has not
+        been built yet, which is a "recalculate", not "never said".
+        """
         conn = connection()
         try:
             _require_rollups(conn)
@@ -582,6 +586,7 @@ def create_app(
             matches = query.words_for(conn, effective.channel_id, word)
             names = {row["id"]: row["name"]
                      for row in query.authors(conn, effective.channel_id)}
+            timeline = query.word_timeline(conn, effective.channel_id, word)
             return {
                 "word": word,
                 "total": sum(count for _author, count in matches),
@@ -589,7 +594,25 @@ def create_app(
                     {"id": author_id, "name": names.get(author_id, author_id), "count": count}
                     for author_id, count in matches[:limit]
                 ],
+                "months": None if timeline is None else [
+                    {"month": month, "id": author, "count": count}
+                    for month, author, count in timeline
+                ],
             }
+        finally:
+            conn.close()
+
+    @app.get("/api/words/suggest")
+    def word_suggestions(q: str = Query(..., min_length=1, max_length=64),
+                         limit: int = Query(8, ge=1, le=25),
+                         _level: Level = Depends(require_viewer)) -> dict:
+        """Words in the full index that start with what is typed, most used first."""
+        conn = connection()
+        try:
+            _require_rollups(conn)
+            effective = admin.effective_for(conn, cfg)
+            return {"words": [[word, uses] for word, uses in
+                              query.word_suggestions(conn, effective.channel_id, q, limit)]}
         finally:
             conn.close()
 

@@ -161,12 +161,37 @@ def test_words_endpoint_searches_the_full_index(client):
     assert body["authors"] == [{"id": "u1", "name": "GlobalName", "count": 1}]
 
 
+def test_words_endpoint_returns_the_timeline_by_month(client):
+    body = client.get("/api/words?q=abc").json()
+    assert body["months"] == [{"month": "2026-01", "id": "u1", "count": 1}]
+
+
+def test_words_endpoint_reports_an_unbuilt_timeline_as_null(client, db_cfg):
+    """A database rebuilt before the month table existed must read "recalculate"."""
+    _cfg, path = db_cfg
+    raw = sqlite3.connect(path)
+    try:
+        raw.execute("DROP TABLE rollup_word_month")
+        raw.commit()
+    finally:
+        raw.close()
+    body = client.get("/api/words?q=abc").json()
+    assert body["total"] == 1
+    assert body["months"] is None
+
+
 def test_words_endpoint_searches_the_channel_the_admin_saved(client, conn):
     """It read `config.toml`'s channel while every other endpoint used the override."""
     conn.execute("INSERT INTO config (key, value) VALUES ('channel_id', 'elsewhere')")
     conn.commit()
     body = client.get("/api/words?q=abc").json()
     assert body["total"] == 0
+
+
+def test_word_suggestions_complete_from_the_full_index(client):
+    body = client.get("/api/words/suggest?q=ab").json()
+    assert body["words"] == [["abc", 1]]
+    assert client.get("/api/words/suggest?q=").status_code == 422
 
 
 def test_words_endpoint_rejects_an_empty_query(client):
