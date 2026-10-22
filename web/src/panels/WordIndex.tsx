@@ -63,7 +63,7 @@ export function WordIndex({ words, selected, onSelect }: WordIndexProps) {
       ? `${fmt(matches.length)} ${matches.length === 1 ? "match" : "matches"}`
       : remote.isFetching
         ? "searching the full index…"
-        : found
+        : found && found.total > 0
           ? `${fmt(found.total)} uses in the full index`
           : "not in the full index"
     : `top ${fmt(shown.length)} of ${fmt(words.length)} indexed`;
