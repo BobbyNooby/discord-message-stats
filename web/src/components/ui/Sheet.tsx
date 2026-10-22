@@ -2,6 +2,8 @@ import * as RadixDialog from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
 import type { ReactNode } from "react";
 
+import { LAYERS, type Layer } from "./Dialog";
+
 /**
  * The same dialog, anchored to the left edge for a phone: the sidebar arrives
  * as a sheet over the page rather than a block that pushes the charts down.
@@ -14,6 +16,7 @@ export function Sheet({
   children,
   footer,
   side = "left",
+  layer = "base",
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -22,6 +25,8 @@ export function Sheet({
   footer?: ReactNode;
   /** Which edge the sheet slides from. The filter sidebar opens on the left. */
   side?: "left" | "right";
+  /** "top" for a sheet that can open over another; see `LAYERS`. */
+  layer?: Layer;
 }) {
   return (
     <RadixDialog.Root open={open} onOpenChange={onOpenChange}>
@@ -30,12 +35,12 @@ export function Sheet({
           aria-hidden="true"
           tabIndex={-1}
           data-testid="scrim"
-          className="fixed inset-0 z-40 bg-black/60"
+          className={`fixed inset-0 ${LAYERS[layer].scrim} bg-black/60`}
         />
         <RadixDialog.Content
           aria-modal="true"
           aria-describedby={undefined}
-          className={`fixed inset-y-0 z-50 flex w-[86%] max-w-sm flex-col border-[var(--color-line)] bg-[var(--color-ink)] p-4 ${
+          className={`fixed inset-y-0 ${LAYERS[layer].content} flex w-[86%] max-w-sm flex-col border-[var(--color-line)] bg-[var(--color-ink)] p-4 ${
             side === "left" ? "left-0 border-r" : "right-0 border-l"
           }`}
           style={{
