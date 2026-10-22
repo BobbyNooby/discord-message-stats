@@ -436,11 +436,16 @@ def _check_and_save_token(request: Request, token: str) -> dict:
         raise HTTPException(status_code=400 if status == 401 else 502, detail=detail)
     write_token(request.app.state.db_path, token)
     _remember_check(request, result)
-    conn = _conn(request)
     try:
-        enqueue(conn, cfg.channel_id, "probe")
-    finally:
-        conn.close()
+        conn = _conn(request)
+        try:
+            enqueue(conn, cfg.channel_id, "probe")
+        finally:
+            conn.close()
+    except sqlite3.Error:
+        # The token is saved either way; a busy database only means the worker
+        # meets it on its next interval instead of in fifteen seconds.
+        pass
     _log_event(request, scope="token", message="token replaced from the admin board")
     return {**result, "source": "saved"}
 
