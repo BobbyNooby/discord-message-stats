@@ -34,7 +34,11 @@ describe("media detail", () => {
     const onOpen = vi.fn();
     render(<MediaTile row={cat} mode="off" rank={1} onOpen={onOpen} />);
     expect(screen.queryByRole("link")).not.toBeInTheDocument();
-    await user.click(screen.getAllByRole("button", { name: "Who posted zesty cat" })[0]);
+    // One control per tile, named by what it shows — the count included.
+    const buttons = screen.getAllByRole("button");
+    expect(buttons).toHaveLength(1);
+    expect(buttons[0]).toHaveAccessibleName(/#1.*zesty cat.*posted 3 times/i);
+    await user.click(buttons[0]);
     expect(onOpen).toHaveBeenCalledTimes(1);
   });
 

@@ -82,17 +82,30 @@ const MEDIA = "mx-auto max-h-full max-w-full object-contain";
 function Target({
   url,
   onOpen,
-  label,
+  decorative = false,
   children,
 }: {
   url: string;
   onOpen?: () => void;
-  label: string;
+  /**
+   * The picture: a second way to tap the same thing, for a finger or a mouse.
+   * Hidden from assistive tech and the tab order, so each tile is one control
+   * named by its visible caption — rank, name and count — not two identical
+   * "Who posted…" buttons that hide the count.
+   */
+  decorative?: boolean;
   children: ReactNode;
 }) {
   if (onOpen) {
     return (
-      <button type="button" onClick={onOpen} aria-label={label} className="block w-full text-left">
+      <button
+        type="button"
+        onClick={onOpen}
+        aria-hidden={decorative || undefined}
+        tabIndex={decorative ? -1 : undefined}
+        title="Who posted it"
+        className="block w-full text-left"
+      >
         {children}
       </button>
     );
@@ -110,14 +123,12 @@ function Thumbnail({
   provider,
   url,
   onOpen,
-  label,
 }: {
   src: string | null;
   animated: string | null;
   provider: string;
   url: string;
   onOpen?: () => void;
-  label: string;
 }) {
   const reduced = useReducedMotion();
   const [failed, setFailed] = useState(false);
@@ -166,7 +177,7 @@ function Thumbnail({
     // anchor is invalid HTML and clicking it would follow the link.
     return (
       <div className="relative">
-        <Target url={url} onOpen={onOpen} label={label}>
+        <Target url={url} onOpen={onOpen} decorative>
           {frame}
         </Target>
         <button
@@ -184,7 +195,7 @@ function Thumbnail({
   }
 
   return (
-    <Target url={url} onOpen={onOpen} label={label}>
+    <Target url={url} onOpen={onOpen} decorative>
       {frame}
     </Target>
   );
@@ -207,12 +218,11 @@ export function MediaTile({
   const animatedSrc = thumbnailSrc(animated || "", mode);
   const name = providerLabel(provider, url);
   const caption = `${postedLabel(uses)} · ${name} ${kindLabel(kind)}`;
-  const label = `Who posted ${mediaName(url, title)}`;
 
   return (
     <li className="overflow-hidden rounded border border-[var(--color-line)]">
-      <Thumbnail src={src} animated={animatedSrc} provider={name} url={url} onOpen={onOpen} label={label} />
-      <Target url={url} onOpen={onOpen} label={label}>
+      <Thumbnail src={src} animated={animatedSrc} provider={name} url={url} onOpen={onOpen} />
+      <Target url={url} onOpen={onOpen}>
         <div className="flex items-start gap-2 p-2">
           {/* The list position, not the count: two links can be posted the same
               number of times, and only the ranking says which came first. A
