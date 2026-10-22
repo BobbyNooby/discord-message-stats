@@ -350,10 +350,25 @@ def _remember_check(request: Request, result: dict[str, Any]) -> None:
 
 
 def _token_source(request: Request) -> str:
-    """Where the token in use comes from — never the token itself."""
+    """Where the token in use comes from — never the token itself.
+
+    The worker records what it started with: in a container only the worker
+    may hold DISCORD_TOKEN, and this process would wrongly answer "none".
+    """
     if _read_saved_token(request):
         return "saved"
-    return "environment" if request.app.state.cfg.token else "none"
+    if request.app.state.cfg.token:
+        return "environment"
+    conn = _conn(request)
+    try:
+        found = conn.execute(
+            "SELECT value FROM worker_state WHERE key = 'token_source'"
+        ).fetchone()
+    except sqlite3.OperationalError:
+        found = None
+    finally:
+        conn.close()
+    return "environment" if found and found[0] == "environment" else "none"
 
 
 def _read_saved_token(request: Request) -> str:
