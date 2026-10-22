@@ -109,6 +109,24 @@ def test_a_token_that_cannot_be_checked_is_not_saved(admin_client, monkeypatch):
     assert _saved_token(admin_client) is None
 
 
+def test_a_malformed_token_body_is_refused_without_echoing_it(admin_client, monkeypatch):
+    """FastAPI's 422 repeats the input it could not validate; here that is the secret."""
+    monkeypatch.setattr(admin.discord_api, "get_current_user",
+                        lambda *a, **k: pytest.fail("Discord should not be asked"))
+    secret = "mfa.SECRET-should-never-come-back"
+    attempts = [
+        admin_client.put("/api/admin/token", data={"token": secret}),          # a form, not JSON
+        admin_client.put("/api/admin/token", json={"token": [secret]}),
+        admin_client.put("/api/admin/token", json={"token": {"value": secret}}),
+        admin_client.put("/api/admin/token", content=secret),
+        admin_client.put("/api/admin/token", json=[secret]),
+    ]
+    for response in attempts:
+        assert response.status_code == 400
+        assert secret not in response.text
+    assert _saved_token(admin_client) is None
+
+
 def test_a_token_with_spaces_inside_is_refused_without_asking_discord(admin_client, monkeypatch):
     monkeypatch.setattr(admin.discord_api, "get_current_user",
                         lambda *a, **k: pytest.fail("Discord should not be asked"))
