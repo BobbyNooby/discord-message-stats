@@ -575,12 +575,15 @@ def create_app(
         conn = connection()
         try:
             _require_rollups(conn)
-            from discord_scraper.rollups import query
-
-            matches = query.words_for(conn, cfg.channel_id, q.strip().lower())
-            names = {row["id"]: row["name"] for row in query.authors(conn, cfg.channel_id)}
+            # The channel the admin board saved, like every other endpoint —
+            # the file's channel would search a chat the board moved away from.
+            effective = admin.effective_for(conn, cfg)
+            word = q.strip().lower()
+            matches = query.words_for(conn, effective.channel_id, word)
+            names = {row["id"]: row["name"]
+                     for row in query.authors(conn, effective.channel_id)}
             return {
-                "word": q.strip().lower(),
+                "word": word,
                 "total": sum(count for _author, count in matches),
                 "authors": [
                     {"id": author_id, "name": names.get(author_id, author_id), "count": count}
