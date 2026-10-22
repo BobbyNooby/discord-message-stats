@@ -161,6 +161,14 @@ def test_words_endpoint_searches_the_full_index(client):
     assert body["authors"] == [{"id": "u1", "name": "GlobalName", "count": 1}]
 
 
+def test_words_endpoint_searches_the_channel_the_admin_saved(client, conn):
+    """It read `config.toml`'s channel while every other endpoint used the override."""
+    conn.execute("INSERT INTO config (key, value) VALUES ('channel_id', 'elsewhere')")
+    conn.commit()
+    body = client.get("/api/words?q=abc").json()
+    assert body["total"] == 0
+
+
 def test_words_endpoint_rejects_an_empty_query(client):
     assert client.get("/api/words").status_code == 422
     assert client.get("/api/words?q=").status_code == 422
