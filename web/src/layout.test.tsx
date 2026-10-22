@@ -208,7 +208,10 @@ describe("layout guards the browser used to be the only witness to", () => {
     expect(section.parentElement, "the bar and the cards must share one column").toBe(column);
     expect(column.className, "the column has no inline padding").not.toMatch(INLINE_START_PADDING);
     expect(nav.className, "the bar must not inset its own content").not.toMatch(INLINE_START_PADDING);
-    expect(nav.className, "the phone clearance stays").toContain("pr-14");
+    // The clearance lives on the sticky wrapper, outside the strip: inside a
+    // strip that scrolls sideways it scrolled away, and the button covered "Links".
+    expect(nav.parentElement!.className, "the phone clearance stays").toContain("pr-12");
+    expect(nav.className, "the scrolling strip carries no clearance").not.toMatch(/\bpr-\d/);
     unmount();
   });
 

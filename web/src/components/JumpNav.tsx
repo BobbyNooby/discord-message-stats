@@ -38,17 +38,20 @@ export function JumpNav() {
     // background, so the gap is page surface, not content scrolling through.
     // `top: 0` (not `top: offset`) is what puts the background above the bar
     // rather than letting content show in the gap.
+    // The wrapper's trailing padding is the phone's clearance for the floating
+    // Filters button, kept outside the strip: padding inside a strip that
+    // scrolls sideways scrolls away with it, so the button sat on top of
+    // "Links". The breakpoint is AppShell's NARROW, where the button appears.
     <div
-      className="sticky top-0 z-20 bg-[var(--color-ink)]"
+      className="sticky top-0 z-20 bg-[var(--color-ink)] pr-12 min-[861px]:pr-0"
       style={{ paddingTop: "max(0.75rem, env(safe-area-inset-top))" }}
     >
       {/* No inline padding of its own: the column the headings and cards sit in
           has none, so a left inset would start the bar's content inside that
-          column while the cards start on its edge. The trailing padding is the
-          phone's clearance for the floating Filters button, not a gutter. */}
+          column while the cards start on its edge. */}
       <nav
         aria-label="Sections"
-        className="flex items-center gap-1 overflow-x-auto rounded-lg border border-[var(--color-line)] bg-[var(--color-ink)]/95 py-1 pr-14 text-xs backdrop-blur md:pr-0"
+        className="flex items-center gap-1 overflow-x-auto rounded-lg border border-[var(--color-line)] bg-[var(--color-ink)]/95 py-1 text-xs backdrop-blur"
       >
         {SECTIONS.map((section) => {
           const Icon = section.icon;
