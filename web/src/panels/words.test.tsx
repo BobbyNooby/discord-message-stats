@@ -158,6 +158,15 @@ describe("Words section", () => {
     expect(screen.getByText(/needs one rebuild/)).toBeInTheDocument();
   });
 
+  it("says a word with no uses is not in the full index, in the badge too", async () => {
+    const user = userEvent.setup();
+    mocks.useWords.mockReturnValue({ data: { word: "qqq", total: 0, authors: [] }, isFetching: false });
+    render(<WordIndex words={makePayload().words} selected={null} onSelect={vi.fn()} />);
+    await user.type(screen.getByRole("searchbox", { name: "Search words" }), "qqq");
+    expect(screen.getByText("not in the full index")).toBeInTheDocument();
+    expect(screen.queryByText("0 uses in the full index")).not.toBeInTheDocument();
+  });
+
   it("explains a word with no per-author breakdown instead of drawing a chart", () => {
     render(<WhoSaysIt payload={makePayload()} filters={allOn} word="gpu" />);
 
