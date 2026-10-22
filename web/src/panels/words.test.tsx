@@ -118,6 +118,46 @@ describe("Words section", () => {
     mocks.useWords.mockReturnValue({ data: undefined, isFetching: false });
   });
 
+  it("draws who says it and when for a word only the full index knows", () => {
+    mocks.useWords.mockReturnValue({
+      data: {
+        word: "gpu",
+        total: 9,
+        authors: [
+          { id: "u1", name: "Ada", count: 6 },
+          { id: "u2", name: "Bo", count: 3 },
+        ],
+        months: [
+          { month: "2024-01", id: "u1", count: 4 },
+          { month: "2024-03", id: "u1", count: 2 },
+          { month: "2024-03", id: "u2", count: 3 },
+        ],
+      },
+      isFetching: false,
+    });
+    render(<WhoSaysIt payload={makePayload()} filters={allOn} word="gpu" />);
+
+    expect(mocks.useWords).toHaveBeenLastCalledWith("gpu", true);
+    expect(screen.queryByText(/outside the indexed slice/i)).not.toBeInTheDocument();
+    expect(screen.getByText("9 uses total")).toBeInTheDocument();
+    // The bars and the timeline are two charts.
+    expect(mocks.init).toHaveBeenCalledTimes(2);
+    expect(screen.getByText(/first seen Jan 2024 · busiest Mar 2024 \(5 uses\)/)).toBeInTheDocument();
+    const timeline = lastOption() as unknown as { xAxis: { data: string[] }; series: { name: string }[] };
+    // February is drawn even though nobody said it: a quiet month is still a month.
+    expect(timeline.xAxis.data).toEqual(["2024-01", "2024-02", "2024-03"]);
+    expect(timeline.series.map((s) => s.name)).toEqual(["Ada", "Bo"]);
+  });
+
+  it("asks for a rebuild instead of drawing an empty timeline", () => {
+    mocks.useWords.mockReturnValue({
+      data: { word: "car", total: 42, authors: [], months: null },
+      isFetching: false,
+    });
+    render(<WhoSaysIt payload={makePayload()} filters={allOn} word="car" />);
+    expect(screen.getByText(/needs one rebuild/)).toBeInTheDocument();
+  });
+
   it("explains a word with no per-author breakdown instead of drawing a chart", () => {
     render(<WhoSaysIt payload={makePayload()} filters={allOn} word="gpu" />);
 
