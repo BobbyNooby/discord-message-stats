@@ -381,12 +381,30 @@ def test_token(request: Request) -> dict:
     return result
 
 
-class TokenRequest(BaseModel):
-    token: str
+NOT_A_TOKEN = "that does not look like a Discord token"
+
+
+def _token_from(raw: bytes) -> str:
+    """The token in a ``{"token": "..."}`` body, or a 400 that repeats nothing.
+
+    Parsed here rather than by a pydantic model on purpose: FastAPI's 422 for a
+    malformed body echoes the input back, and the input is the secret.
+    """
+    try:
+        body = json.loads(raw)
+    except ValueError:
+        raise HTTPException(status_code=400, detail=NOT_A_TOKEN) from None
+    token = body.get("token") if isinstance(body, dict) else None
+    if not isinstance(token, str):
+        raise HTTPException(status_code=400, detail=NOT_A_TOKEN)
+    token = token.strip()
+    if not token or len(token) > 200 or any(ch.isspace() for ch in token):
+        raise HTTPException(status_code=400, detail=NOT_A_TOKEN)
+    return token
 
 
 @router.put("/token")
-def save_token(request: Request, payload: TokenRequest) -> dict:
+async def save_token(request: Request) -> dict:
     """Check a new token with Discord, then keep it beside the database.
 
     Saved only if Discord accepts it, so a typo cannot replace a working token.
@@ -394,12 +412,17 @@ def save_token(request: Request, payload: TokenRequest) -> dict:
     worker reads it on its next job, and the probe queued here lets a schedule
     paused by a dead token resume without a restart.
     """
+    from starlette.concurrency import run_in_threadpool
+
+    token = _token_from(await request.body())
+    # The check is a blocking HTTP call; off the event loop, like a sync route.
+    return await run_in_threadpool(_check_and_save_token, request, token)
+
+
+def _check_and_save_token(request: Request, token: str) -> dict:
     from discord_scraper.config import save_token as write_token
     from discord_scraper.worker.jobs import enqueue
 
-    token = payload.token.strip()
-    if not token or len(token) > 200 or any(ch.isspace() for ch in token):
-        raise HTTPException(status_code=400, detail="that does not look like a Discord token")
     conn = _conn(request)
     try:
         cfg = _effective_for(request, conn)
