@@ -28,7 +28,9 @@ export function SectionHeading({ id, children }: { id: string; children: ReactNo
   return (
     <h2
       id={id}
-      className="border-b border-[var(--color-line)] pb-2 text-xl font-bold tracking-tight text-[var(--color-text)]"
+      // The jump links land here; the margin keeps the heading below the
+      // sticky section bar instead of under it.
+      className="scroll-mt-16 border-b border-[var(--color-line)] pb-2 text-xl font-bold tracking-tight text-[var(--color-text)]"
     >
       {children}
     </h2>
