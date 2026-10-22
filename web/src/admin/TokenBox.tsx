@@ -9,14 +9,14 @@
  */
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, type CSSProperties } from "react";
 
 import { forgetToken, getTokenCheck, saveToken, type TokenSource } from "./api";
 import { Notice } from "./shared";
 
 const SOURCE_LABEL: Record<TokenSource, string> = {
   saved: "saved from this board",
-  environment: "from DISCORD_TOKEN in the environment",
+  environment: "from the environment (DISCORD_TOKEN or DISCORD_TOKEN_FILE)",
   none: "none yet — the worker is waiting for one",
 };
 
@@ -89,15 +89,26 @@ export function TokenBox() {
           <label htmlFor="admin-token" className="block text-[11px] text-[var(--color-muted)]">
             New token
           </label>
+          {/* A text field drawn as dots, not a password field: a password field
+              that empties after a successful request is what Chrome reads as a
+              login, and it would offer to save the token to the account's
+              synced passwords. The data-* attributes ask the common password
+              manager extensions to leave it alone too. */}
           <input
             id="admin-token"
-            type="password"
+            type="text"
             autoComplete="off"
+            autoCapitalize="off"
+            autoCorrect="off"
             spellCheck={false}
+            data-1p-ignore=""
+            data-lpignore="true"
+            data-bwignore=""
             value={value}
             onChange={(event) => setValue(event.target.value)}
             placeholder="paste the new token"
-            className="mt-1 w-full rounded border border-[var(--color-line)] bg-[var(--color-ink)] px-2 py-1.5 text-xs"
+            style={{ WebkitTextSecurity: "disc" } as CSSProperties}
+            className="mt-1 min-h-9 w-full rounded border border-[var(--color-line)] bg-[var(--color-ink)] px-2 py-1.5 text-xs"
           />
         </div>
         <button
