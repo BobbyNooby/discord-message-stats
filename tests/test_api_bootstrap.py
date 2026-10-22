@@ -194,6 +194,30 @@ def test_word_suggestions_complete_from_the_full_index(client):
     assert client.get("/api/words/suggest?q=").status_code == 422
 
 
+def test_media_detail_says_who_posted_it_and_links_the_first_post(client, conn, db_cfg):
+    cfg, path = db_cfg
+    from discord_scraper.rollups.build import rebuild_all
+    from tests.conftest import author_raw, seed_messages
+
+    gif = [{"type": "gifv", "url": "https://tenor.com/view/cat", "provider": {"name": "Tenor"}}]
+    seed_messages(conn, [
+        ("md1", "u2", "plain_user", "", "2026-01-05T10:00:00+00:00", None, None, 0, 0,
+         author_raw("u2", "plain_user", embeds=gif)),
+        ("md2", "u1", "u1handle", "", "2026-01-06T10:00:00+00:00", None, None, 0, 0,
+         author_raw("u1", "u1handle", embeds=gif)),
+        ("md3", "u1", "u1handle", "", "2026-02-06T10:00:00+00:00", None, None, 0, 0,
+         author_raw("u1", "u1handle", embeds=gif)),
+    ])
+    rebuild_all(conn, cfg)
+    body = client.get("/api/media/detail", params={"url": "https://tenor.com/view/cat"}).json()
+    assert body["item"][6] == 3
+    assert [(p["id"], p["count"]) for p in body["people"]] == [("u1", 2), ("u2", 1)]
+    assert [m["month"] for m in body["months"]] == ["2026-01", "2026-01", "2026-02"]
+    assert body["first_post"]["id"] == "u2"
+    assert body["first_post"]["jump_url"].endswith("/c1/md1")
+    assert client.get("/api/media/detail", params={"url": "https://nope"}).status_code == 404
+
+
 def test_words_endpoint_rejects_an_empty_query(client):
     assert client.get("/api/words").status_code == 422
     assert client.get("/api/words?q=").status_code == 422
