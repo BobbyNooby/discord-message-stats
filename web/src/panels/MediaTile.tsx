@@ -1,5 +1,5 @@
 import { Play } from "lucide-react";
-import { useEffect, useRef, useState, type RefObject } from "react";
+import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 
 import type { MediaRow } from "../api/types";
 import { kindLabel, postedLabel, providerLabel } from "../lib/mediaLabels";
@@ -75,16 +75,49 @@ const FRAME = "flex h-24 w-full items-center justify-center overflow-hidden bg-[
  *  stretching the tile or pushing the caption row off. */
 const MEDIA = "mx-auto max-h-full max-w-full object-contain";
 
+/**
+ * What a tap on the tile does: open the detail view when the caller offers one,
+ * otherwise follow the link as the tile always did.
+ */
+function Target({
+  url,
+  onOpen,
+  label,
+  children,
+}: {
+  url: string;
+  onOpen?: () => void;
+  label: string;
+  children: ReactNode;
+}) {
+  if (onOpen) {
+    return (
+      <button type="button" onClick={onOpen} aria-label={label} className="block w-full text-left">
+        {children}
+      </button>
+    );
+  }
+  return (
+    <a href={url} target="_blank" rel="noreferrer noopener" className="block">
+      {children}
+    </a>
+  );
+}
+
 function Thumbnail({
   src,
   animated,
   provider,
   url,
+  onOpen,
+  label,
 }: {
   src: string | null;
   animated: string | null;
   provider: string;
   url: string;
+  onOpen?: () => void;
+  label: string;
 }) {
   const reduced = useReducedMotion();
   const [failed, setFailed] = useState(false);
@@ -133,9 +166,9 @@ function Thumbnail({
     // anchor is invalid HTML and clicking it would follow the link.
     return (
       <div className="relative">
-        <a href={url} target="_blank" rel="noreferrer noopener" className="block">
+        <Target url={url} onOpen={onOpen} label={label}>
           {frame}
-        </a>
+        </Target>
         <button
           type="button"
           aria-label={`Play ${provider} animation`}
@@ -151,23 +184,35 @@ function Thumbnail({
   }
 
   return (
-    <a href={url} target="_blank" rel="noreferrer noopener" className="block">
+    <Target url={url} onOpen={onOpen} label={label}>
       {frame}
-    </a>
+    </Target>
   );
 }
 
-export function MediaTile({ row, mode, rank }: { row: MediaRow; mode: string; rank: number }) {
+export function MediaTile({
+  row,
+  mode,
+  rank,
+  onOpen,
+}: {
+  row: MediaRow;
+  mode: string;
+  rank: number;
+  /** Open this item's detail view; without it the tile links to the original. */
+  onOpen?: () => void;
+}) {
   const [url, provider, kind, title, thumbnail, animated, uses] = row;
   const src = thumbnailSrc(thumbnail || url, mode);
   const animatedSrc = thumbnailSrc(animated || "", mode);
   const name = providerLabel(provider, url);
   const caption = `${postedLabel(uses)} · ${name} ${kindLabel(kind)}`;
+  const label = `Who posted ${mediaName(url, title)}`;
 
   return (
     <li className="overflow-hidden rounded border border-[var(--color-line)]">
-      <Thumbnail src={src} animated={animatedSrc} provider={name} url={url} />
-      <a href={url} target="_blank" rel="noreferrer noopener" className="block">
+      <Thumbnail src={src} animated={animatedSrc} provider={name} url={url} onOpen={onOpen} label={label} />
+      <Target url={url} onOpen={onOpen} label={label}>
         <div className="flex items-start gap-2 p-2">
           {/* The list position, not the count: two links can be posted the same
               number of times, and only the ranking says which came first. A
@@ -188,7 +233,7 @@ export function MediaTile({ row, mode, rank }: { row: MediaRow; mode: string; ra
             </p>
           </div>
         </div>
-      </a>
+      </Target>
     </li>
   );
 }

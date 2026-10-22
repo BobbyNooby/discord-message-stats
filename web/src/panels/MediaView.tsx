@@ -2,12 +2,13 @@ import { Download } from "lucide-react";
 import { useState } from "react";
 
 import { useMedia } from "../api/queries";
-import type { Payload } from "../api/types";
+import type { MediaRow, Payload } from "../api/types";
 import { Chip, NARROW, useNarrow } from "../components/AppShell";
 import { useNotice } from "../components/Notice";
 import { Dialog, Sheet } from "../components/ui";
 import { csvFilename, downloadCsv } from "../lib/csv";
 import { kindLabel, providerChoices } from "../lib/mediaLabels";
+import { MediaDetailDialog } from "./MediaDetail";
 import { MediaTile } from "./MediaTile";
 
 /**
@@ -57,6 +58,7 @@ export function MediaView({
   const [provider, setProvider] = useState<string | null>(initialProvider);
   const [kind, setKind] = useState<string | null>(null);
   const [allProviders, setAllProviders] = useState(false);
+  const [detail, setDetail] = useState<MediaRow | null>(null);
   const query = useMedia(provider, kind, open);
   const mode = payload.mediaThumbnails ?? "proxy";
 
@@ -184,10 +186,11 @@ export function MediaView({
       ) : (
         <ol aria-label="Top media" className="grid grid-cols-1 gap-3 md:grid-cols-2">
           {shown.map((row, index) => (
-            <MediaTile key={row[0]} row={row} mode={mode} rank={index + 1} />
+            <MediaTile key={row[0]} row={row} mode={mode} rank={index + 1} onOpen={() => setDetail(row)} />
           ))}
         </ol>
       )}
+      <MediaDetailDialog row={detail} payload={payload} mode={mode} onClose={() => setDetail(null)} />
     </div>
   );
 

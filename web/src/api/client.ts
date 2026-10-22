@@ -74,6 +74,19 @@ export const getWords = (query: string, limit = 50) =>
 export const getWordSuggestions = (prefix: string) =>
   request<{ words: [string, number][] }>(`/api/words/suggest?q=${encodeURIComponent(prefix)}`);
 
+export type MediaDetail = {
+  item: import("./types").MediaRow;
+  first_seen: string | null;
+  last_seen: string | null;
+  /** Null (not empty) until a rebuild has written the per-person table. */
+  people: { id: string; name: string; count: number; first_seen: string }[] | null;
+  months: { month: string; id: string; count: number }[] | null;
+  first_post: { id: string; name: string; at: string; message_id: string; jump_url: string } | null;
+};
+
+export const getMediaDetail = (url: string) =>
+  request<MediaDetail>(`/api/media/detail?url=${encodeURIComponent(url)}`);
+
 /**
  * The full media ranking, optionally for one provider and one kind
  * (`/api/media`). Both are query parameters, so a kind chip narrows the whole
