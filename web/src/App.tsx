@@ -188,11 +188,11 @@ function DashboardBody({
   // A reload or a shared link lands on its section. The browser looks for the
   // heading before the payload has drawn anything, finds none, and stays at the
   // top — which on a phone means scrolling all the way back down.
+  // Called straight from the effect: the sections are in the document by now,
+  // and an animation frame never comes in a tab the browser is not painting.
   useEffect(() => {
     const id = decodeURIComponent(window.location.hash.slice(1));
-    if (!id) return;
-    const frame = requestAnimationFrame(() => document.getElementById(id)?.scrollIntoView?.({ block: "start" }));
-    return () => cancelAnimationFrame(frame);
+    if (id) document.getElementById(id)?.scrollIntoView?.({ block: "start" });
   }, []);
 
   const pruned = describeDropped(saved.dropped, (panelId) =>
