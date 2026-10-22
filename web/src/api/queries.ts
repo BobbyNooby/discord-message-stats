@@ -5,6 +5,7 @@ import {
   getBootstrap,
   getHealth,
   getMedia,
+  getMediaDetail,
   getRecent,
   getWords,
   getWordSuggestions,
@@ -55,6 +56,15 @@ export function useWordSuggestions(prefix: string, enabled: boolean) {
     enabled: enabled && needle.length > 0,
     staleTime: 5 * 60_000,
     select: (data: { words: [string, number][] }) => data.words,
+  });
+}
+
+export function useMediaDetail(url: string | null) {
+  return useQuery({
+    queryKey: ["media-detail", url],
+    queryFn: () => getMediaDetail(url as string),
+    enabled: Boolean(url),
+    staleTime: 5 * 60_000,
   });
 }
 

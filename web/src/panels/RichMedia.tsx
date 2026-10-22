@@ -11,6 +11,7 @@ import { kindLabel, providerChoices, providerLabel } from "../lib/mediaLabels";
 import type { Filters } from "../filters/reducer";
 import { readMediaOpen, writeMediaState } from "../filters/persist";
 import { usePanelFilters } from "./panelScope";
+import { MediaDetailDialog } from "./MediaDetail";
 import { MediaTile } from "./MediaTile";
 import { MediaView } from "./MediaView";
 
@@ -97,6 +98,7 @@ export function RichMedia({ payload, filters }: { panelId?: string; payload: Pay
   // Which provider the full view opens on. A chip hands it one; "Browse all"
   // and "More" clear it, so a plain open is never silently filtered.
   const [viewProvider, setViewProvider] = useState<string | null>(null);
+  const [detail, setDetail] = useState<MediaRow | null>(null);
 
   const openView = (provider: string | null) => {
     setViewProvider(provider);
@@ -223,10 +225,11 @@ export function RichMedia({ payload, filters }: { panelId?: string; payload: Pay
           ) : (
             <ol className="grid grid-cols-1 gap-3 md:grid-cols-2">
               {shown.map((row, index) => (
-                <MediaTile key={row[0]} row={row} mode={mode} rank={index + 1} />
+                <MediaTile key={row[0]} row={row} mode={mode} rank={index + 1} onOpen={() => setDetail(row)} />
               ))}
             </ol>
           )}
+          <MediaDetailDialog row={detail} payload={payload} mode={mode} onClose={() => setDetail(null)} />
         </Panel>
         {viewOpen ? (
           <MediaView
