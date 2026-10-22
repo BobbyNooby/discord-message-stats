@@ -27,6 +27,7 @@ import {
   loadCharts,
   loadScopes,
   readUrlState,
+  readView,
   saveCharts,
   saveScopes,
   writeUrlState,
@@ -119,10 +120,12 @@ function DashboardBody({
   lastIngestAt?: string | null;
   recent?: { messages: { author: string; created_at: string; body: string }[]; truncated?: boolean };
 }) {
+  // The sidebar starts from the link's `?view=`, so a reload or a shared link
+  // keeps the years, dates and people it was showing.
   const [{ filters, scopes, mode }, dispatch] = useReducer(
     dashboardReducer,
     payload,
-    initialDashboardState,
+    (loaded) => initialDashboardState(loaded, readView(loaded)),
   );
   const years = [...new Set(payload.days.map((day) => Number(day.slice(0, 4))))].sort();
   const notify = useNotice();
@@ -169,8 +172,14 @@ function DashboardBody({
   // what makes that work on a phone: it is the same view, not a re-typed one.
   useEffect(() => {
     saveScopes(scopes, payload.authors.map((author) => author.name));
-    writeUrlState({ scopes, authors: payload.authors.map((author) => author.name) });
   }, [payload, scopes]);
+
+  // The address is the view: card scopes and the sidebar's own filters both.
+  // Only the scopes go to localStorage too — a stale global filter waiting in
+  // storage would make a fresh visit look broken rather than filtered.
+  useEffect(() => {
+    writeUrlState({ scopes, authors: payload.authors.map((author) => author.name), view: filters });
+  }, [payload, scopes, filters]);
 
   useEffect(() => {
     saveCharts(charts);
