@@ -26,4 +26,9 @@ describe("<SectionScopeNote>", () => {
     render(<SectionScopeNote section="rich-media" />);
     expect(screen.getByRole("note")).toHaveTextContent("all 2 cards here");
   });
+
+  it("says nothing for Words, now that every word card follows the dates", () => {
+    const { container } = render(<SectionScopeNote section="words" />);
+    expect(container).toBeEmptyDOMElement();
+  });
 });

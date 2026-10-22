@@ -2,11 +2,13 @@ import type { ECharts, EChartsOption } from "echarts";
 import { useCallback, useMemo, useRef, useState } from "react";
 
 import { useWords, useWordSuggestions } from "../api/queries";
+import type { Payload } from "../api/types";
 import { EmptyState, Panel } from "../components/Panel";
 import { EChart } from "../lib/echart";
 import { chartPeak, chartTooltipBg, swatch, token } from "../lib/palette";
 import { WORD_SEARCH_ID } from "../lib/shortcuts";
 import { usePanelFilters } from "./panelScope";
+import { answerFor, periodLabel, periodNote, useWordView } from "./wordPeriod";
 
 /**
  * "Word index" — the mockup's `drawWords` plus the search box.
@@ -31,16 +33,19 @@ const kfmt = (n: number) => {
 };
 
 export type WordIndexProps = {
-  /** The embedded slice, `payload.words`. */
-  words: [string, number][];
+  /** The slice comes from `payload.words`, or from the period's while a time filter is on. */
+  payload: Payload;
   selected: string | null;
   onSelect: (word: string) => void;
 };
 
-export function WordIndex({ words, selected, onSelect }: WordIndexProps) {
-  // The card declares `word` and `author` in the registry, so it reads the
+export function WordIndex({ payload, selected, onSelect }: WordIndexProps) {
+  // The card declares `word` and `time` in the registry, so it reads the
   // filters it is actually under rather than assuming the global ones.
   const filters = usePanelFilters("word-index");
+  const view = useWordView(payload, filters);
+  const words = view.payload.words;
+  const note = periodNote(view);
   const shownWord = filters.word ?? selected;
   const [query, setQuery] = useState("");
   const [highlight, setHighlight] = useState(0);
@@ -55,7 +60,8 @@ export function WordIndex({ words, selected, onSelect }: WordIndexProps) {
   // The one place a word search may leave the browser: nothing in the slice matched.
   const needsServer = needle.length > 0 && matches.length === 0;
   const remote = useWords(query, needsServer);
-  const found = needsServer ? remote.data : undefined;
+  const found = needsServer ? answerFor(remote.data, view.period) : undefined;
+  const where = view.period ? `in ${periodLabel(view.period)}` : "in the full index";
   // Words in the full index that start with what was typed — how a word that
   // is spelled three ways, or only ever said twice, still gets found.
   const suggestions = useWordSuggestions(needle, needsServer);
@@ -68,9 +74,11 @@ export function WordIndex({ words, selected, onSelect }: WordIndexProps) {
       : remote.isFetching
         ? "searching the full index…"
         : found && found.total > 0
-          ? `${fmt(found.total)} uses in the full index`
-          : "not in the full index"
-    : `top ${fmt(shown.length)} of ${fmt(words.length)} indexed`;
+          ? `${fmt(found.total)} uses ${where}`
+          : `not ${where}`
+    : view.period
+      ? `top ${fmt(shown.length)} of ${fmt(words.length)} · ${periodLabel(view.period)}`
+      : `top ${fmt(shown.length)} of ${fmt(words.length)} indexed`;
 
   const option = useMemo<EChartsOption>(
     () => {
@@ -215,6 +223,8 @@ export function WordIndex({ words, selected, onSelect }: WordIndexProps) {
 
       {shown.length ? (
         <EChart option={option} height={288} onReady={handleReady} className="cursor-pointer" />
+      ) : note && !needle ? (
+        <EmptyState>{note}</EmptyState>
       ) : !needle ? (
         <EmptyState>No indexed words yet — ingest, or upload a database from the Admin board.</EmptyState>
       ) : remote.isFetching ? (
@@ -224,7 +234,7 @@ export function WordIndex({ words, selected, onSelect }: WordIndexProps) {
         // breakdown is shown here because the embedded slice has no row for it.
         <div>
           <p className="mb-2 text-xs text-[var(--color-muted)]">
-            “{found.word}” is outside the embedded slice · {fmt(found.total)} uses in the full index
+            “{found.word}” is outside the embedded slice · {fmt(found.total)} uses {where}
           </p>
           <button
             type="button"
@@ -246,7 +256,7 @@ export function WordIndex({ words, selected, onSelect }: WordIndexProps) {
           </ul>
         </div>
       ) : (
-        <EmptyState>Nothing in the full index matches “{query.trim()}”.</EmptyState>
+        <EmptyState>Nothing {where} matches “{query.trim()}”.</EmptyState>
       )}
 
       {nearby.length > 0 && (

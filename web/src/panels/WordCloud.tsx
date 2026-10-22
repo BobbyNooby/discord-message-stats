@@ -7,6 +7,7 @@ import type { Filters } from "../filters/reducer";
 import { EChart } from "../lib/echart";
 import { swatch } from "../lib/palette";
 import { usePanelFilters } from "./panelScope";
+import { periodNote, periodPrefix, useWordView } from "./wordPeriod";
 
 /**
  * "Word cloud" — the one `echarts-wordcloud` user (§11.1 calls it decorative).
@@ -49,7 +50,7 @@ export function cloudRows(payload: Payload, filters: Filters, limit = LIMIT): [s
 }
 
 export function WordCloud({
-  payload,
+  payload: full,
   filters: fallbackFilters,
   loadPlugin = importWordCloudPlugin,
 }: { panelId?: string;
@@ -59,6 +60,9 @@ export function WordCloud({
   loadPlugin?: () => Promise<unknown>;
 }) {
   const filters = usePanelFilters("word-cloud", fallbackFilters);
+  const view = useWordView(full, filters);
+  const payload = view.payload;
+  const note = periodNote(view);
   const rows = useMemo(() => cloudRows(payload, filters), [payload, filters]);
   const [plugin, setPlugin] = useState<"loading" | "ready" | "missing">("loading");
   const total = useMemo(() => rows.reduce((sum, [, uses]) => sum + uses, 0), [rows]);
@@ -119,9 +123,11 @@ export function WordCloud({
   return (
     <Panel
       title="Word cloud"
-      subtitle={`top ${fmt(rows.length)} words by frequency · ${fmt(total)} uses shown · no date dimension`}
+      subtitle={`${periodPrefix(view)}top ${fmt(rows.length)} words by frequency · ${fmt(total)} uses shown`}
     >
-      {!rows.length ? (
+      {note ? (
+        <EmptyState>{note}</EmptyState>
+      ) : !rows.length ? (
         <EmptyState>No words to plot — the word index above has the same numbers.</EmptyState>
       ) : plugin === "missing" ? (
         <EmptyState>Word cloud unavailable — use the word index above; it has every one of these numbers.</EmptyState>
