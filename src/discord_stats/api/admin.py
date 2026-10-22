@@ -452,10 +452,20 @@ def _check_and_save_token(request: Request, token: str) -> dict:
 
 @router.delete("/token", status_code=204)
 def forget_token(request: Request) -> None:
-    """Drop the saved token, falling back to DISCORD_TOKEN from the environment."""
+    """Drop the saved token, falling back to DISCORD_TOKEN from the environment.
+
+    The fallback is a different token, so it is probed straight away: a pause
+    left by the saved one would otherwise outlast it until the next interval.
+    """
     from discord_scraper.config import token_file_for
+    from discord_scraper.worker.jobs import enqueue
 
     token_file_for(request.app.state.db_path).unlink(missing_ok=True)
+    conn = _conn(request)
+    try:
+        enqueue(conn, _effective_for(request, conn).channel_id, "probe")
+    finally:
+        conn.close()
     _log_event(request, scope="token", message="saved token removed from the admin board")
 
 

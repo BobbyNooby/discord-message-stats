@@ -144,9 +144,13 @@ def test_the_saved_token_is_what_the_test_button_checks_and_can_be_forgotten(
     admin_client.put("/api/admin/token", json={"token": "saved-one"})
     admin_client.post("/api/admin/token/test")
     assert seen[-1] == "saved-one"
+    before = len(admin_client.get("/api/admin/jobs").json()["jobs"])
     assert admin_client.delete("/api/admin/token").status_code == 204
     assert _saved_token(admin_client) is None
     assert admin_client.get("/api/admin/token").json()["source"] == "environment"
+    # The environment's token is a different one, so it is checked at once.
+    jobs = admin_client.get("/api/admin/jobs").json()["jobs"]
+    assert len(jobs) == before + 1 and jobs[0]["kind"] == "probe"
 
 
 def test_an_animated_avatar_keeps_its_gif(admin_client, monkeypatch):
