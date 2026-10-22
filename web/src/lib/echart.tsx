@@ -26,12 +26,19 @@ export function EChart({
   onReady,
   className,
   "aria-label": ariaLabel,
+  exportsCsv = true,
 }: {
   option: EChartsOption;
   height?: number | string;
   onReady?: (chart: echarts.ECharts) => void;
   className?: string;
   "aria-label"?: string;
+  /**
+   * False for a secondary chart in a card that already has one: the card's
+   * export takes the last chart to register, so a second chart would silently
+   * replace the numbers the card is named after.
+   */
+  exportsCsv?: boolean;
 }) {
   const container = useRef<HTMLDivElement>(null);
   const chart = useRef<echarts.ECharts | null>(null);
@@ -51,13 +58,15 @@ export function EChart({
   const register = usePanelCsv();
   const rows = useMemo(() => csvFromOption(option), [option]);
   useEffect(() => {
-    register(rows);
-  }, [register, rows]);
+    if (exportsCsv) register(rows);
+  }, [register, rows, exportsCsv]);
   // A chart that unmounts (an empty filter) must take its rows with it, or the
   // card would offer to export numbers it is no longer showing. Depends only on
   // the stable `register`, so this cleanup runs on unmount and not before every
   // option change.
-  useEffect(() => () => register([]), [register]);
+  useEffect(() => () => {
+    if (exportsCsv) register([]);
+  }, [register, exportsCsv]);
 
   useEffect(() => {
     // The heading is only reachable once the node is in the document, so this

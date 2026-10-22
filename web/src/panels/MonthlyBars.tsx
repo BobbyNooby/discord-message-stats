@@ -152,5 +152,6 @@ export function MonthlyBars({
     }),
     [stacks, unit],
   );
-  return <EChart option={option} height={height} aria-label={ariaLabel} />;
+  // Always the second chart in its card, so the card's export stays the first.
+  return <EChart option={option} height={height} aria-label={ariaLabel} exportsCsv={false} />;
 }
