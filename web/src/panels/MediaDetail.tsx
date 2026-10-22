@@ -1,11 +1,12 @@
 import { ExternalLink } from "lucide-react";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 import { useMediaDetail } from "../api/queries";
 import type { MediaRow, Payload } from "../api/types";
 import { NARROW, useNarrow } from "../components/AppShell";
 import { Dialog, Sheet } from "../components/ui";
 import { kindLabel, postedLabel, providerLabel } from "../lib/mediaLabels";
+import { useReducedMotion } from "../lib/motion";
 import { swatch } from "../lib/palette";
 import { mediaName, thumbnailSrc } from "./MediaTile";
 import { authorIndexById, MonthlyBars, monthlyStacks } from "./MonthlyBars";
@@ -34,20 +35,38 @@ function dayLabel(iso: string | null | undefined, zone: string): string {
 }
 
 function Preview({ row, mode }: { row: MediaRow; mode: string }) {
-  const [url, , , , thumbnail, animated] = row;
+  const [url, provider, , , thumbnail, animated] = row;
+  const reduced = useReducedMotion();
+  const [failed, setFailed] = useState(false);
   const still = thumbnailSrc(thumbnail || url, mode);
   const moving = thumbnailSrc(animated || "", mode);
   const frame = "flex h-48 w-full items-center justify-center overflow-hidden rounded bg-[var(--color-surface)]";
-  if (moving && /\.(mp4|webm)(\?|$)/i.test(animated)) {
+  // The tile's rules: no autoplay for a reader who asked for less motion, and a
+  // preview the proxy refused (a page, not an image) says what it is instead of
+  // showing a broken image.
+  if (!failed && !reduced && moving && /\.(mp4|webm)(\?|$)/i.test(animated)) {
     return (
       <div className={frame}>
-        <video src={moving} poster={still ?? undefined} autoPlay muted loop playsInline className="max-h-full max-w-full object-contain" />
+        <video
+          src={moving}
+          poster={still ?? undefined}
+          autoPlay
+          muted
+          loop
+          playsInline
+          onError={() => setFailed(true)}
+          className="max-h-full max-w-full object-contain"
+        />
       </div>
     );
   }
   return (
     <div className={frame}>
-      {still ? <img src={still} alt="" className="max-h-full max-w-full object-contain" /> : null}
+      {still && !failed ? (
+        <img src={still} alt="" onError={() => setFailed(true)} className="max-h-full max-w-full object-contain" />
+      ) : (
+        <span className="px-2 text-center text-xs text-[var(--color-muted)]">{providerLabel(provider, url)}</span>
+      )}
     </div>
   );
 }
