@@ -206,8 +206,13 @@ export type DashboardAction = Action | ScopeAction;
 
 export type DashboardState = { filters: Filters; scopes: Scopes; mode: SidebarMode };
 
-export function initialDashboardState(payload: Payload): DashboardState {
-  return { filters: initialFilters(payload), scopes: {}, mode: GLOBAL_MODE };
+/** `view` is the sidebar's filters as a link carried them (`?view=`). */
+export function initialDashboardState(payload: Payload, view: FilterPatch = {}): DashboardState {
+  const filters = initialFilters(payload);
+  // A view from another build may name a different number of people; only a
+  // list that lines up with this payload's authors replaces the default.
+  const active = view.active?.length === filters.active.length ? view.active : filters.active;
+  return { filters: { ...filters, ...view, active }, scopes: {}, mode: GLOBAL_MODE };
 }
 
 const SCOPE_ACTIONS = [

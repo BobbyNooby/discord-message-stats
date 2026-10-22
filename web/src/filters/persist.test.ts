@@ -9,11 +9,13 @@ import {
   loadScopes,
   readMediaOpen,
   readUrlState,
+  readView,
   saveCharts,
   saveScopes,
   writeMediaState,
   writeUrlState,
 } from "./persist";
+import { initialDashboardState } from "./reducer";
 
 const payload = {
   authors: [
@@ -249,6 +251,55 @@ describe("the url mirror", () => {
       false,
       true,
     ]);
+  });
+});
+
+describe("the sidebar's view in the url", () => {
+  const names = payload.authors.map((author) => author.name);
+  const base = { from: null, to: null, years: [], active: [true, true, true], bucket: "month" as const,
+    word: null, provider: null, kind: null };
+
+  beforeEach(() => {
+    window.history.replaceState(null, "", "/");
+  });
+
+  it("round-trips years, dates, people, bucket and word", () => {
+    const view = { ...base, years: [2021, 2023], from: "2023-02-01", to: "2023-11-30",
+      active: [true, false, true], bucket: "year" as const, word: "grandma" };
+    writeUrlState({ scopes: {}, authors: names, view });
+    expect(window.location.search).toContain("view=");
+    expect(readView(payload)).toEqual({
+      years: [2021, 2023], from: "2023-02-01", to: "2023-11-30",
+      active: [true, false, true], bucket: "year", word: "grandma",
+    });
+  });
+
+  it("writes nothing for the default view", () => {
+    writeUrlState({ scopes: {}, authors: names, view: base });
+    expect(window.location.search).not.toContain("view=");
+    expect(readView(payload)).toEqual({});
+  });
+
+  it("keeps a card's scope and the view apart", () => {
+    writeUrlState({ scopes: { "word-cloud": { word: "cat" } }, authors: names, view: { ...base, years: [2024] } });
+    expect(readUrlState(payload).scopes).toEqual({ "word-cloud": { word: "cat" } });
+    expect(readView(payload)).toEqual({ years: [2024] });
+  });
+
+  it("drops people who no longer match anyone rather than switching everyone off", () => {
+    window.history.replaceState(null, "", "/?view=author%3D2%7CNobody");
+    expect(readView(payload)).toEqual({});
+  });
+
+  it("starts the dashboard from the view a link carries", () => {
+    window.history.replaceState(null, "", "/");
+    writeUrlState({ scopes: {}, authors: names, view: { ...base, years: [2022], active: [false, true, false] } });
+    const state = initialDashboardState(
+      { ...payload, days: [] } as unknown as Payload,
+      readView(payload),
+    );
+    expect(state.filters.years).toEqual([2022]);
+    expect(state.filters.active).toEqual([false, true, false]);
   });
 });
 

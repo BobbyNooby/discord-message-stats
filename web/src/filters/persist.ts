@@ -29,7 +29,7 @@ export type DroppedScope =
 export type LoadedScopes = { scopes: Scopes; dropped: DroppedScope[] };
 
 /** The URL carries author names rather than indices; the payload supplies them. */
-export type UrlState = { scopes: Scopes; authors?: string[] };
+export type UrlState = { scopes: Scopes; authors?: string[]; view?: FilterPatch };
 
 /** The author names in payload order, so a rebuilt list can still be read. */
 type ScopesFile = { version: 1; scopes: Scopes; authors?: string[] };
@@ -247,34 +247,109 @@ function readAuthors(rawValue: string): string[] | null {
     .map(decodeValue);
 }
 
-/** `active` is a bitmask in state and a list of names here, so a rebuild holds. */
-function encodePatch(panelId: string, patch: FilterPatch, authors: string[]): string[] {
+/**
+ * A patch's dimensions as `name=value` pairs: the one encoding shared by a
+ * card's scope (`?scope=card:name=value;…`) and the sidebar's view
+ * (`?view=name=value;…`). `active` is a bitmask in state and a list of names
+ * here, so a rebuild holds.
+ */
+function encodeDimensions(patch: FilterPatch, authors: string[]): string[] {
   const parts: string[] = [];
-  if (patch.years?.length) parts.push(`${panelId}:years=${encodeValue(patch.years.join(","))}`);
+  if (patch.years?.length) parts.push(`years=${encodeValue(patch.years.join(","))}`);
   if (patch.from || patch.to) {
     // A comma, not a pipe: it survives the query string without escaping.
-    parts.push(`${panelId}:time=${encodeValue(`${patch.from ?? ""},${patch.to ?? ""}`)}`);
+    parts.push(`time=${encodeValue(`${patch.from ?? ""},${patch.to ?? ""}`)}`);
   }
   if (patch.active && !patch.active.every(Boolean)) {
     const names = patch.active
       .map((on, index) => (on ? authors[index] : null))
       .filter((name): name is string => Boolean(name));
-    parts.push(`${panelId}:author=${encodeAuthors(names)}`);
+    parts.push(`author=${encodeAuthors(names)}`);
   }
-  if (patch.word) parts.push(`${panelId}:word=${encodeValue(patch.word)}`);
-  if (patch.provider) parts.push(`${panelId}:provider=${encodeValue(patch.provider)}`);
-  if (patch.kind) parts.push(`${panelId}:kind=${encodeValue(patch.kind)}`);
+  if (patch.word) parts.push(`word=${encodeValue(patch.word)}`);
+  if (patch.provider) parts.push(`provider=${encodeValue(patch.provider)}`);
+  if (patch.kind) parts.push(`kind=${encodeValue(patch.kind)}`);
+  if (patch.bucket && patch.bucket !== "month") parts.push(`bucket=${patch.bucket}`);
   return parts;
+}
+
+function encodePatch(panelId: string, patch: FilterPatch, authors: string[]): string[] {
+  return encodeDimensions(patch, authors).map((part) => `${panelId}:${part}`);
+}
+
+/**
+ * Reads one `name=value` into `patch`. `raw` is the value as it sits in the
+ * URL, because the author layout is decided before decoding.
+ */
+function readDimension(patch: FilterPatch, dimension: string, raw: string, authors: string[]): void {
+  const value = decodeValue(raw);
+  if (dimension === "author") {
+    const names = readAuthors(raw);
+    if (names === null) {
+      // Old layout: the commas are the separator, and a comma inside a name
+      // was never recoverable, so decoding then splitting is all there is.
+      const named = new Set(value.split(",").filter(Boolean));
+      patch.active = authors.map((name) => named.has(name));
+    } else if (!names.length) {
+      patch.active = authors.map(() => false);
+    } else {
+      const named = new Set(names);
+      patch.active = authors.map((name) => named.has(name));
+    }
+  } else if (dimension === "word") {
+    patch.word = value;
+  } else if (dimension === "provider") {
+    patch.provider = value;
+  } else if (dimension === "kind") {
+    patch.kind = value;
+  } else if (dimension === "years") {
+    patch.years = value
+      .split(",")
+      .map(Number)
+      .filter((year) => Number.isFinite(year));
+  } else if (dimension === "time") {
+    const [from = "", to = ""] = value.split(",");
+    patch.from = from || null;
+    patch.to = to || null;
+  } else if (dimension === "bucket") {
+    if (value === "day" || value === "month" || value === "year") patch.bucket = value;
+  }
 }
 
 export function writeUrlState(state: UrlState, url?: URL): void {
   const target = url ?? new URL(window.location.href);
+  const authors = state.authors ?? [];
   const scope = Object.entries(state.scopes).flatMap(([panelId, patch]) =>
-    encodePatch(panelId, patch, state.authors ?? []),
+    encodePatch(panelId, patch, authors),
   );
   if (scope.length) target.searchParams.set("scope", scope.join(";"));
   else target.searchParams.delete("scope");
-  if (!url) window.history.replaceState(null, "", target.toString());
+  // The sidebar's own filters, so a reload or a shared link is the same view
+  // and not the all-time default. Nothing is written for the default view.
+  const view = state.view ? encodeDimensions(state.view, authors) : [];
+  if (view.length) target.searchParams.set("view", view.join(";"));
+  else target.searchParams.delete("view");
+  if (!url) window.history.replaceState(window.history.state, "", target.toString());
+}
+
+/**
+ * The sidebar filters a `?view=` link carries, resolved against the payload.
+ * Names that no longer match anyone are dropped rather than switching every
+ * author off: a link that draws nothing reads as broken, not filtered.
+ */
+export function readView(payload: Payload, search?: string): FilterPatch {
+  const source = search ?? window.location.search;
+  const view = new URLSearchParams(source).get("view");
+  const patch: FilterPatch = {};
+  if (!view) return patch;
+  const authors = payload.authors.map((author) => author.name);
+  for (const entry of view.split(";")) {
+    const eq = entry.indexOf("=");
+    if (eq < 1) continue;
+    readDimension(patch, entry.slice(0, eq), entry.slice(eq + 1), authors);
+  }
+  if (patch.active && !patch.active.some(Boolean)) delete patch.active;
+  return patch;
 }
 
 /**
@@ -297,39 +372,10 @@ export function readUrlState(payload?: Payload, search?: string): UrlState {
     if (colon < 1 || eq < colon) continue;
     const panelId = entry.slice(0, colon);
     const dimension = entry.slice(colon + 1, eq);
-    const value = decodeValue(entry.slice(eq + 1));
     if (!isPanelId(panelId)) continue;
 
     const patch: FilterPatch = scopes[panelId] ?? {};
-    if (dimension === "author") {
-      const names = readAuthors(entry.slice(eq + 1));
-      if (names === null) {
-        // Old layout: the commas are the separator, and a comma inside a name
-        // was never recoverable, so decoding then splitting is all there is.
-        const named = new Set(decodeValue(entry.slice(eq + 1)).split(",").filter(Boolean));
-        patch.active = authors.map((name) => named.has(name));
-      } else if (!names.length) {
-        patch.active = authors.map(() => false);
-      } else {
-        const named = new Set(names);
-        patch.active = authors.map((name) => named.has(name));
-      }
-    } else if (dimension === "word") {
-      patch.word = value;
-    } else if (dimension === "provider") {
-      patch.provider = value;
-    } else if (dimension === "kind") {
-      patch.kind = value;
-    } else if (dimension === "years") {
-      patch.years = value
-        .split(",")
-        .map(Number)
-        .filter((year) => Number.isFinite(year));
-    } else if (dimension === "time") {
-      const [from = "", to = ""] = value.split(",");
-      patch.from = from || null;
-      patch.to = to || null;
-    }
+    readDimension(patch, dimension, entry.slice(eq + 1), authors);
     scopes[panelId] = patch;
   }
 
