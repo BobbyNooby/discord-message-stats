@@ -57,6 +57,12 @@ const BUTTONS: { kind: JobKind; label: string; hint: string; changesData: boolea
     changesData: true,
   },
   { kind: "probe", label: "Probe token", hint: "ask Discord if the token still works", changesData: false },
+  {
+    kind: "backup",
+    label: "Back up now",
+    hint: "copy the database into backups/ beside it; the worker also does this daily",
+    changesData: false,
+  },
 ];
 
 function tokenTone(status: string): "ok" | "warn" | "error" {
@@ -385,6 +391,7 @@ export function RefreshCache({
                 <Def label="Finished">{formatStamp(worker.last_ingest_at)}</Def>
                 <Def label="Messages added">{worker.last_ingest_added ?? "—"}</Def>
                 <Def label="Worker last seen">{formatStamp(worker.last_seen_at)}</Def>
+                <Def label="Last backup">{formatStamp(worker.last_backup_at ?? null)}</Def>
                 <Def label="Schedule">
                   {worker.cron_enabled === "true" || worker.cron_enabled === "1"
                     ? `every ${worker.cron_hours ?? "?"} h`
