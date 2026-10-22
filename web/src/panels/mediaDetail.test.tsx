@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { MediaRow, Payload } from "../api/types";
-import { MediaDetailBody } from "./MediaDetail";
+import { MediaDetailBody, MediaDetailDialog } from "./MediaDetail";
 import { MediaTile } from "./MediaTile";
 
 const mocks = vi.hoisted(() => {
@@ -40,6 +40,32 @@ describe("media detail", () => {
     expect(buttons[0]).toHaveAccessibleName(/#1.*zesty cat.*posted 3 times/i);
     await user.click(buttons[0]);
     expect(onOpen).toHaveBeenCalledTimes(1);
+  });
+
+  it("closes on Back, and takes its history entry back when closed another way", async () => {
+    mocks.useMediaDetail.mockReturnValue({ isLoading: true, isError: false, data: undefined });
+    const back = vi.spyOn(window.history, "back").mockImplementation(() => {});
+    const onClose = vi.fn();
+    const { rerender } = render(<MediaDetailDialog row={cat} payload={payload} mode="off" onClose={onClose} />);
+    expect(window.history.state).toEqual({ mediaDetail: true });
+
+    window.dispatchEvent(new PopStateEvent("popstate"));
+    expect(onClose).toHaveBeenCalledTimes(1);
+    rerender(<MediaDetailDialog row={null} payload={payload} mode="off" onClose={onClose} />);
+    // Back already popped the entry, so nothing more is taken.
+    expect(back).not.toHaveBeenCalled();
+
+    rerender(<MediaDetailDialog row={cat} payload={payload} mode="off" onClose={onClose} />);
+    rerender(<MediaDetailDialog row={null} payload={payload} mode="off" onClose={onClose} />);
+    expect(back).toHaveBeenCalledTimes(1);
+    back.mockRestore();
+  });
+
+  it("sits above the dialog it can open over", () => {
+    mocks.useMediaDetail.mockReturnValue({ isLoading: true, isError: false, data: undefined });
+    render(<MediaDetailDialog row={cat} payload={payload} mode="off" onClose={() => {}} />);
+    expect(screen.getByRole("dialog").className).toContain("z-[70]");
+    expect(screen.getByTestId("scrim").className).toContain("z-[60]");
   });
 
   it("still links to the original when nobody offers a detail view", () => {

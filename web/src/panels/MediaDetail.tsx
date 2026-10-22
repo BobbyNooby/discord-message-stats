@@ -1,5 +1,5 @@
 import { ExternalLink } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useMediaDetail } from "../api/queries";
 import type { MediaRow, Payload } from "../api/types";
@@ -69,6 +69,30 @@ function Preview({ row, mode }: { row: MediaRow; mode: string }) {
       )}
     </div>
   );
+}
+
+/**
+ * Back closes the detail, not the page under it: opening pushes an entry, and
+ * closing by a button or Escape takes it back again — the pattern the top-50
+ * view already uses, so the two stack the way a phone expects.
+ */
+function useBackCloses(open: boolean, onClose: () => void): void {
+  const close = useRef(onClose);
+  close.current = onClose;
+  useEffect(() => {
+    if (!open) return;
+    window.history.pushState({ mediaDetail: true }, "", window.location.href);
+    let popped = false;
+    const onPop = () => {
+      popped = true;
+      close.current();
+    };
+    window.addEventListener("popstate", onPop);
+    return () => {
+      window.removeEventListener("popstate", onPop);
+      if (!popped) window.history.back();
+    };
+  }, [open]);
 }
 
 export function MediaDetailBody({ row, payload, mode }: { row: MediaRow; payload: Payload; mode: string }) {
@@ -180,18 +204,20 @@ export function MediaDetailDialog({
   onClose: () => void;
 }) {
   const narrow = useNarrow(NARROW);
+  useBackCloses(row !== null, onClose);
   if (!row) return null;
   const title = mediaName(row[0], row[3]);
   const body = <MediaDetailBody row={row} payload={payload} mode={mode} />;
   const onOpenChange = (open: boolean) => {
     if (!open) onClose();
   };
+  // The top layer: this opens over the top-50 view as well as over the page.
   return narrow ? (
-    <Sheet open onOpenChange={onOpenChange} title={title} side="right">
+    <Sheet open onOpenChange={onOpenChange} title={title} side="right" layer="top">
       {body}
     </Sheet>
   ) : (
-    <Dialog open onOpenChange={onOpenChange} title={title}>
+    <Dialog open onOpenChange={onOpenChange} title={title} layer="top">
       {body}
     </Dialog>
   );
