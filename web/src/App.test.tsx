@@ -114,6 +114,25 @@ beforeEach(() => {
   server.words.mockReset().mockResolvedValue({ word: "", total: 0, authors: [] });
 });
 
+describe("a link to a section", () => {
+  it("scrolls to the section once the dashboard has drawn it", async () => {
+    const scrolled: string[] = [];
+    const original = Element.prototype.scrollIntoView;
+    Element.prototype.scrollIntoView = function (this: Element) {
+      scrolled.push(this.id);
+    };
+    window.history.replaceState(null, "", "/#sec-words");
+    try {
+      renderApp();
+      await screen.findByRole("heading", { name: "Words" });
+      await waitFor(() => expect(scrolled).toContain("sec-words"));
+    } finally {
+      Element.prototype.scrollIntoView = original;
+      window.history.replaceState(null, "", "/");
+    }
+  });
+});
+
 describe("a chart shape through the dashboard", () => {
   it("records the choice, and restores it on the next load", async () => {
     const first = renderApp();
