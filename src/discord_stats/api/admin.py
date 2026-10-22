@@ -46,7 +46,7 @@ from discord_scraper.scraper import api as discord_api
 
 router = APIRouter(prefix="/api/admin", dependencies=[Depends(require_admin)])
 
-JOB_KINDS = ("catch_up", "backfill", "probe", "rebuild_rollups")
+JOB_KINDS = ("catch_up", "backfill", "probe", "rebuild_rollups", "backup")
 
 JOB_STATUSES = ("queued", "running", "done", "failed", "cancelled")
 
@@ -124,8 +124,10 @@ def _worker_view(conn: sqlite3.Connection) -> dict[str, Any]:
         "last_ingest_added": stored.get("last_ingest_added"),
         "last_seen_at": stored.get("last_seen_at"),
         "consecutive_failures": stored.get("consecutive_failures"),
+        "ingest_failures": stored.get("ingest_failures"),
         "cron_enabled": stored.get("cron_enabled"),
         "cron_hours": stored.get("cron_hours"),
+        "last_backup_at": stored.get("last_backup_at"),
     }
 
 
