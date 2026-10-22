@@ -29,6 +29,7 @@ import {
   mergeFamilies,
   type FamilyProgress,
 } from "./ProgressView";
+import { TokenBox } from "./TokenBox";
 import { useProgress } from "./useProgress";
 import {
   Def,
@@ -365,6 +366,7 @@ export function RefreshCache({
               <Notice tone={tokenTone(worker.token_status)}>
                 Token status: <strong>{worker.token_status}</strong>
                 {worker.consecutive_failures ? ` · ${worker.consecutive_failures} consecutive failures` : ""}
+                {worker.token_status === "dead" ? " · scheduled scrapes are paused until a token works" : ""}
               </Notice>
             </div>
             <div className="mt-3">
@@ -373,10 +375,7 @@ export function RefreshCache({
                 <Def label="Last success">{formatStamp(worker.last_ok_at)}</Def>
               </DefList>
             </div>
-            <p className="mt-2 text-[11px] text-[var(--color-muted)]">
-              The token itself is never sent to this page — it lives in the worker&rsquo;s environment.
-              Replace it there, then probe again.
-            </p>
+            <TokenBox />
           </div>
 
           <div className="rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] p-4">
