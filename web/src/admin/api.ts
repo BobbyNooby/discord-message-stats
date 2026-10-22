@@ -69,8 +69,11 @@ export type WorkerView = {
   last_ingest_added: string | null;
   last_seen_at: string | null;
   consecutive_failures: string | null;
+  /** Failed scrapes in a row; the schedule waits longer after each one. */
+  ingest_failures?: string | null;
   cron_enabled: string | null;
   cron_hours: string | null;
+  last_backup_at?: string | null;
 };
 
 export type AdminStatus = {
@@ -124,7 +127,7 @@ export type AdminRow = {
 
 export type AdminRemoval = { removed: string; revoked: number };
 
-export type JobKind = "catch_up" | "backfill" | "probe" | "rebuild_rollups";
+export type JobKind = "catch_up" | "backfill" | "probe" | "rebuild_rollups" | "backup";
 
 export type Job = {
   id: number;
