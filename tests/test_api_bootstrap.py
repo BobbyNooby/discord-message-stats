@@ -218,6 +218,54 @@ def test_media_detail_says_who_posted_it_and_links_the_first_post(client, conn, 
     assert client.get("/api/media/detail", params={"url": "https://nope"}).status_code == 404
 
 
+def test_a_period_with_no_bounds_is_the_payloads_own_word_data(client):
+    payload = client.get("/api/bootstrap").json()
+    period = client.get("/api/words/period").json()
+    assert period["built"] is True
+    for key in ("words", "wordAuthors", "authorWordTotals", "authorDistinct"):
+        assert period[key] == payload[key], key
+
+
+def test_a_period_keeps_only_its_months_and_years(client, conn, db_cfg):
+    cfg, _path = db_cfg
+    from discord_scraper.rollups.build import rebuild_all
+    from tests.conftest import author_raw, seed_messages
+
+    seed_messages(conn, [
+        ("y1", "u1", "u1handle", "zebra", "2021-03-05T10:00:00+00:00", None, None, 0, 0,
+         author_raw("u1", "u1handle")),
+        ("y2", "u2", "plain_user", "zebra okapi", "2023-07-05T10:00:00+00:00", None, None, 0, 0,
+         author_raw("u2", "plain_user")),
+    ])
+    rebuild_all(conn, cfg)
+    names = [author["id"] for author in client.get("/api/bootstrap").json()["authors"]]
+
+    picked = client.get("/api/words/period", params={"years": "2021"}).json()
+    assert picked["words"] == [["zebra", 1]]
+    assert picked["wordAuthors"]["zebra"] == [[names.index("u1"), 1]]
+
+    ranged = client.get("/api/words/period", params={"from": "2023-01", "to": "2023-12"}).json()
+    assert dict(map(tuple, ranged["words"])) == {"zebra": 1, "okapi": 1}
+    assert ranged["authorWordTotals"][names.index("u2")] == 2
+
+
+def test_a_period_refuses_a_malformed_month(client):
+    assert client.get("/api/words/period", params={"from": "2023-13"}).status_code == 422
+    assert client.get("/api/words/period", params={"years": "23"}).status_code == 422
+
+
+def test_a_period_on_a_database_without_the_month_table_says_so(client, db_cfg):
+    _cfg, path = db_cfg
+    raw = sqlite3.connect(path)
+    try:
+        raw.execute("DROP TABLE rollup_word_month")
+        raw.commit()
+    finally:
+        raw.close()
+    body = client.get("/api/words/period", params={"years": "2026"}).json()
+    assert body["built"] is False and body["words"] == []
+
+
 def test_words_endpoint_rejects_an_empty_query(client):
     assert client.get("/api/words").status_code == 422
     assert client.get("/api/words?q=").status_code == 422
