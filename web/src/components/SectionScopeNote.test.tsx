@@ -23,7 +23,7 @@ describe("<SectionScopeNote>", () => {
   });
 
   it("says every card when the section has no date dimension at all", () => {
-    render(<SectionScopeNote section="links" />);
-    expect(screen.getByRole("note")).toHaveTextContent("all 4 cards here");
+    render(<SectionScopeNote section="rich-media" />);
+    expect(screen.getByRole("note")).toHaveTextContent("all 2 cards here");
   });
 });

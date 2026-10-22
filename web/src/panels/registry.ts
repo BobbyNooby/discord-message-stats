@@ -137,7 +137,9 @@ const builtInSpecs = [
   { id: "word-cloud", label: "Word cloud", honours: A, shapes: BAR, defaultShape: "bar" },
 
   // Links & embeds
-  { id: "where-the-chat-lives", label: "Where the chat lives", honours: A, shapes: BAR, defaultShape: "bar" },
+  // `rollup_link` is keyed by day, and the card filters its cells with
+  // `inRange`; listing it author-only told the section note it ignored dates.
+  { id: "where-the-chat-lives", label: "Where the chat lives", honours: TA, shapes: BAR, defaultShape: "bar" },
   { id: "embed-providers", label: "Embed providers", honours: NONE, shapes: BAR, defaultShape: "bar" },
   { id: "most-reposted-links", label: "Most reposted links", honours: NONE, shapes: BAR, defaultShape: "bar" },
   { id: "embed-types", label: "Embed types", honours: NONE, shapes: BAR_PIE, defaultShape: "bar" },

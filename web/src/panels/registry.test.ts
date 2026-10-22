@@ -163,7 +163,8 @@ describe("the panel registry", () => {
   it("reports the measured reach the sidebar labels show", () => {
     // The brief measured 39 cards / 20 time / 29 author against an earlier
     // registry; the code carries 40 (chat-health added) and the numbers below.
-    expect(dimensionReach("time")).toEqual({ honoured: 21, total: 40 });
+    // 22: "Where the chat lives" always filtered by day and now says so.
+    expect(dimensionReach("time")).toEqual({ honoured: 22, total: 40 });
     expect(dimensionReach("author")).toEqual({ honoured: 30, total: 40 });
     expect(dimensionReach("word")).toEqual({ honoured: 2, total: 40 });
     expect(dimensionReach("provider")).toEqual({ honoured: 2, total: 40 });
@@ -200,7 +201,7 @@ describe("the panel registry", () => {
       ].sort(),
     );
     expect(panelsIgnoring("links", "time").sort()).toEqual(
-      ["embed-providers", "embed-types", "most-reposted-links", "where-the-chat-lives"].sort(),
+      ["embed-providers", "embed-types", "most-reposted-links"].sort(),
     );
     // Every one of these cards honours nothing, which is why none renders a
     // scope control any more.
