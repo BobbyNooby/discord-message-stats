@@ -1,7 +1,7 @@
 import type { ECharts, EChartsOption } from "echarts";
 import { useCallback, useMemo, useRef, useState } from "react";
 
-import { useWords } from "../api/queries";
+import { useWords, useWordSuggestions } from "../api/queries";
 import { EmptyState, Panel } from "../components/Panel";
 import { EChart } from "../lib/echart";
 import { chartPeak, chartTooltipBg, swatch, token } from "../lib/palette";
@@ -56,6 +56,10 @@ export function WordIndex({ words, selected, onSelect }: WordIndexProps) {
   const needsServer = needle.length > 0 && matches.length === 0;
   const remote = useWords(query, needsServer);
   const found = needsServer ? remote.data : undefined;
+  // Words in the full index that start with what was typed — how a word that
+  // is spelled three ways, or only ever said twice, still gets found.
+  const suggestions = useWordSuggestions(needle, needsServer);
+  const nearby = needsServer ? (suggestions.data ?? []).filter(([word]) => word !== needle) : [];
 
   const cursor = Math.min(highlight, Math.max(shown.length - 1, 0));
   const tag = needle
@@ -163,6 +167,13 @@ export function WordIndex({ words, selected, onSelect }: WordIndexProps) {
   const selectHighlighted = () => {
     const local = shown[cursor];
     if (local) pick.current(local[0]);
+    else if (found && found.total > 0) pick.current(found.word);
+  };
+
+  const pickSuggestion = (word: string) => {
+    setQuery(word);
+    setHighlight(0);
+    pick.current(word);
   };
 
   return (
@@ -215,6 +226,13 @@ export function WordIndex({ words, selected, onSelect }: WordIndexProps) {
           <p className="mb-2 text-xs text-[var(--color-muted)]">
             “{found.word}” is outside the embedded slice · {fmt(found.total)} uses in the full index
           </p>
+          <button
+            type="button"
+            onClick={() => pick.current(found.word)}
+            className="mb-2 min-h-9 rounded border border-[var(--color-line)] bg-[var(--color-surface-2)] px-3 text-xs text-[var(--color-text)] hover:border-[var(--color-accent)]"
+          >
+            Who says it & when →
+          </button>
           <ul aria-label={`Who says “${found.word}”`} className="max-h-[248px] overflow-auto">
             {found.authors.map((author) => (
               <li
@@ -229,6 +247,25 @@ export function WordIndex({ words, selected, onSelect }: WordIndexProps) {
         </div>
       ) : (
         <EmptyState>Nothing in the full index matches “{query.trim()}”.</EmptyState>
+      )}
+
+      {nearby.length > 0 && (
+        <div className="mt-2">
+          <p className="mb-1 text-[11px] text-[var(--color-muted)]">In the full index:</p>
+          <ul aria-label="Words starting with your search" className="flex flex-wrap gap-1.5">
+            {nearby.map(([word, uses]) => (
+              <li key={word}>
+                <button
+                  type="button"
+                  onClick={() => pickSuggestion(word)}
+                  className="min-h-9 rounded-full border border-[var(--color-line)] bg-[var(--color-surface-2)] px-3 text-xs text-[var(--color-text)] hover:border-[var(--color-accent)]"
+                >
+                  {word} <span className="text-[var(--color-muted)]">{kfmt(uses)}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
     </Panel>
   );
