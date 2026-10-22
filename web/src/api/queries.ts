@@ -35,10 +35,14 @@ export function useRecent(enabled: boolean) {
 }
 
 export function useWords(query: string, enabled: boolean) {
+  // Keyed on the normalised word, so "Car " and "car" share one answer.
+  const word = query.trim().toLowerCase();
   return useQuery({
-    queryKey: ["words", query],
-    queryFn: () => getWords(query),
-    enabled: enabled && query.trim().length > 0,
+    queryKey: ["words", word],
+    queryFn: () => getWords(word),
+    enabled: enabled && word.length > 0,
+    // Rollups only change on a rebuild; a word looked up once stays answered.
+    staleTime: 5 * 60_000,
   });
 }
 

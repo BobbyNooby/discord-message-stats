@@ -59,11 +59,15 @@ export const getRecent = () =>
     truncated: boolean;
   }>("/api/recent");
 
+export type WordMonth = { month: string; id: string; count: number };
+
 export const getWords = (query: string, limit = 50) =>
   request<{
     word: string;
     total: number;
     authors: { id: string; name: string; count: number }[];
+    /** Uses per local month; null until a rebuild has written the month table. */
+    months?: WordMonth[] | null;
   }>(`/api/words?q=${encodeURIComponent(query)}&limit=${limit}`);
 
 /**
