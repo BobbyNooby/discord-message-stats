@@ -7,6 +7,7 @@ import {
   getMedia,
   getRecent,
   getWords,
+  getWordSuggestions,
   Unauthorized,
 } from "./client";
 
@@ -43,6 +44,17 @@ export function useWords(query: string, enabled: boolean) {
     enabled: enabled && word.length > 0,
     // Rollups only change on a rebuild; a word looked up once stays answered.
     staleTime: 5 * 60_000,
+  });
+}
+
+export function useWordSuggestions(prefix: string, enabled: boolean) {
+  const needle = prefix.trim().toLowerCase();
+  return useQuery({
+    queryKey: ["word-suggestions", needle],
+    queryFn: () => getWordSuggestions(needle),
+    enabled: enabled && needle.length > 0,
+    staleTime: 5 * 60_000,
+    select: (data: { words: [string, number][] }) => data.words,
   });
 }
 

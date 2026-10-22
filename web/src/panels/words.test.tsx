@@ -24,11 +24,14 @@ const mocks = vi.hoisted(() => {
     off: vi.fn(),
     clear: vi.fn(),
   };
-  return { instance, init: vi.fn(() => instance), useWords: vi.fn() };
+  return { instance, init: vi.fn(() => instance), useWords: vi.fn(), useWordSuggestions: vi.fn() };
 });
 
 vi.mock("echarts", () => ({ init: mocks.init, use: vi.fn() }));
-vi.mock("../api/queries", () => ({ useWords: mocks.useWords }));
+vi.mock("../api/queries", () => ({
+  useWords: mocks.useWords,
+  useWordSuggestions: mocks.useWordSuggestions,
+}));
 
 type LastOption = { yAxis: { data: string[] }; series: { data: { name?: string; value?: number }[] }[] };
 const lastOption = () => mocks.instance.setOption.mock.calls.at(-1)?.[0] as unknown as LastOption;
@@ -116,6 +119,7 @@ describe("Words section", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.useWords.mockReturnValue({ data: undefined, isFetching: false });
+    mocks.useWordSuggestions.mockReturnValue({ data: undefined });
   });
 
   it("draws who says it and when for a word only the full index knows", () => {
@@ -156,6 +160,25 @@ describe("Words section", () => {
     });
     render(<WhoSaysIt payload={makePayload()} filters={allOn} word="car" />);
     expect(screen.getByText(/needs one rebuild/)).toBeInTheDocument();
+  });
+
+  it("offers full-index words that start with the search and picks one on click", async () => {
+    const user = userEvent.setup();
+    const onSelect = vi.fn();
+    mocks.useWordSuggestions.mockReturnValue({ data: [["zebra", 12], ["zebras", 3]] });
+    render(<WordIndex words={makePayload().words} selected={null} onSelect={onSelect} />);
+
+    await user.type(screen.getByRole("searchbox", { name: "Search words" }), "zeb");
+    expect(mocks.useWordSuggestions).toHaveBeenLastCalledWith("zeb", true);
+    await user.click(screen.getByRole("button", { name: /zebras/ }));
+    expect(onSelect).toHaveBeenCalledWith("zebras");
+  });
+
+  it("never asks for suggestions while the slice is answering", async () => {
+    const user = userEvent.setup();
+    render(<WordIndex words={makePayload().words} selected={null} onSelect={vi.fn()} />);
+    await user.type(screen.getByRole("searchbox", { name: "Search words" }), "car");
+    expect(mocks.useWordSuggestions.mock.calls.every(([, enabled]) => enabled === false)).toBe(true);
   });
 
   it("says a word with no uses is not in the full index, in the badge too", async () => {
@@ -228,6 +251,24 @@ describe("Words section", () => {
     expect(screen.getByText("Ada")).toBeInTheDocument();
     expect(screen.getByText("5 uses")).toBeInTheDocument();
     expect(screen.getByText("7 uses in the full index")).toBeInTheDocument();
+  });
+
+  it("opens a full-index word in Who says it from the button or Enter", async () => {
+    const user = userEvent.setup();
+    const onSelect = vi.fn();
+    mocks.useWords.mockReturnValue({
+      data: { word: "gpuclan", total: 7, authors: [{ id: "u1", name: "Ada", count: 7 }] },
+      isFetching: false,
+    });
+    render(<WordIndex words={makePayload().words} selected={null} onSelect={onSelect} />);
+
+    await user.type(screen.getByRole("searchbox", { name: "Search words" }), "gpuclan");
+    await user.click(screen.getByRole("button", { name: /who says it & when/i }));
+    expect(onSelect).toHaveBeenLastCalledWith("gpuclan");
+    onSelect.mockClear();
+    await user.click(screen.getByRole("searchbox", { name: "Search words" }));
+    await user.keyboard("{Enter}");
+    expect(onSelect).toHaveBeenCalledWith("gpuclan");
   });
 
   it("selects the highlighted word on Enter", async () => {

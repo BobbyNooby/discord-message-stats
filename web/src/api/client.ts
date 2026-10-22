@@ -70,6 +70,10 @@ export const getWords = (query: string, limit = 50) =>
     months?: WordMonth[] | null;
   }>(`/api/words?q=${encodeURIComponent(query)}&limit=${limit}`);
 
+/** Words in the full index starting with what was typed, most used first. */
+export const getWordSuggestions = (prefix: string) =>
+  request<{ words: [string, number][] }>(`/api/words/suggest?q=${encodeURIComponent(prefix)}`);
+
 /**
  * The full media ranking, optionally for one provider and one kind
  * (`/api/media`). Both are query parameters, so a kind chip narrows the whole
