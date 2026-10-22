@@ -53,7 +53,7 @@ function Preview({ row, mode }: { row: MediaRow; mode: string }) {
 }
 
 export function MediaDetailBody({ row, payload, mode }: { row: MediaRow; payload: Payload; mode: string }) {
-  const [url, provider, kind, title, , , uses] = row;
+  const [url, provider, kind, , , , uses] = row;
   const detail = useMediaDetail(url);
   const data = detail.data;
   const zone = payload.tz?.name ?? "UTC";
@@ -67,8 +67,8 @@ export function MediaDetailBody({ row, payload, mode }: { row: MediaRow; payload
   return (
     <div className="space-y-4">
       <Preview row={row} mode={mode} />
+      {/* The dialog's title already names the item, so the body starts at the count. */}
       <div className="space-y-1">
-        <p className="text-sm text-[var(--color-text)]">{mediaName(url, title)}</p>
         <p className="text-xs text-[var(--color-muted)]">
           {postedLabel(uses)} · {providerLabel(provider, url)} {kindLabel(kind)}
         </p>
