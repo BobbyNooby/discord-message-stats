@@ -153,6 +153,19 @@ def test_the_saved_token_is_what_the_test_button_checks_and_can_be_forgotten(
     assert len(jobs) == before + 1 and jobs[0]["kind"] == "probe"
 
 
+def test_the_source_comes_from_the_worker_when_only_the_worker_has_a_token(admin_client, conn):
+    """The container shape: DISCORD_TOKEN on the worker, not on the API."""
+    from dataclasses import replace
+
+    state = admin_client.app.state
+    state.cfg = replace(state.cfg, secrets=replace(state.cfg.secrets, token=""))
+    assert admin_client.get("/api/admin/token").json()["source"] == "none"
+    conn.execute("INSERT INTO worker_state (key, value, updated_at) "
+                 "VALUES ('token_source', 'environment', '2026-01-01')")
+    conn.commit()
+    assert admin_client.get("/api/admin/token").json()["source"] == "environment"
+
+
 def test_an_animated_avatar_keeps_its_gif(admin_client, monkeypatch):
     _mock(monkeypatch, user=(200, {**USER_BODY, "avatar": "a_xyz"}, None))
     body = admin_client.post("/api/admin/token/test").json()
