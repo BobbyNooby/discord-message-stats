@@ -12,6 +12,7 @@ import threading
 import time
 import urllib.parse
 from pathlib import Path
+from typing import Any
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response
 from fastapi.responses import FileResponse, RedirectResponse
@@ -565,6 +566,54 @@ def create_app(
                 "items": query.top_media(conn, effective.channel_id, limit,
                                          provider=provider, kind=kind),
             }
+        finally:
+            conn.close()
+
+    @app.get("/api/media/detail")
+    def media_detail(url: str = Query(..., min_length=1, max_length=2048),
+                     _level: Level = Depends(require_viewer)) -> dict:
+        """Everything about one reposted URL: who posted it, how often, and when.
+
+        ``people`` and ``months`` are ``null`` (not empty) on a database built
+        before the per-person table existed, so the card can say "recalculate"
+        rather than "nobody posted this".
+        """
+        conn = connection()
+        try:
+            _require_rollups(conn)
+            effective = admin.effective_for(conn, cfg)
+            item = query.media_item(conn, effective.channel_id, url)
+            if item is None:
+                raise HTTPException(status_code=404, detail="no media with that URL")
+            posts = query.media_posts(conn, effective.channel_id, url)
+            names = {row["id"]: row["name"]
+                     for row in query.authors(conn, effective.channel_id)}
+            body: dict[str, Any] = {"item": item[:7], "first_seen": item[7],
+                                    "last_seen": item[8], "people": None, "months": None,
+                                    "first_post": None}
+            if posts is None:
+                return body
+            people: dict[str, dict[str, Any]] = {}
+            for _month, author, uses, first_seen, _mid in posts:
+                person = people.setdefault(author, {"id": author,
+                                                    "name": names.get(author, author),
+                                                    "count": 0, "first_seen": first_seen})
+                person["count"] += uses
+                person["first_seen"] = min(person["first_seen"], first_seen)
+            body["people"] = sorted(people.values(), key=lambda p: (-p["count"], p["first_seen"]))
+            body["months"] = [{"month": month, "id": author, "count": uses}
+                              for month, author, uses, _first, _mid in posts]
+            if posts:
+                _month, author, _uses, first_seen, message_id = min(posts, key=lambda p: p[3])
+                body["first_post"] = {
+                    "id": author, "name": names.get(author, author), "at": first_seen,
+                    "message_id": message_id,
+                    # The scrape records no guild id, so this is the DM / group DM
+                    # form of a message link; a server channel would need the guild.
+                    "jump_url": (f"https://discord.com/channels/@me/"
+                                 f"{effective.channel_id}/{message_id}"),
+                }
+            return body
         finally:
             conn.close()
 
