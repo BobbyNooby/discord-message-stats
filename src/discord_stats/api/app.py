@@ -462,9 +462,25 @@ def create_app(
             period_cache[key] = body
         return body
 
+    def warm_the_years(conn: sqlite3.Connection, effective) -> None:
+        """Each year's words, so a year chip answers at once.
+
+        A year is the period people pick most and the slowest one to count
+        (most of a second on the reference database); a day range is a few
+        months and quick, so it is left to the first request that asks.
+        """
+        found = conn.execute(
+            "SELECT DISTINCT substr(month, 1, 4) FROM rollup_word_month WHERE channel_id = ?",
+            (effective.channel_id,),
+        ).fetchall()
+        base = _payload_key(conn, effective)
+        for (year,) in found:
+            picked = (int(year),)
+            period_for(conn, effective, (base, None, None, picked), None, None, picked)
+
     def warm_the_payload() -> None:
         """Assemble once, in the background, so the first page load is not the one
-        that pays for it.
+        that pays for it — then each year's words, for the same reason.
 
         Best effort, but not silent: a warm-up that fails must say why, or the
         next person debugging "why is the first load slow" has nothing to read.
@@ -485,6 +501,10 @@ def create_app(
                 effective = admin.effective_for(conn, cfg)
                 app.state.payload_cache = {_payload_key(conn, effective):
                                            assemble(conn, effective, why="warmed")}
+                try:
+                    warm_the_years(conn, effective)
+                except sqlite3.OperationalError:
+                    pass   # no month table before the first rebuild: nothing to warm
             finally:
                 conn.close()
         except Exception as exc:

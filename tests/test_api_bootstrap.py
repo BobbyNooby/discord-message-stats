@@ -249,6 +249,31 @@ def test_a_period_keeps_only_its_months_and_years(client, conn, db_cfg):
     assert ranged["authorWordTotals"][names.index("u2")] == 2
 
 
+def test_each_year_is_counted_at_boot_so_a_year_chip_answers_from_cache(db_cfg, conn, monkeypatch):
+    import threading
+
+    from fastapi.testclient import TestClient
+
+    from discord_scraper.rollups import query as rollup_query
+    from discord_stats.auth.session import SESSION_COOKIE, Level, establish_session
+
+    cfg, path = db_cfg
+    monkeypatch.delenv("DISCORD_SCRAPER_NO_WARMUP", raising=False)
+    app = create_app(cfg, path)
+    for thread in threading.enumerate():
+        if thread.name == "payload-warmup":
+            thread.join(timeout=30)
+    counted = []
+    real = rollup_query.word_author_uses_between
+    monkeypatch.setattr(rollup_query, "word_author_uses_between",
+                        lambda *a, **k: counted.append(a) or real(*a, **k))
+    client = TestClient(app)
+    client.cookies.set(SESSION_COOKIE, establish_session(conn, "u1", Level.VIEWER))
+    body = client.get("/api/words/period", params={"years": "2026"}).json()
+    assert body["built"] is True and body["words"]
+    assert counted == []    # served from what the warm-up already counted
+
+
 def test_a_period_refuses_a_malformed_month(client):
     assert client.get("/api/words/period", params={"from": "2023-13"}).status_code == 422
     assert client.get("/api/words/period", params={"years": "23"}).status_code == 422
