@@ -247,8 +247,9 @@ describe("Links & embeds section", () => {
 
   it("explains the date-less Links cards once, at the section", () => {
     render(<LinksSection payload={makePayload()} filters={allOn} />);
-    const note = screen.getByText(/all 4 cards here/);
-    expect(note).toHaveTextContent("Where the chat lives");
+    const note = screen.getByText(/3 of these 4 cards/);
+    // The domains card filters its daily cells by date, so the note must not list it.
+    expect(note).not.toHaveTextContent("Where the chat lives");
     expect(note).toHaveTextContent("Embed providers");
     expect(note).toHaveTextContent("Most reposted links");
     expect(note).toHaveTextContent("Embed types");
