@@ -486,6 +486,61 @@ describe("the poll", () => {
   });
 });
 
+class FakeEventSource {
+  static instances: FakeEventSource[] = [];
+  onopen: (() => void) | null = null;
+  onerror: (() => void) | null = null;
+  onmessage: ((message: { data: string }) => void) | null = null;
+  closed = false;
+  constructor(readonly url: string) {
+    FakeEventSource.instances.push(this);
+  }
+  close() {
+    this.closed = true;
+  }
+  push(entry: ProgressLogEntry) {
+    act(() => this.onmessage?.({ data: JSON.stringify(entry) }));
+  }
+}
+
+describe("the live stream", () => {
+  beforeEach(() => {
+    FakeEventSource.instances = [];
+    vi.stubGlobal("EventSource", FakeEventSource);
+  });
+
+  it("opens after the first poll, from where the poll left off", async () => {
+    progressAnswer = () => body({ log: [event(4)], latest_id: 4 });
+    renderCache();
+    await flush();
+    expect(FakeEventSource.instances).toHaveLength(1);
+    expect(FakeEventSource.instances[0].url).toBe("/api/admin/logs/stream?since=4");
+  });
+
+  it("shows a streamed line at once, says it is live, and never shows a line twice", async () => {
+    renderCache();
+    await flush();
+    const stream = FakeEventSource.instances[0];
+    act(() => stream.onopen?.());
+    expect(screen.getByText(/live — lines appear as the worker writes them/)).toBeInTheDocument();
+
+    stream.push(event(9, { message: "streamed line" }));
+    expect(within(screen.getByRole("log")).getByText("streamed line")).toBeInTheDocument();
+
+    // The next poll carries the same line; the panel still shows it once.
+    progressAnswer = () => body({ log: [event(9, { message: "streamed line" })], latest_id: 9 });
+    await flush(5000);
+    expect(within(screen.getByRole("log")).getAllByText("streamed line")).toHaveLength(1);
+  });
+
+  it("closes the stream when the task is closed", async () => {
+    const view = renderCache();
+    await flush();
+    view.unmount();
+    expect(FakeEventSource.instances[0].closed).toBe(true);
+  });
+});
+
 describe("the queued confirmation", () => {
   it("names the job while it is still waiting to be picked up", async () => {
     progressAnswer = () => body();

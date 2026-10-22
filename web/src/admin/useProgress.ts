@@ -35,9 +35,14 @@ export type ProgressFeed = {
   log: ProgressLogEntry[];
   error: Error | null;
   loading: boolean;
+  /** True while the server's live log stream is connected. */
+  live: boolean;
   /** Ask now and keep the fast cadence until the run shows or the window ends. */
   kick: () => void;
 };
+
+/** The server-sent log (`/api/admin/logs/stream`): lines as they are written. */
+export const STREAM_PATH = "/api/admin/logs/stream";
 
 export function useProgress(): ProgressFeed {
   const [data, setData] = useState<Progress | null>(null);
@@ -97,5 +102,37 @@ export function useProgress(): ProgressFeed {
     };
   }, [round]);
 
-  return { data, log, error, loading, kick };
+  // The log itself arrives live: the worker is another process, and the API
+  // streams its lines the moment they are written, where the idle poll would
+  // show them up to five seconds late. The poll stays for the run state and as
+  // the safety net — both feed the same id set, so no line lands twice.
+  // Opened after the first poll, so `since` skips the history it already read.
+  const [live, setLive] = useState(false);
+  const ready = data !== null;
+  useEffect(() => {
+    if (!ready || typeof EventSource !== "function") return;
+    const source = new EventSource(`${STREAM_PATH}?since=${sinceRef.current}`);
+    source.onopen = () => setLive(true);
+    // A refused or dropped stream: the browser retries on its own (or gives up
+    // for good on a 401), and the poll keeps the log moving meanwhile.
+    source.onerror = () => setLive(false);
+    source.onmessage = (message: MessageEvent<string>) => {
+      let entry: ProgressLogEntry;
+      try {
+        entry = JSON.parse(message.data) as ProgressLogEntry;
+      } catch {
+        return;
+      }
+      if (typeof entry?.id !== "number" || seenRef.current.has(entry.id)) return;
+      seenRef.current.add(entry.id);
+      sinceRef.current = Math.max(sinceRef.current, entry.id);
+      setLog((current) => [entry, ...current].slice(0, LOG_LIMIT));
+    };
+    return () => {
+      source.close();
+      setLive(false);
+    };
+  }, [ready]);
+
+  return { data, log, error, loading, live, kick };
 }

@@ -376,6 +376,15 @@ export function RefreshCache({
         {feed.error ? (
           <Notice tone="warn">Live progress unavailable: {feed.error.message}</Notice>
         ) : null}
+        <p className="mb-1 text-[11px] text-[var(--color-muted)]">
+          {feed.live ? (
+            <>
+              <span aria-hidden className="text-emerald-300">●</span> live — lines appear as the worker writes them
+            </>
+          ) : (
+            "checking every few seconds"
+          )}
+        </p>
         <LiveLog entries={feed.log} />
       </SubSection>
 
