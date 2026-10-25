@@ -2,117 +2,27 @@
 
 The app is constructed, not global: it takes its config and database path as
 arguments, so a test can point it at a fixture and the CLI can point it at the
-real 740 MB file without either knowing about the other.
+real 740 MB file without either knowing about the other. The routes live in
+their own modules by topic; this file wires them together and owns the state
+each app instance keeps (its caches, its config, its database path).
 """
 
 from __future__ import annotations
 
+import os
 import sqlite3
 import threading
 from pathlib import Path
-from typing import Any
 
-from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response
-from fastapi.responses import FileResponse, RedirectResponse
+from fastapi import FastAPI
 from fastapi.middleware.gzip import GZipMiddleware
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from discord_stats.api import admin, logstream, progress, thumbs, viewer
+from discord_stats.api import admin, dashboard, login, logstream, progress, thumbs
 from discord_stats.api.cache import BoundedCache
-from discord_stats.api.deps import connect, connect_writable
-from discord_stats.auth import oauth
-from discord_stats.auth.allowlist import decision_for, record_login_attempt, too_many_attempts
-from discord_stats.auth.session import (
-    SESSION_COOKIE,
-    SESSION_DAYS,
-    Level,
-    establish_session,
-    require_viewer,
-    revoke_session,
-)
+from discord_stats.api.deps import connect_writable
 from discord_scraper.config import Config
-from discord_scraper.rollups import query
-from discord_scraper.rollups.schema import is_stale
-from discord_scraper.timeutil import utc_stamp
-
-STATE_COOKIE = "dsh_oauth_state"
-
-# A local month, as the word-by-month rollup keys it.
-MONTH_PATTERN = r"^\d{4}-(0[1-9]|1[0-2])$"
-# One answer per period someone looked at, retired with the payload on a
-# rebuild. Each is a payload's word fields, tens of kilobytes, so a few dozen.
-PERIOD_CACHE_ENTRIES = 32
-
-SESSION_MAX_AGE = SESSION_DAYS * 24 * 3600
-
-
-def _require_rollups(conn: sqlite3.Connection) -> None:
-    """Refuse politely when the rollups have never been built.
-
-    A 503 with a sentence beats a 500 with an SQLite traceback, which is what an
-    unbuilt database would otherwise produce. The sentence is for the browser —
-    the page renders it — so it names the fix in plain words rather than a shell
-    command nobody reading the dashboard is going to run.
-    """
-    built = conn.execute(
-        "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'rollup_meta'"
-    ).fetchone() is not None and conn.execute(
-        "SELECT 1 FROM rollup_meta LIMIT 1"
-    ).fetchone() is not None
-    if not built:
-        raise HTTPException(
-            status_code=503,
-            detail="the rollups have not been built yet — an admin can rebuild them from here",
-        )
-
-
-def _schema_meta(conn: sqlite3.Connection) -> dict:
-    """The database's schema stamp versus what this library expects.
-
-    The dashboard serves regardless: a disagreement means some numbers may be
-    from a different revision, not that none of them are readable. So this
-    returns a warning line rather than raising — and ``schema_message`` is null
-    exactly when the two agree. An unstamped database (built before the stamp
-    existed) gets its own honest sentence: unknown, never a made-up number.
-    """
-    from discord_scraper.rollups.schema import SCHEMA_VERSION, schema_version
-
-    actual = schema_version(conn)
-    if actual is None:
-        message = (
-            "this database has no schema version stamped — it predates versioning; "
-            f"this dashboard expects v{SCHEMA_VERSION} — rebuild the rollups to match"
-        )
-    elif actual != SCHEMA_VERSION:
-        message = (
-            f"this database was built by library schema v{actual}; this dashboard "
-            f"expects v{SCHEMA_VERSION} — rebuild the rollups to match"
-        )
-    else:
-        message = None
-    return {
-        "schema_version": actual,
-        "schema_expected": SCHEMA_VERSION,
-        "schema_message": message,
-    }
-
-
-def _channel_meta(cfg: Config) -> dict:
-    """Whether a channel is configured yet, and the line to show if not.
-
-    Same shape as the schema and timezone warnings: a fresh volume is seeded
-    with an empty ``source.channel_id``, and the dashboard serves anyway — exiting
-    there would hide the admin board that is one of the two ways to set it.
-    """
-    if cfg.channel_id:
-        return {"channel_configured": True, "channel_message": None}
-    return {
-        "channel_configured": False,
-        "channel_message": (
-            "no channel configured: set source.channel_id in config.toml "
-            "(or in the admin board), then scrape that channel"
-        ),
-    }
 
 
 def create_app(
@@ -126,41 +36,19 @@ def create_app(
     # Level 6, not the default 9: the same size on this payload at a quarter of
     # the time (about 80 ms against 350 ms), paid on every load.
     app.add_middleware(GZipMiddleware, minimum_size=1024, compresslevel=6)
-    # The payload is a pure function of the rollups and the config, and it costs
-    # seconds to assemble — so it is assembled once per rebuild, not per request.
-    app.state.payload_cache: dict[str, dict] = {}
     app.state.cfg = cfg
     app.state.db_path = str(db_path)
+    # Per app, never per module: two apps (two tests) must not share a cache.
+    app.state.payload_cache: dict[str, dict] = {}
+    app.state.period_cache = BoundedCache(dashboard.PERIOD_CACHE_ENTRIES)
     app.state.thumbs = thumbs.ThumbProxy()
-    app.include_router(admin.router)
-    app.include_router(progress.router)
-    app.include_router(logstream.router)
-    app.include_router(thumbs.router)
+    for router in (dashboard.router, login.router, thumbs.router,
+                   admin.router, progress.router, logstream.router):
+        app.include_router(router)
+    if dev_login:
+        app.include_router(login.dev_router)
 
-    # Bring the database up to shape once, at boot. `CREATE TABLE IF NOT EXISTS`
-    # never adds a column, so an instance started before a schema addition fails
-    # its first write with "no column named ..." — which is exactly what a
-    # browser saw. Idempotent, control plane only, and skipped when there is no
-    # database yet.
-    if Path(app.state.db_path).exists():
-        from discord_stats.auth.admins import seed_admin
-        from discord_scraper.rollups.schema import create_control_tables, create_rollup_tables
-        from discord_scraper.scraper.database import INDEXES as MESSAGE_INDEXES
-
-        try:
-            boot = connect_writable(app.state.db_path)
-            try:
-                create_rollup_tables(boot)
-                create_control_tables(boot)
-                # The configured admin becomes a row here, so "who is an admin"
-                # lives in the database by default rather than only in `.env`.
-                seed_admin(boot, cfg.admin_id)
-                boot.executescript(MESSAGE_INDEXES)   # including idx_channel
-                boot.commit()
-            finally:
-                boot.close()
-        except sqlite3.OperationalError:
-            pass   # not a database we can migrate; the endpoints will say so
+    _migrate(app)
 
     # A staged upload from a previous process is unreachable: its id lived in
     # that process's memory and on an operator's screen that has since reloaded.
@@ -171,455 +59,42 @@ def create_app(
 
     staging.sweep_orphans(Path(app.state.db_path).parent)
 
-    def connection() -> sqlite3.Connection:
-        return connect(app.state.db_path)
-
-    def writable() -> sqlite3.Connection:
-        return connect_writable(app.state.db_path)
-
-    def safe_redirect() -> str:
-        """Where to land after login — the payload the browser came for."""
-        return "/" if app.state.cfg.redirect_uri else "/"
-
-    @app.get("/api/health")
-    def health() -> dict:
-        """Liveness plus the banner state (spec §11.7).
-
-        Read from the database on every request, never cached in the process: a
-        restart must not reset the banner to healthy. The raw ``last_ingest_at``
-        travels with the banner because "never ingested" and "ingested 30 days
-        ago" are different sentences, and only the client knows which to print.
-        """
-        from discord_scraper.worker.state import banner_for
-
-        conn = writable()
-        try:
-            stored = {}
-            if conn.execute(
-                "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'worker_state'"
-            ).fetchone():
-                stored = dict(conn.execute("SELECT key, value FROM worker_state"))
-        finally:
-            conn.close()
-        return {
-            "ok": True,
-            "checked_at": utc_stamp(),
-            "banner": banner_for(stored),
-            "last_ingest_at": stored.get("last_ingest_at"),
-            **_channel_meta(cfg),
-        }
-
-    @app.get("/auth/login")
-    def login(request: Request):
-        ip = request.client.host if request.client else "unknown"
-        conn = writable()
-        try:
-            if too_many_attempts(conn, ip):
-                raise HTTPException(status_code=429, detail="too many login attempts")
-        finally:
-            conn.close()
-        if not cfg.client_id or not cfg.redirect_uri:
-            raise HTTPException(
-                status_code=503,
-                detail="OAuth is not configured — set access.client_id and access.redirect_uri",
-            )
-        state = oauth.new_state(cfg.session_secret)
-        response = RedirectResponse(oauth.authorize_url(cfg.client_id, cfg.redirect_uri, state))
-        response.set_cookie(STATE_COOKIE, state, max_age=600, httponly=True, samesite="lax",
-                            secure=True)
-        return response
-
-    @app.get("/auth/callback")
-    def callback(request: Request, code: str = "", state: str = ""):
-        ip = request.client.host if request.client else "unknown"
-        expected = request.cookies.get(STATE_COOKIE, "")
-        if not oauth.state_is_valid(state, expected, cfg.session_secret):
-            raise HTTPException(status_code=400, detail="state mismatch")
-        token = oauth.exchange_code(cfg.client_id, cfg.client_secret or "", code, cfg.redirect_uri)
-        identity = oauth.fetch_identity(token) if token else None
-        conn = writable()
-        try:
-            if not identity or not identity.get("id"):
-                record_login_attempt(conn, ip, ok=False)
-                raise HTTPException(status_code=403, detail="login failed")
-            level = decision_for(conn, cfg, str(identity["id"]))
-            if level is None:
-                record_login_attempt(conn, ip, ok=False)
-                raise HTTPException(status_code=403, detail="not a member of this chat")
-            record_login_attempt(conn, ip, ok=True)
-            session = establish_session(conn, str(identity["id"]), level)
-        finally:
-            conn.close()
-        response = RedirectResponse(safe_redirect())
-        response.set_cookie(
-            SESSION_COOKIE, session, max_age=SESSION_MAX_AGE, httponly=True, samesite="lax",
-            secure=True,
-        )
-        response.delete_cookie(STATE_COOKIE)
-        return response
-
-    if dev_login:
-        # Deliberately a flag, never a default: an OAuth-less deployment must not
-        # be able to hand out sessions. `serve --dev-login` prints a warning.
-        @app.get("/auth/dev-login")
-        def dev_login_route(level: str = "viewer"):
-            from discord_stats.auth.session import Level, establish_session
-
-            try:
-                chosen = Level[level.upper()]
-            except KeyError:
-                raise HTTPException(status_code=400, detail="level must be viewer or admin") from None
-            conn = writable()
-            try:
-                token = establish_session(conn, "dev-login", chosen)
-            finally:
-                conn.close()
-            response = RedirectResponse("/")
-            response.set_cookie(
-                SESSION_COOKIE, token, max_age=SESSION_MAX_AGE, httponly=True, samesite="lax",
-                secure=True,
-            )
-            return response
-
-    @app.get("/auth/logout")
-    def logout(request: Request):
-        token = request.cookies.get(SESSION_COOKIE, "")
-        if token:
-            conn = writable()
-            try:
-                revoke_session(conn, token)
-            finally:
-                conn.close()
-        response = RedirectResponse("/")
-        response.delete_cookie(SESSION_COOKIE)
-        return response
-
-    def assemble(conn: sqlite3.Connection, effective, *, why: str) -> dict:
-        import sys
-        import time
-
-        started = time.monotonic()
-        payload = viewer.bootstrap(conn, effective)
-        print(f"payload {why} in {time.monotonic() - started:.2f}s", file=sys.stderr)
-        return payload
-
-    period_cache = BoundedCache(PERIOD_CACHE_ENTRIES)
-
-    def period_for(conn: sqlite3.Connection, effective, key: tuple, first: str | None,
-                   last: str | None, picked: tuple[int, ...]) -> dict:
-        """Compute one period's word fields and keep them under ``key``."""
-        author_rows = query.authors(conn, effective.channel_id, effective)
-        uses = query.word_author_uses_between(
-            conn, effective.channel_id, query.author_index(author_rows), first, last, picked)
-        body = {"built": uses is not None, "from": first, "to": last, "years": list(picked),
-                **viewer.period_words(uses or {}, len(author_rows))}
-        period_cache.put(key, body)
-        return body
-
-    def warm_the_years(conn: sqlite3.Connection, effective) -> None:
-        """Each year's words, so a year chip answers at once.
-
-        A year is the period people pick most and the slowest one to count
-        (most of a second on the reference database); a day range is a few
-        months and quick, so it is left to the first request that asks.
-        """
-        found = conn.execute(
-            "SELECT DISTINCT substr(month, 1, 4) FROM rollup_word_month WHERE channel_id = ?",
-            (effective.channel_id,),
-        ).fetchall()
-        base = _payload_key(conn, effective)
-        for (year,) in found:
-            picked = (int(year),)
-            period_for(conn, effective, (base, None, None, picked), None, None, picked)
-
-    def warm_the_payload() -> None:
-        """Assemble once, in the background, so the first page load is not the one
-        that pays for it — then each year's words, for the same reason.
-
-        Best effort, but not silent: a warm-up that fails must say why, or the
-        next person debugging "why is the first load slow" has nothing to read.
-        """
-        import os
-        import sys
-        if os.environ.get("DISCORD_SCRAPER_NO_WARMUP"):
-            return
-        try:
-            conn = connection()
-            try:
-                if not conn.execute(
-                    "SELECT 1 FROM sqlite_master WHERE type='table' AND name='rollup_meta'"
-                ).fetchone():
-                    return
-                if not conn.execute("SELECT 1 FROM rollup_meta LIMIT 1").fetchone():
-                    return
-                effective = admin.effective_for(conn, cfg)
-                app.state.payload_cache = {_payload_key(conn, effective):
-                                           assemble(conn, effective, why="warmed")}
-                try:
-                    warm_the_years(conn, effective)
-                except sqlite3.OperationalError:
-                    pass   # no month table before the first rebuild: nothing to warm
-            finally:
-                conn.close()
-        except Exception as exc:
-            print(f"payload warm-up skipped: {type(exc).__name__}: {exc}", file=sys.stderr)
-
-    threading.Thread(target=warm_the_payload, daemon=True, name="payload-warmup").start()
-
-    @app.get("/api/bootstrap")
-    def bootstrap(level: Level = Depends(require_viewer)) -> dict:
-        conn = connection()
-        try:
-            _require_rollups(conn)
-            # Admin overrides count as "the configured timezone" (§7.1).
-            effective = admin.effective_for(conn, cfg)
-            recorded = query.provenance_row(conn, effective.channel_id, "activity")
-            # A zone disagreement is not unusable data: the buckets are correct
-            # for the zone they were built in, and every other panel's numbers
-            # are right. Served with a warning in `meta` instead of a 409, which
-            # used to blank the whole dashboard — and with an override the
-            # rebuild path ignored, could never be cleared at all.
-            built_zone = (recorded or {}).get("timezone") or effective.timezone
-            mismatch = bool(recorded) and recorded["timezone"] != effective.timezone
-
-            key = _payload_key(conn, effective)
-            cached = app.state.payload_cache.get(key)
-            if cached is None:
-                cached = assemble(conn, effective, why="assembled for a request")
-                # One entry is enough: rollups change when somebody rebuilds, and
-                # a rebuild replaces the key rather than accumulating entries.
-                app.state.payload_cache = {key: cached}
-            body = dict(cached)
-            # Freshness is the one field that can change without a rebuild (a new
-            # message arrives), so it is recomputed rather than cached.
-            body["meta"] = {
-                **cached["meta"],
-                # Per-request, like freshness: the payload is shared between
-                # viewers, but "may you see /admin" is about the caller.
-                "can_admin": level >= Level.ADMIN,
-                # `cheap=True`: an indexed MAX(id) instead of a full count. The
-                # scraper only appends, so "is there a newer message?" is the
-                # question here; the exact count is the CLI's audit.
-                "stale": is_stale(conn, effective.channel_id, "activity",
-                                  config_hash=key_config_hash(key), cheap=True),
-                # The frontend's contract for the warning banner: a flag, both
-                # zones, and a line it can show without knowing the details.
-                "timezone_mismatch": mismatch,
-                "configured_timezone": effective.timezone,
-                "timezone_message": (
-                    f"These numbers were built in {built_zone}; the configured "
-                    f"timezone is {effective.timezone}. Recalculate to rebuild them."
-                    if mismatch else None
-                ),
-                # Same shape as the zone warning: what the database says, what
-                # this library expects, and one line the browser can print.
-                **_schema_meta(conn),
-                # And the same again for "there is no channel yet", which is the
-                # state of every freshly seeded volume.
-                **_channel_meta(effective),
-            }
-            return body
-        finally:
-            conn.close()
-
-    @app.get("/api/recent")
-    def recent_messages(limit: int | None = Query(None, ge=1, le=200),
-                        _level: Level = Depends(require_viewer)) -> dict:
-        """The "is this still alive" strip (§11.8), bounded by ``ui.show_recent``.
-
-        ``limit`` lets a caller ask for fewer messages; the 200 ceiling is this
-        endpoint's own, so a generous ``ui.show_recent`` cannot widen it.
-        """
-        from discord_stats.api.recent import recent
-
-        conn = connection()
-        try:
-            effective = admin.effective_for(conn, cfg)
-            return recent(conn, effective, limit=min(limit or effective.show_recent, 200))
-        finally:
-            conn.close()
-
-    @app.get("/api/media")
-    def media(provider: str | None = Query(None, max_length=64),
-              kind: str | None = Query(None, min_length=1, max_length=32),
-              limit: int = Query(12, ge=1, le=100),
-              _level: Level = Depends(require_viewer)) -> dict:
-        """Top reposted media, optionally for one provider and one kind.
-
-        The dashboard's payload ranks everything together, where a GIF beats a
-        video link every time; this is how "top YouTube links" becomes visible.
-        `kind` is a WHERE clause, not a filter over the page: narrowing to one
-        kind has to search the whole rollup, or a chip would only ever reorder
-        the fifty rows the limit returned. `kinds` is the set the chips offer.
-        """
-        conn = connection()
-        try:
-            _require_rollups(conn)
-            effective = admin.effective_for(conn, cfg)
-            return {
-                "provider": provider,
-                "kind": kind,
-                "kinds": query.media_kinds(conn, effective.channel_id, provider=provider),
-                "items": query.top_media(conn, effective.channel_id, limit,
-                                         provider=provider, kind=kind),
-            }
-        finally:
-            conn.close()
-
-    @app.get("/api/media/detail")
-    def media_detail(url: str = Query(..., min_length=1, max_length=2048),
-                     _level: Level = Depends(require_viewer)) -> dict:
-        """Everything about one reposted URL: who posted it, how often, and when.
-
-        ``people`` and ``months`` are ``null`` (not empty) on a database built
-        before the per-person table existed, so the card can say "recalculate"
-        rather than "nobody posted this".
-        """
-        conn = connection()
-        try:
-            _require_rollups(conn)
-            effective = admin.effective_for(conn, cfg)
-            item = query.media_item(conn, effective.channel_id, url)
-            if item is None:
-                raise HTTPException(status_code=404, detail="no media with that URL")
-            posts = query.media_posts(conn, effective.channel_id, url)
-            names = {row["id"]: row["name"]
-                     for row in query.authors(conn, effective.channel_id)}
-            body: dict[str, Any] = {"item": item[:7], "first_seen": item[7],
-                                    "last_seen": item[8], "people": None, "months": None,
-                                    "first_post": None}
-            if posts is None:
-                return body
-            people: dict[str, dict[str, Any]] = {}
-            for _month, author, uses, first_seen, _mid in posts:
-                person = people.setdefault(author, {"id": author,
-                                                    "name": names.get(author, author),
-                                                    "count": 0, "first_seen": first_seen})
-                person["count"] += uses
-                person["first_seen"] = min(person["first_seen"], first_seen)
-            body["people"] = sorted(people.values(), key=lambda p: (-p["count"], p["first_seen"]))
-            body["months"] = [{"month": month, "id": author, "count": uses}
-                              for month, author, uses, _first, _mid in posts]
-            if posts:
-                _month, author, _uses, first_seen, message_id = min(posts, key=lambda p: p[3])
-                body["first_post"] = {
-                    "id": author, "name": names.get(author, author), "at": first_seen,
-                    "message_id": message_id,
-                    # The scrape records no guild id, so this is the DM / group DM
-                    # form of a message link; a server channel would need the guild.
-                    "jump_url": (f"https://discord.com/channels/@me/"
-                                 f"{effective.channel_id}/{message_id}"),
-                }
-            return body
-        finally:
-            conn.close()
-
-    @app.get("/api/words")
-    def words(q: str = Query(..., min_length=1), limit: int = Query(50, ge=1, le=500),
-              _level: Level = Depends(require_viewer)) -> dict:
-        """Search the **full** word index, which the payload only slices.
-
-        ``months`` is the word's timeline; ``null`` means the month table has not
-        been built yet, which is a "recalculate", not "never said".
-        """
-        conn = connection()
-        try:
-            _require_rollups(conn)
-            # The channel the admin board saved, like every other endpoint —
-            # the file's channel would search a chat the board moved away from.
-            effective = admin.effective_for(conn, cfg)
-            word = q.strip().lower()
-            matches = query.words_for(conn, effective.channel_id, word)
-            names = {row["id"]: row["name"]
-                     for row in query.authors(conn, effective.channel_id)}
-            timeline = query.word_timeline(conn, effective.channel_id, word)
-            return {
-                "word": word,
-                "total": sum(count for _author, count in matches),
-                "authors": [
-                    {"id": author_id, "name": names.get(author_id, author_id), "count": count}
-                    for author_id, count in matches[:limit]
-                ],
-                "months": None if timeline is None else [
-                    {"month": month, "id": author, "count": count}
-                    for month, author, count in timeline
-                ],
-            }
-        finally:
-            conn.close()
-
-    @app.get("/api/words/period")
-    def words_for_period(
-        first: str | None = Query(None, alias="from", pattern=MONTH_PATTERN),
-        last: str | None = Query(None, alias="to", pattern=MONTH_PATTERN),
-        years: str | None = Query(None, pattern=r"^\d{4}(,\d{4})*$", max_length=200),
-        _level: Level = Depends(require_viewer),
-    ) -> dict:
-        """The payload's word fields for a stretch of months and/or some years.
-
-        What the word cards draw while a time filter is on; with none they use
-        the payload and never ask. Month grain, because that is what the rollup
-        keeps: the caller rounds a day range out to whole months. ``built`` is
-        false until a rebuild has written the month table.
-        """
-        picked = tuple(sorted({int(year) for year in years.split(",")})) if years else ()
-        conn = connection()
-        try:
-            _require_rollups(conn)
-            effective = admin.effective_for(conn, cfg)
-            # Keyed on the payload's own key, so a rebuild or a merge retires
-            # every cached period along with the payload it was computed beside.
-            key = (_payload_key(conn, effective), first, last, picked)
-            cached = period_cache.get(key)
-            if cached is not None:
-                return cached
-            return period_for(conn, effective, key, first, last, picked)
-        finally:
-            conn.close()
-
-    @app.get("/api/words/suggest")
-    def word_suggestions(q: str = Query(..., min_length=1, max_length=64),
-                         limit: int = Query(8, ge=1, le=25),
-                         _level: Level = Depends(require_viewer)) -> dict:
-        """Words in the full index that start with what is typed, most used first."""
-        conn = connection()
-        try:
-            _require_rollups(conn)
-            effective = admin.effective_for(conn, cfg)
-            return {"words": [[word, uses] for word, uses in
-                              query.word_suggestions(conn, effective.channel_id, q, limit)]}
-        finally:
-            conn.close()
+    if not os.environ.get("DISCORD_SCRAPER_NO_WARMUP"):
+        threading.Thread(target=dashboard.warm_the_payload, args=(app,), daemon=True,
+                         name="payload-warmup").start()
 
     _mount_spa(app, static_dir)
     return app
 
 
-def _payload_key(conn: sqlite3.Connection, cfg) -> str:
-    """What the payload depends on: the rollups' provenance and the config.
+def _migrate(app: FastAPI) -> None:
+    """Bring the database up to shape once, at boot.
 
-    Any rebuild moves ``computed_at``, any config edit moves the digest, so a
-    matching key means the assembled payload is still the right answer.
+    `CREATE TABLE IF NOT EXISTS` never adds a column, so an instance started
+    before a schema addition fails its first write with "no column named ..." —
+    which is exactly what a browser saw. Idempotent, control plane only, and
+    skipped when there is no database yet.
     """
-    from discord_scraper.rollups.build import config_digest
+    if not Path(app.state.db_path).exists():
+        return
+    from discord_stats.auth.admins import seed_admin
+    from discord_scraper.rollups.schema import create_control_tables, create_rollup_tables
+    from discord_scraper.scraper.database import INDEXES as MESSAGE_INDEXES
 
-    row = conn.execute(
-        "SELECT MAX(computed_at), MAX(source_max_message_id), COUNT(*) "
-        "  FROM rollup_meta WHERE channel_id = ?",
-        (cfg.channel_id,),
-    ).fetchone()
-    return "|".join([
-        cfg.channel_id,
-        str(row[0]), str(row[1]), str(row[2]),
-        config_digest(cfg, conn),
-        cfg.timezone,
-    ])
-
-
-def key_config_hash(key: str) -> str:
-    """The digest is the fifth field of the cache key."""
-    parts = key.split("|")
-    return parts[4] if len(parts) > 4 else ""
+    try:
+        boot = connect_writable(app.state.db_path)
+        try:
+            create_rollup_tables(boot)
+            create_control_tables(boot)
+            # The configured admin becomes a row here, so "who is an admin"
+            # lives in the database by default rather than only in `.env`.
+            seed_admin(boot, app.state.cfg.admin_id)
+            boot.executescript(MESSAGE_INDEXES)   # including idx_channel
+            boot.commit()
+        finally:
+            boot.close()
+    except sqlite3.OperationalError:
+        pass   # not a database we can migrate; the endpoints will say so
 
 
 def _mount_spa(app: FastAPI, static_dir: str | Path | None) -> None:
