@@ -165,6 +165,20 @@ def test_the_source_comes_from_the_worker_when_only_the_worker_has_a_token(admin
     assert admin_client.get("/api/admin/token").json()["source"] == "environment"
 
 
+def test_the_check_says_so_when_only_the_worker_holds_the_token(admin_client, monkeypatch):
+    """Asking Discord with no token would come back 401 and read as a dead token."""
+    from dataclasses import replace
+
+    def ask(*_args, **_kwargs):
+        raise AssertionError("Discord was asked with no token to check")
+
+    monkeypatch.setattr(discord_api, "get_current_user", ask)
+    state = admin_client.app.state
+    state.cfg = replace(state.cfg, secrets=replace(state.cfg.secrets, token=""))
+    response = admin_client.post("/api/admin/token/test")
+    assert response.status_code == 409
+    assert "Probe token" in response.json()["detail"]
+
 def test_an_animated_avatar_keeps_its_gif(admin_client, monkeypatch):
     _mock(monkeypatch, user=(200, {**USER_BODY, "avatar": "a_xyz"}, None))
     body = admin_client.post("/api/admin/token/test").json()

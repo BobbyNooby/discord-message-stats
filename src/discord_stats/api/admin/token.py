@@ -202,7 +202,16 @@ def test_token(request: Request) -> dict:
 
     cfg = saved_config(request)
     # Read at click time, so a token saved a moment ago is the one tested.
-    result = run_token_check(current_token(cfg, request.app.state.db_path), cfg.channel_id)
+    token = current_token(cfg, request.app.state.db_path)
+    if not token:
+        # In a container only the worker may hold DISCORD_TOKEN. Asking Discord
+        # with nothing would come back 401 and read as a dead token.
+        raise HTTPException(
+            status_code=409,
+            detail=("this server holds no token to check — save one here, or use "
+                    "Probe token, which runs on the worker that has it"),
+        )
+    result = run_token_check(token, cfg.channel_id)
     _remember_check(request, result)
     return result
 
