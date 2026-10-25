@@ -8,7 +8,7 @@ from typing import Any
 
 from fastapi import APIRouter, File, HTTPException, Request, UploadFile
 
-from discord_stats.api.admin.common import app_db_path, log_event
+from discord_stats.api.admin.common import log_event
 from discord_stats.api.admin.jobs import JobRequest, create_job
 from discord_stats.api.deps import board, connect_readonly
 
@@ -18,32 +18,6 @@ router = APIRouter()
 # Staged uploads, keyed by the id handed to the operator. In-process on purpose:
 # a pending upload is only meaningful to the process that validated it.
 PENDING_UPLOADS: dict[str, Any] = {}
-
-
-@router.post("/uploads/sweep")
-def sweep_uploads(request: Request) -> dict:
-    """Reclaim staging files a reload orphaned, reporting the bytes recovered.
-
-    ``sweep_orphans`` is the implementation the boot path already uses; this is
-    only a way to reach it on demand.
-    """
-    from discord_stats.api import upload as staging
-
-    directory = Path(app_db_path(request)).parent
-    sizes: dict[str, int] = {}
-    for path in directory.glob(".upload-*"):
-        if path.is_file():
-            try:
-                sizes[path.name] = path.stat().st_size
-            except OSError:
-                sizes[path.name] = 0
-    # Uploads still waiting for their commit are not orphans.
-    removed = staging.sweep_orphans(directory, keep=[staged.path for staged in PENDING_UPLOADS.values()])
-    return {
-        "removed": [path.name for path in removed],
-        "count": len(removed),
-        "bytes_reclaimed": sum(sizes.get(path.name, 0) for path in removed),
-    }
 
 
 def _running_jobs(conn: sqlite3.Connection) -> int:

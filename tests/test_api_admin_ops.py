@@ -1,4 +1,4 @@
-"""On-demand admin checks: token, channel, diagnostics, orphan sweep, cancel.
+"""On-demand admin checks: token, channel, diagnostics, cancel.
 
 The Discord client is mocked for the honest-failure cases so the suite does not
 depend on a network; one test deliberately leaves it unmocked and reports
@@ -24,7 +24,6 @@ OPS = (
     ("put", "/api/admin/token"),
     ("delete", "/api/admin/token"),
     ("get", "/api/admin/diagnostics"),
-    ("post", "/api/admin/uploads/sweep"),
     ("post", "/api/admin/jobs/1/cancel"),
 )
 
@@ -345,19 +344,6 @@ def test_diagnostics_never_counts_messages_with_a_scan(admin_client, monkeypatch
     admin_client.get("/api/admin/diagnostics")
     assert seen
     assert not any("count(*)" in sql.lower() and "messages" in sql.lower() for sql in seen)
-
-
-# --- orphan sweep ------------------------------------------------------------
-
-def test_the_orphan_sweep_reports_the_bytes_it_reclaims(admin_client, db_cfg):
-    _cfg, path = db_cfg
-    orphan = path.parent / ".upload-orphan"
-    orphan.write_bytes(b"x" * 1234)
-    body = admin_client.post("/api/admin/uploads/sweep").json()
-    assert body["count"] == 1
-    assert body["removed"] == [".upload-orphan"]
-    assert body["bytes_reclaimed"] == 1234
-    assert not orphan.exists()
 
 
 # --- cancelling a stuck job --------------------------------------------------

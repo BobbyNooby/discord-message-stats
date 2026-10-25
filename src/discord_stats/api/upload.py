@@ -21,7 +21,7 @@ import shutil
 import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, BinaryIO, Iterable
+from typing import Any, BinaryIO
 
 from discord_scraper.rollups.schema import create_control_tables, create_rollup_tables
 
@@ -275,26 +275,20 @@ def discard(staged: Staged) -> None:
     staged.path.unlink(missing_ok=True)
 
 
-def sweep_orphans(directory: Path, keep: Iterable[Path] = ()) -> list[Path]:
+def sweep_orphans(directory: Path) -> list[Path]:
     """Delete staging files this process cannot have written.
 
     A staged upload is only meaningful to the process that validated it: the
     upload id lives in memory and on the operator's screen, and a page reload
     takes it away, so nothing can confirm or discard the file afterwards. At
     boot, with no upload in flight, every ``.upload-*`` beside the database is
-    one of those — and it is the size of a database.
-
-    ``keep`` is every upload still waiting for its commit. The on-demand sweep
-    runs while the server is up, and deleting one of those made the commit
-    swap an empty file in over the live database.
+    one of those — and it is the size of a database. Boot is the only caller:
+    while the server runs, a staged file may be an upload awaiting its commit.
     """
     if not directory.is_dir():
         return []
-    pending = {Path(path).resolve() for path in keep}
     removed: list[Path] = []
     for path in sorted(directory.glob(".upload-*")):
-        if path.resolve() in pending:
-            continue
         try:
             path.unlink()
         except OSError:  # pragma: no cover - a file we cannot remove is not fatal

@@ -246,22 +246,16 @@ def test_the_backup_holds_the_database_that_was_replaced(
         conn.close()
 
 
-def test_the_sweep_leaves_an_upload_that_is_waiting_to_be_committed(admin_client, tmp_path, db_cfg):
-    """It deleted it, and the commit then swapped an empty file in over the live one."""
-    _cfg, live = db_cfg
-    upload_id = upload(admin_client, make_database(tmp_path / "new.db", rows=5)).json()["upload_id"]
+def test_boot_reclaims_staging_files_a_previous_process_left_behind(db_cfg):
+    """Their ids lived in that process's memory, so nothing can commit them now."""
+    from discord_stats.api.app import create_app
+
+    cfg, live = db_cfg
     orphan = live.parent / ".upload-orphan"
     orphan.write_bytes(b"x" * 10)
-
-    swept = admin_client.post("/api/admin/uploads/sweep").json()
-    assert swept["removed"] == [".upload-orphan"]
-
-    assert admin_client.post(f"/api/admin/upload/{upload_id}/commit").status_code == 202
-    conn = sqlite3.connect(live)
-    try:
-        assert conn.execute("SELECT COUNT(*) FROM messages").fetchone()[0] == 5
-    finally:
-        conn.close()
+    create_app(cfg, live)
+    assert not orphan.exists()
+    assert live.exists()
 
 
 def test_a_commit_whose_staged_file_vanished_leaves_the_live_database_alone(
