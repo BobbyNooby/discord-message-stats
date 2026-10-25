@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { createJob, listJobs, type JobKind } from "../api";
+import { cancelJob, createJob, listJobs, type JobKind } from "../api";
 import { Notice, formatStamp } from "../shared";
 import { useAction } from "../useAction";
 
@@ -66,14 +66,30 @@ export function JobRunner({ onDirty }: { onDirty: () => void }) {
   );
 }
 
-/** The last fifty jobs, newest first, failures included. */
+/** The last fifty jobs, newest first, failures included; a queued one can be cancelled. */
 export function JobHistory() {
+  const queryClient = useQueryClient();
   const jobs = useQuery({ queryKey: ["admin", "jobs"], queryFn: () => listJobs(50) });
+  const { busy, notice, error, run, setNotice } = useAction();
+
+  // Only a queued job: a running rebuild is mid-write, and the server refuses
+  // it with a sentence that says to wait, which is what the board then shows.
+  const cancel = (id: number, kind: string) =>
+    run(async () => {
+      const result = await cancelJob(id);
+      setNotice(
+        result.already ? `Job #${id} was already cancelled.` : `Job #${id} (${kind}) cancelled before it started.`,
+      );
+      await queryClient.invalidateQueries({ queryKey: ["admin", "jobs"] });
+      await queryClient.invalidateQueries({ queryKey: ["admin", "status"] });
+    });
 
   return (
     <div className="rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] p-4">
       <h4 className="text-xs font-semibold">Job history</h4>
       {jobs.isError ? <Notice tone="error">{(jobs.error as Error).message}</Notice> : null}
+      {notice ? <Notice tone="ok">{notice}</Notice> : null}
+      {error ? <Notice tone="error">{error}</Notice> : null}
       <div className="mt-3 overflow-x-auto">
         <table className="w-full text-left text-xs">
           <caption className="sr-only">Recent jobs, newest first, including failures</caption>
@@ -94,8 +110,11 @@ export function JobHistory() {
               <th scope="col" className="py-1 pr-3">
                 Finished
               </th>
-              <th scope="col" className="py-1">
+              <th scope="col" className="py-1 pr-3">
                 Outcome
+              </th>
+              <th scope="col" className="py-1">
+                <span className="sr-only">Actions</span>
               </th>
             </tr>
           </thead>
@@ -121,18 +140,31 @@ export function JobHistory() {
                 <td className="py-1 pr-3 whitespace-nowrap text-[var(--color-muted)]">
                   {formatStamp(job.finished_at)}
                 </td>
-                <td className="py-1">
+                <td className="py-1 pr-3">
                   {job.error ? (
                     <span className="text-red-300">{job.error}</span>
                   ) : (
                     <span className="text-[var(--color-muted)]">{job.result ?? "—"}</span>
                   )}
                 </td>
+                <td className="py-1 text-right">
+                  {job.status === "queued" ? (
+                    <button
+                      type="button"
+                      onClick={() => void cancel(job.id, job.kind)}
+                      disabled={busy}
+                      aria-label={`Cancel job ${job.id}`}
+                      className="rounded border border-[var(--color-line)] px-2 py-0.5 text-[11px] disabled:opacity-50"
+                    >
+                      Cancel
+                    </button>
+                  ) : null}
+                </td>
               </tr>
             ))}
             {(jobs.data?.jobs ?? []).length === 0 ? (
               <tr>
-                <td colSpan={6} className="py-2 text-[var(--color-muted)]">
+                <td colSpan={7} className="py-2 text-[var(--color-muted)]">
                   No jobs yet.
                 </td>
               </tr>

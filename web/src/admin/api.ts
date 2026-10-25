@@ -321,6 +321,13 @@ export const removeAdmin = (discordId: string) =>
 export const listJobs = (limit = 50) =>
   request<{ jobs: Job[] }>(`/api/admin/jobs?limit=${limit}`);
 
+/** Clear a queued job. A running one is a 409 whose message says to wait for it. */
+export const cancelJob = (id: number) =>
+  request<{ id: number; kind: string; status: string; previous_status: string; already: boolean }>(
+    `/api/admin/jobs/${id}/cancel`,
+    { method: "POST" },
+  );
+
 /** Where the token in use comes from: saved from this board, the environment, or nowhere. */
 export type TokenSource = "saved" | "environment" | "none";
 
