@@ -1,0 +1,96 @@
+import type { EChartsOption } from "echarts";
+import { useMemo } from "react";
+
+import type { Payload } from "../../api/types";
+import { foldSlices, otherColor, type Slice } from "../../charts/pie";
+import { EmptyState, Panel } from "../../components/Panel";
+import { tooltip } from "../../charts/style";
+import { EChart } from "../../charts/echart";
+import { emptyLabel } from "../../lib/empty";
+import { fmt, yearCountLabel } from "../../lib/format";
+import { swatch, token } from "../../charts/palette";
+import { yearMix, type YearMix } from "../../selectors/overview";
+import { usePanelFilters, type PanelProps, type WithPanelId } from "../panelScope";
+
+/** Radius that keeps seven doughnuts legible on one row without a width probe. */
+function radiusFor(count: number): number {
+  if (count <= 2) return 54;
+  if (count <= 4) return 44;
+  if (count <= 6) return 34;
+  return 27;
+}
+
+function doughnuts(payload: Payload, { years, byYear }: YearMix): EChartsOption {
+  const radius = radiusFor(years.length);
+  return {
+    tooltip: {
+      trigger: "item",
+      ...tooltip(),
+      formatter: (p: any) =>
+        `${p.seriesName} · ${p.name}<br/><b>${fmt(Number(p.value))}</b> (${p.percent}%)`,
+    },
+    series: years.map((year, yearIndex) => {
+      const rows: Slice[] = [...(byYear.get(year) ?? new Map<number, number>())]
+        .map(([index, value]) => ({ name: payload.authors[index]?.name ?? "?", value, index }))
+        .filter((row) => row.value > 0)
+        .sort((a, b) => b.value - a.value);
+      const slices = foldSlices(rows);
+      return {
+        name: String(year),
+        type: "pie" as const,
+        radius,
+        center: [`${((yearIndex + 0.5) / years.length) * 100}%`, "52%"],
+        padAngle: 1,
+        itemStyle: { borderColor: token("--chart-heat-edge"), borderWidth: 1.5 },
+        label: { show: false },
+        labelLine: { show: false },
+        emphasis: { scale: true, scaleSize: 5, itemStyle: { borderColor: token("--color-text") } },
+        data: slices.map((slice) => ({
+          name: slice.name,
+          value: slice.value,
+          itemStyle: { color: slice.index >= 0 ? swatch(slice.index) : otherColor() },
+        })),
+      };
+    }),
+    graphic: years.map((year, yearIndex) => ({
+      type: "text",
+      left: `${((yearIndex + 0.5) / years.length) * 100}%`,
+      top: "90%",
+      style: { text: String(year), fill: token("--color-muted"), fontSize: 11 },
+      silent: true,
+    })),
+  };
+}
+
+/**
+ * Share of voice, year by year — `drawSovYear`: one small-multiple doughnut per
+ * year, so the mix shifting over time is visible at a glance.
+ */
+export function ShareOfVoiceByYear({ payload, filters: fallbackFilters }: PanelProps & WithPanelId) {
+  const filters = usePanelFilters("share-of-voice-year-by-year", fallbackFilters);
+  const mix = useMemo(() => yearMix(payload, filters), [payload, filters]);
+  const option = useMemo(() => doughnuts(payload, mix), [payload, mix]);
+  const { years, total } = mix;
+
+  if (!years.length) {
+    return (
+      <Panel
+        title="Share of voice, year by year"
+        subtitle={`${fmt(0)} messages · 0 years`}
+        className="md:col-span-2"
+      >
+        <EmptyState>{emptyLabel(payload, filters)}</EmptyState>
+      </Panel>
+    );
+  }
+
+  return (
+    <Panel
+      title="Share of voice, year by year"
+      subtitle={`${fmt(total)} messages · ${yearCountLabel(years.length)} · one doughnut per year`}
+      className="md:col-span-2"
+    >
+      <EChart option={option} height={210} />
+    </Panel>
+  );
+}

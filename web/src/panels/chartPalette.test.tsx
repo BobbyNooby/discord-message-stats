@@ -16,24 +16,24 @@ vi.mock("../charts/echart", () => ({
 import type { Payload } from "../api/types";
 import { foldPie, pieOption } from "../charts/pie";
 import { initialFilters } from "../app/reducer";
-import { Attachments } from "./Attachments";
-import { ChatHealth } from "./ChatHealth";
-import { Conversational } from "./Conversational";
-import { EditRate } from "./EditRate";
-import { EmbedTypes } from "./EmbedTypes";
-import { Emoji } from "./Emoji";
-import { LinkDomains } from "./LinkDomains";
-import { MessagesPerYear } from "./MessagesPerYear";
-import { MessageTypes } from "./MessageTypes";
-import { Providers } from "./Providers";
-import { Reactions } from "./Reactions";
-import { RepliesVsStandalone } from "./RepliesVsStandalone";
-import { ReplyMatrix } from "./ReplyMatrix";
-import { Season } from "./Season";
-import { TextVsMedia } from "./TextVsMedia";
-import { TopLinks } from "./TopLinks";
-import { WordCloud } from "./WordCloud";
-import { WordLift } from "./WordLift";
+import { Attachments } from "./media/Attachments";
+import { ChatHealth } from "./media/ChatHealth";
+import { Conversational } from "./time/Conversational";
+import { EditRate } from "./people/EditRate";
+import { EmbedTypes } from "./links/EmbedTypes";
+import { Emoji } from "./media/Emoji";
+import { LinkDomains } from "./links/LinkDomains";
+import { MessagesPerYear } from "./overview/MessagesPerYear";
+import { MessageTypes } from "./media/MessageTypes";
+import { Providers } from "./links/Providers";
+import { Reactions } from "./media/Reactions";
+import { RepliesVsStandalone } from "./media/RepliesVsStandalone";
+import { ReplyMatrix } from "./people/ReplyMatrix";
+import { Season } from "./time/Season";
+import { TextVsMedia } from "./media/TextVsMedia";
+import { TopLinks } from "./links/TopLinks";
+import { WordCloud } from "./words/WordCloud";
+import { WordLift } from "./words/WordLift";
 
 const payload = {
   authors: [{ id: "u1", name: "A", msgs: 5 }],

@@ -6,9 +6,9 @@ import type { Action } from "../app/reducer";
 import { initialFilters } from "../app/reducer";
 
 import type { Payload } from "../api/types";
-import { Leaderboard } from "./Leaderboard";
+import { Leaderboard } from "./people/Leaderboard";
 import { PanelScopeProvider } from "./panelScope";
-import { ReplyMatrix } from "./ReplyMatrix";
+import { ReplyMatrix } from "./people/ReplyMatrix";
 import { SECTIONS as REGISTRY_SECTIONS, type SectionId } from "./registry";
 import { PanelSection } from "./Sections";
 import { oneOfEach } from "../test/payload";

@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { AppShell } from "./components/AppShell";
 import { CARD_COLUMNS } from "./components/Panel";
 import { JumpNav } from "./components/JumpNav";
-import { MediaTile } from "./panels/MediaTile";
+import { MediaTile } from "./panels/rich-media/MediaTile";
 import { initialFilters } from "./app/reducer";
 import type { SectionId } from "./panels/registry";
 import { PanelSection } from "./panels/Sections";

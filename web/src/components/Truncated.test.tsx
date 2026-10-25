@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import { AuthorFilterList } from "./AuthorFilterList";
 import { RecentStrip } from "./RecentStrip";
-import { MediaTile } from "../panels/MediaTile";
+import { MediaTile } from "../panels/rich-media/MediaTile";
 
 /**
  * Anything the layout clips has to keep its whole value somewhere: a truncated
