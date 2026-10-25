@@ -4,10 +4,10 @@ import { useMemo } from "react";
 import type { Payload } from "../api/types";
 import { EmptyState, Panel } from "../components/Panel";
 import type { Filters } from "../app/reducer";
-import { axisLabel, axisLine, splitLine, tooltip } from "../lib/chartStyle";
-import { EChart } from "../lib/echart";
+import { axisLabel, axisLine, splitLine, tooltip } from "../charts/style";
+import { EChart } from "../charts/echart";
 import { fmt, kfmt } from "../lib/format";
-import { token } from "../lib/palette";
+import { token } from "../charts/palette";
 import { burstiness, quantile, type Burst } from "../selectors/people";
 import { usePanelFilters } from "./panelScope";
 

@@ -76,10 +76,10 @@ describe("the theme seam", () => {
 describe("where a chart colour may be written", () => {
   it("spells no colour outside the palette, so a theme reaches every card", () => {
     // A literal in a panel is a colour the theme cannot reach: it has to be a
-    // token in styles.css, read through lib/palette.ts at draw time.
+    // token in styles.css, read through charts/palette.ts at draw time.
     const literal = /["'`](?:#[0-9a-fA-F]{3,8}|rgba?\(\s*\d)/;
     const offenders = Object.entries(SOURCES)
-      .filter(([file]) => !file.endsWith("/lib/palette.ts"))
+      .filter(([file]) => !file.endsWith("/charts/palette.ts"))
       .filter(([, text]) => literal.test(text))
       .map(([file]) => file);
 

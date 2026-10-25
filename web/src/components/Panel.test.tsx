@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { NoticeProvider } from "./Notice";
 import { CARD_COLUMNS, GlobalOnlyBadge, Panel } from "./Panel";
-import { EChart } from "../lib/echart";
+import { EChart } from "../charts/echart";
 import { TERMS } from "../lib/glossary";
 
 /**

@@ -5,10 +5,10 @@ import type { Payload } from "../api/types";
 import { Chip } from "../components/AppShell";
 import { EmptyState, GlobalOnlyBadge, Panel } from "../components/Panel";
 import type { Filters } from "../app/reducer";
-import { axisLabel, splitLine, tooltip } from "../lib/chartStyle";
-import { EChart } from "../lib/echart";
+import { axisLabel, splitLine, tooltip } from "../charts/style";
+import { EChart } from "../charts/echart";
 import { dur, fmt } from "../lib/format";
-import { swatch } from "../lib/palette";
+import { swatch } from "../charts/palette";
 import {
   editRateRows,
   editTrend,

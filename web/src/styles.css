@@ -18,7 +18,7 @@
 }
 
 /* The chart series palette, in order, so a series colour is a theme decision
-   like any other. `web/src/lib/palette.ts` reads these and carries the same
+   like any other. `web/src/charts/palette.ts` reads these and carries the same
    values as fallbacks, so a fork overriding `--chart-1` recolours a series
    without touching a component, and a missing variable never changes what is
    drawn. Kept out of `@theme`: these are read with `var()`/`getComputedStyle`,

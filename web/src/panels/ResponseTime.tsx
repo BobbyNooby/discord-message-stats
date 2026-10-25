@@ -4,7 +4,7 @@ import type { Payload } from "../api/types";
 import { EmptyState, Panel } from "../components/Panel";
 import type { Filters } from "../app/reducer";
 import { TERMS } from "../lib/glossary";
-import { EChart } from "../lib/echart";
+import { EChart } from "../charts/echart";
 import { emptyFor } from "../lib/empty";
 import { dur, fmt } from "../lib/format";
 import { responseRows, weightedAverage } from "../selectors/people";

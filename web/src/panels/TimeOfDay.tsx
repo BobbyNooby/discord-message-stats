@@ -3,11 +3,11 @@ import type { EChartsOption } from "echarts";
 
 import { Chip } from "../components/AppShell";
 import { EmptyState, Panel } from "../components/Panel";
-import { axisLabel, axisLine, splitLine, tooltip } from "../lib/chartStyle";
-import { EChart } from "../lib/echart";
+import { axisLabel, axisLine, splitLine, tooltip } from "../charts/style";
+import { EChart } from "../charts/echart";
 import { emptyLabel } from "../lib/empty";
 import { fmt, kfmt } from "../lib/format";
-import { swatch, token } from "../lib/palette";
+import { swatch, token } from "../charts/palette";
 import { hourLabel, timeFormatOf, type TimeFormat } from "../lib/timeFormat";
 import { byHour, heatGrid } from "../selectors/time";
 import { usePanelFilters, type PanelProps, type WithPanelId } from "./panelScope";

@@ -8,10 +8,10 @@ import { Dialog, Sheet } from "../components/ui";
 import { fmt } from "../lib/format";
 import { kindLabel, postedLabel, providerLabel } from "../lib/mediaLabels";
 import { useReducedMotion } from "../lib/motion";
-import { swatch } from "../lib/palette";
+import { swatch } from "../charts/palette";
 import { authorIndexById, monthlyStacks } from "../selectors/months";
 import { mediaName, thumbnailSrc } from "./MediaTile";
-import { MonthlyBars } from "./MonthlyBars";
+import { MonthlyBars } from "../charts/MonthlyBars";
 
 /**
  * One reposted GIF or link, opened up: who posted it and how often, who posted

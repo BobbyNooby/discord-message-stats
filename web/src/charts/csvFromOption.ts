@@ -1,6 +1,6 @@
 import type { EChartsOption } from "echarts";
 
-import type { CsvRow } from "./csv";
+import type { CsvRow } from "../lib/csv";
 
 /**
  * The rows behind a chart, read back out of the option that drew it.

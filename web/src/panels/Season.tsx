@@ -2,11 +2,11 @@ import type { EChartsOption } from "echarts";
 import { useMemo } from "react";
 
 import { EmptyState, Panel } from "../components/Panel";
-import { axisLabel, axisLine, splitLine, tooltip } from "../lib/chartStyle";
-import { EChart } from "../lib/echart";
+import { axisLabel, axisLine, splitLine, tooltip } from "../charts/style";
+import { EChart } from "../charts/echart";
 import { emptyLabel } from "../lib/empty";
 import { fmt, kfmt } from "../lib/format";
-import { swatch } from "../lib/palette";
+import { swatch } from "../charts/palette";
 import { MON, monthTotals } from "../selectors/time";
 import { usePanelFilters, type PanelProps, type WithPanelId } from "./panelScope";
 

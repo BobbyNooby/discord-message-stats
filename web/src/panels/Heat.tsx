@@ -2,11 +2,11 @@ import type { EChartsOption } from "echarts";
 import { useMemo } from "react";
 
 import { EmptyState, Panel } from "../components/Panel";
-import { axisLabel, axisLine, tooltip } from "../lib/chartStyle";
-import { EChart } from "../lib/echart";
+import { axisLabel, axisLine, tooltip } from "../charts/style";
+import { EChart } from "../charts/echart";
 import { emptyLabel } from "../lib/empty";
 import { fmt } from "../lib/format";
-import { ramp, token } from "../lib/palette";
+import { ramp, token } from "../charts/palette";
 import { hourLabel, timeFormatOf, type TimeFormat } from "../lib/timeFormat";
 import { DOW, heatGrid, type HeatGrid } from "../selectors/time";
 import { usePanelFilters, type PanelProps, type WithPanelId } from "./panelScope";

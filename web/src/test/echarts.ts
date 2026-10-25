@@ -7,7 +7,7 @@ import { vi } from "vitest";
  * Every chart shares one set of spies, so a test can count `setOption` across
  * the whole page, and each chart also keeps its own options and the node it was
  * mounted on, so a test can read one chart's last option. `test-setup.ts` mocks
- * `echarts` with this module for every test file; `lib/echart.test.tsx`
+ * `echarts` with this module for every test file; `charts/echart.test.tsx`
  * replaces it with its own mock to assert the lifecycle itself.
  */
 export type RecordedChart = {

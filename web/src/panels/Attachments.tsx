@@ -3,7 +3,7 @@ import { useMemo } from "react";
 import { horizontalBarsOption } from "../charts/bars";
 import { attachColor } from "../charts/roles";
 import { EmptyState, Panel } from "../components/Panel";
-import { EChart } from "../lib/echart";
+import { EChart } from "../charts/echart";
 import { emptyFor, globalEmpty } from "../lib/empty";
 import { fmt } from "../lib/format";
 import { pairCount, pairRows, pairTotal } from "../selectors/media";

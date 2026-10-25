@@ -3,7 +3,7 @@ import { useMemo } from "react";
 import { gaugeOption } from "../charts/gauge";
 import { activeDaysColor, mediaColor, replyColor } from "../charts/roles";
 import { EmptyState, Panel } from "../components/Panel";
-import { EChart } from "../lib/echart";
+import { EChart } from "../charts/echart";
 import { EMPTY_FILTER } from "../lib/empty";
 import { healthGauges, mediaCells, totalMessages } from "../selectors/media";
 import { usePanelFilters, type PanelProps, type WithPanelId } from "./panelScope";

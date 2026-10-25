@@ -2,11 +2,11 @@ import type { EChartsOption } from "echarts";
 import { useMemo } from "react";
 
 import { EmptyState, Panel } from "../components/Panel";
-import { axis, axisLabel, splitLine, tooltip } from "../lib/chartStyle";
-import { EChart } from "../lib/echart";
+import { axis, axisLabel, splitLine, tooltip } from "../charts/style";
+import { EChart } from "../charts/echart";
 import { emptyLabel } from "../lib/empty";
 import { bucketCountLabel, fmt } from "../lib/format";
-import { swatch } from "../lib/palette";
+import { swatch } from "../charts/palette";
 import { pct, repliesByBucket, type RepliesByBucket } from "../selectors/time";
 import { usePanelFilters, type PanelProps, type WithPanelId } from "./panelScope";
 

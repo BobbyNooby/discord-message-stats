@@ -12,9 +12,9 @@
  */
 import type { EChartsOption } from "echarts";
 
-import { tooltip } from "../lib/chartStyle";
+import { tooltip } from "./style";
 import { fmt } from "../lib/format";
-import { swatch, token } from "../lib/palette";
+import { swatch, token } from "./palette";
 import type { ColorRow } from "./bars";
 
 /** Eight named slices + "Other". A ninth colour is already indistinguishable. */

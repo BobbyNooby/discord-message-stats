@@ -1,4 +1,4 @@
-import { swatch, token } from "../lib/palette";
+import { swatch, token } from "./palette";
 
 /*
  * Which series slot each Media & reactions card draws in. Colours come from the

@@ -4,7 +4,7 @@ import type { EChartsOption } from "echarts";
 
 import { usePanelCsv } from "../components/panelCsv";
 import { csvFromOption } from "./csvFromOption";
-import { useReducedMotion } from "./motion";
+import { useReducedMotion } from "../lib/motion";
 
 /**
  * The one component here that wraps a library rather than encoding an idea.

@@ -4,11 +4,11 @@ import { useMemo } from "react";
 import { colorBarsOption } from "../charts/bars";
 import { foldSlices, otherColor, type Slice } from "../charts/pie";
 import { EmptyState, Panel } from "../components/Panel";
-import { legend, tooltip } from "../lib/chartStyle";
-import { EChart } from "../lib/echart";
+import { legend, tooltip } from "../charts/style";
+import { EChart } from "../charts/echart";
 import { emptyLabel } from "../lib/empty";
 import { fmt } from "../lib/format";
-import { swatch, token } from "../lib/palette";
+import { swatch, token } from "../charts/palette";
 import { voiceRows } from "../selectors/overview";
 import { useChartShape, usePanelFilters, type PanelProps, type WithPanelId } from "./panelScope";
 

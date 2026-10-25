@@ -4,11 +4,11 @@ import { useMemo } from "react";
 import type { Payload } from "../api/types";
 import { foldSlices, otherColor, type Slice } from "../charts/pie";
 import { EmptyState, Panel } from "../components/Panel";
-import { tooltip } from "../lib/chartStyle";
-import { EChart } from "../lib/echart";
+import { tooltip } from "../charts/style";
+import { EChart } from "../charts/echart";
 import { emptyLabel } from "../lib/empty";
 import { fmt, yearCountLabel } from "../lib/format";
-import { swatch, token } from "../lib/palette";
+import { swatch, token } from "../charts/palette";
 import { yearMix, type YearMix } from "../selectors/overview";
 import { usePanelFilters, type PanelProps, type WithPanelId } from "./panelScope";
 

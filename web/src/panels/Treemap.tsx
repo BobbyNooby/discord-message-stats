@@ -4,10 +4,10 @@ import { useMemo } from "react";
 import type { Payload } from "../api/types";
 import { EmptyState, Panel } from "../components/Panel";
 import type { Filters } from "../app/reducer";
-import { tooltip } from "../lib/chartStyle";
-import { EChart } from "../lib/echart";
+import { tooltip } from "../charts/style";
+import { EChart } from "../charts/echart";
 import { fmt } from "../lib/format";
-import { swatch, tint, token } from "../lib/palette";
+import { swatch, tint, token } from "../charts/palette";
 import { treemapData, type TreemapNode } from "../selectors/people";
 import { usePanelFilters } from "./panelScope";
 

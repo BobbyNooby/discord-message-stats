@@ -4,11 +4,11 @@ import { useMemo } from "react";
 import type { Payload } from "../api/types";
 import { EmptyState, Panel } from "../components/Panel";
 import type { Filters } from "../app/reducer";
-import { axisLabel, splitLine, tooltip } from "../lib/chartStyle";
-import { EChart } from "../lib/echart";
+import { axisLabel, splitLine, tooltip } from "../charts/style";
+import { EChart } from "../charts/echart";
 import { EMPTY_AUTHORS } from "../lib/empty";
 import { fmt, kfmt } from "../lib/format";
-import { swatch, token } from "../lib/palette";
+import { swatch, token } from "../charts/palette";
 import { usePanelFilters } from "./panelScope";
 import { replyBalance, type BalancePoint } from "../selectors/people";
 

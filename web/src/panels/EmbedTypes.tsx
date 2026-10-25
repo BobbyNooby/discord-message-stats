@@ -5,10 +5,10 @@ import { horizontalBarsOption } from "../charts/bars";
 import { foldPie, pieNote, pieOption } from "../charts/pie";
 import { EmptyState, Panel } from "../components/Panel";
 import type { Filters } from "../app/reducer";
-import { EChart } from "../lib/echart";
+import { EChart } from "../charts/echart";
 import { emptyFor } from "../lib/empty";
 import { fmt } from "../lib/format";
-import { swatch } from "../lib/palette";
+import { swatch } from "../charts/palette";
 import { allPairRows, sumRows } from "../selectors/media";
 import { useChartShape } from "./panelScope";
 

@@ -1,10 +1,10 @@
 import type { EChartsOption } from "echarts";
 import { useMemo } from "react";
 
-import { axisLabel, axisLine, splitLine, tooltip } from "../lib/chartStyle";
-import { EChart } from "../lib/echart";
+import { axisLabel, axisLine, splitLine, tooltip } from "./style";
+import { EChart } from "./echart";
 import { fmt } from "../lib/format";
-import { swatch } from "../lib/palette";
+import { swatch } from "./palette";
 import { monthLabel, type MonthlyStacks } from "../selectors/months";
 
 /**

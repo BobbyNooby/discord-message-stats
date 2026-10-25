@@ -3,7 +3,7 @@ import { useMemo } from "react";
 import type { Payload } from "../api/types";
 import { EmptyState, Panel } from "../components/Panel";
 import type { Filters } from "../app/reducer";
-import { EChart } from "../lib/echart";
+import { EChart } from "../charts/echart";
 import { emptyFor } from "../lib/empty";
 import { fmt, kfmt } from "../lib/format";
 import { starterRows } from "../selectors/people";

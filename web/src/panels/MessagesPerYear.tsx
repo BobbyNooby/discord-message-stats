@@ -3,11 +3,11 @@ import { useMemo } from "react";
 
 import { EmptyState, Panel } from "../components/Panel";
 import { yearTotals, type YearTotals } from "../selectors/overview";
-import { axis, axisLabel, splitLine, tooltip } from "../lib/chartStyle";
-import { EChart } from "../lib/echart";
+import { axis, axisLabel, splitLine, tooltip } from "../charts/style";
+import { EChart } from "../charts/echart";
 import { emptyLabel } from "../lib/empty";
 import { fmt, kfmt, yearCountLabel } from "../lib/format";
-import { swatch, token } from "../lib/palette";
+import { swatch, token } from "../charts/palette";
 import { usePanelFilters, type PanelProps, type WithPanelId } from "./panelScope";
 
 function yearBars({ years, values }: YearTotals): EChartsOption {

@@ -1,6 +1,6 @@
 import type { EChartsOption } from "echarts";
 
-import { token } from "../lib/palette";
+import { token } from "./palette";
 
 /** One percentage dial: its label, its value out of 100, and its arc's colour. */
 export type Gauge = { name: string; value: number; color: string };

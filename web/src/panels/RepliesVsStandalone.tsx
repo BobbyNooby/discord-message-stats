@@ -4,7 +4,7 @@ import { colorBarsOption } from "../charts/bars";
 import { doughnutOption } from "../charts/pie";
 import { remainderColor, replyColor } from "../charts/roles";
 import { EmptyState, Panel } from "../components/Panel";
-import { EChart } from "../lib/echart";
+import { EChart } from "../charts/echart";
 import { EMPTY_FILTER } from "../lib/empty";
 import { fmt, pctOf } from "../lib/format";
 import { mediaCells, replyShare } from "../selectors/media";

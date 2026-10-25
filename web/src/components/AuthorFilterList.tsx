@@ -1,5 +1,5 @@
 import type { Author } from "../api/types";
-import { swatch } from "../lib/palette";
+import { swatch } from "../charts/palette";
 
 /** Swatch, name, count, multi-select, all/none (§11.0). */
 export function AuthorFilterList({

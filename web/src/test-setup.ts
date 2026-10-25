@@ -5,7 +5,7 @@ import { charts } from "./test/echarts";
 
 // jsdom has no canvas and no layout, so a real ECharts instance cannot paint.
 // Every component test gets a chart that records what it was asked to draw
-// (`src/test/echarts.ts`); `src/lib/echart.test.tsx` overrides this with its
+// (`src/test/echarts.ts`); `src/charts/echart.test.tsx` overrides this with its
 // own mock to assert the lifecycle itself.
 vi.mock("echarts", async () => (await import("./test/echarts")).echartsModule);
 

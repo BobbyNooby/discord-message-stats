@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
  * drawn colour without a canvas. */
 const captured = vi.hoisted(() => ({ option: null as unknown }));
 
-vi.mock("../lib/echart", () => ({
+vi.mock("../charts/echart", () => ({
   EChart: ({ option }: { option: unknown }) => {
     captured.option = option;
     return null;

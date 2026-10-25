@@ -4,9 +4,9 @@
  */
 import type { EChartsOption } from "echarts";
 
-import { axisLabel, axisLine, splitLine, tooltip } from "../lib/chartStyle";
+import { axisLabel, axisLine, splitLine, tooltip } from "./style";
 import { fmt, kfmt } from "../lib/format";
-import { swatch, token } from "../lib/palette";
+import { swatch, token } from "./palette";
 import type { Row as NamedRow } from "../selectors/media";
 import type { Row } from "../selectors/people";
 

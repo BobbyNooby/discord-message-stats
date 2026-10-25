@@ -3,10 +3,10 @@ import { useMemo } from "react";
 import { horizontalBarsOption } from "../charts/bars";
 import { foldPie, pieNote, pieOption } from "../charts/pie";
 import { EmptyState, Panel } from "../components/Panel";
-import { EChart } from "../lib/echart";
+import { EChart } from "../charts/echart";
 import { globalEmpty } from "../lib/empty";
 import { fmt } from "../lib/format";
-import { swatch } from "../lib/palette";
+import { swatch } from "../charts/palette";
 import { allTypeRows, sumRows } from "../selectors/media";
 import { useChartShape, usePanelFilters, type PanelProps, type WithPanelId } from "./panelScope";
 
