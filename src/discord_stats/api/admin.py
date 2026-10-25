@@ -12,7 +12,6 @@ from __future__ import annotations
 import json
 import shutil
 import sqlite3
-from datetime import datetime, timezone
 from typing import Any
 from zoneinfo import available_timezones
 
@@ -43,6 +42,7 @@ from discord_scraper.rollups import query
 from discord_scraper.rollups.build import config_digest
 from discord_scraper.rollups.schema import FAMILIES, is_stale
 from discord_scraper.scraper import api as discord_api
+from discord_scraper.timeutil import utc_stamp
 
 router = APIRouter(prefix="/api/admin", dependencies=[Depends(require_admin)])
 
@@ -65,10 +65,6 @@ class JobRequest(BaseModel):
 # Staged uploads, keyed by the id handed to the operator. In-process on purpose:
 # a pending upload is only meaningful to the process that validated it.
 PENDING_UPLOADS: dict[str, Any] = {}
-
-
-def _now() -> str:
-    return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
 def _conn(request: Request) -> sqlite3.Connection:
@@ -169,7 +165,7 @@ def status(request: Request) -> dict:
                 "config_changed": bool(meta and meta["config_hash"] != digest),
             }
         active_sessions = conn.execute(
-            "SELECT COUNT(*) FROM sessions WHERE revoked = 0 AND expires_at > ?", (_now(),)
+            "SELECT COUNT(*) FROM sessions WHERE revoked = 0 AND expires_at > ?", (utc_stamp(),)
         ).fetchone()[0]
         # A typo'd id is "nobody is admin" in silence, so the board is told
         # plainly. `known` is None when no id is configured at all, which is a
@@ -199,7 +195,7 @@ def status(request: Request) -> dict:
             "worker": _worker_view(conn),
             "jobs": _job_counts(conn),
             "sessions": {"active": int(active_sessions)},
-            "checked_at": _now(),
+            "checked_at": utc_stamp(),
         }
     finally:
         conn.close()
@@ -258,7 +254,7 @@ def run_token_check(token: str, channel_id: str) -> dict[str, Any]:
     must not turn the admin button into a 500. The channel is only checked when
     the token worked — a failed token makes every other answer meaningless.
     """
-    checked_at = _now()
+    checked_at = utc_stamp()
     status, body, error = discord_api.get_current_user(token, timeout=TOKEN_TEST_TIMEOUT)
     bot = _bot_from(body) if status == 200 else None
     if bot is not None:
@@ -655,7 +651,7 @@ def diagnostics(request: Request) -> dict:
             pass
 
     return {
-        "checked_at": _now(),
+        "checked_at": utc_stamp(),
         "version": __version__,
         "commit": _git_commit(PROJECT_DIR),
         "config": {
@@ -849,7 +845,7 @@ def create_job(request: Request, body: JobRequest) -> dict:
                         "message": f"already {state} as job #{existing['id']}"}
         cursor = conn.execute(
             "INSERT INTO jobs (channel_id, kind, status, requested_at) VALUES (?, ?, 'queued', ?)",
-            (cfg.channel_id, body.kind, _now()),
+            (cfg.channel_id, body.kind, utc_stamp()),
         )
         conn.commit()
         return {"id": int(cursor.lastrowid), "channel_id": cfg.channel_id,
@@ -1101,7 +1097,7 @@ def _migrate_admins(
         configured = bool(cfg.admin_id) and who == str(cfg.admin_id)
         conn.execute(
             "INSERT OR IGNORE INTO admins (discord_id, added_at, added_by) VALUES (?, ?, 'merge')",
-            (target, _now()),
+            (target, utc_stamp()),
         )
         if not configured:
             conn.execute("DELETE FROM admins WHERE discord_id = ?", (who,))

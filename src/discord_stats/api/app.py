@@ -34,6 +34,7 @@ from discord_stats.auth.session import (
 from discord_scraper.config import Config
 from discord_scraper.rollups import query
 from discord_scraper.rollups.schema import is_stale
+from discord_scraper.timeutil import utc_stamp
 
 STATE_COOKIE = "dsh_oauth_state"
 
@@ -54,11 +55,6 @@ MONTH_PATTERN = r"^\d{4}-(0[1-9]|1[0-2])$"
 # rebuild. Each is a payload's word fields, tens of kilobytes, so a few dozen.
 PERIOD_CACHE_ENTRIES = 32
 
-
-def _now() -> str:
-    from datetime import datetime, timezone
-
-    return datetime.now(timezone.utc).isoformat(timespec="seconds")
 SESSION_MAX_AGE = SESSION_DAYS * 24 * 3600
 
 
@@ -347,7 +343,7 @@ def create_app(
             conn.close()
         return {
             "ok": True,
-            "checked_at": _now(),
+            "checked_at": utc_stamp(),
             "banner": banner_for(stored),
             "last_ingest_at": stored.get("last_ingest_at"),
             **_channel_meta(cfg),

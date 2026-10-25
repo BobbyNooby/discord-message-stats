@@ -14,9 +14,9 @@ the board's own checks cannot drift apart.
 from __future__ import annotations
 
 import sqlite3
-from datetime import datetime, timezone
 
 from discord_scraper.config import Config
+from discord_scraper.timeutil import utc_stamp
 
 
 class AdminLocked(Exception):
@@ -25,10 +25,6 @@ class AdminLocked(Exception):
 
 class UnknownAdmin(Exception):
     """An id with no message in the channel, when the operator has not insisted."""
-
-
-def _now() -> str:
-    return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
 def is_admin(conn: sqlite3.Connection, cfg: Config, discord_id: str) -> bool:
@@ -53,7 +49,7 @@ def seed_admin(conn: sqlite3.Connection, admin_id: str | None) -> None:
         return
     conn.execute(
         "INSERT OR IGNORE INTO admins (discord_id, added_at, added_by) VALUES (?, ?, 'config')",
-        (who, _now()),
+        (who, utc_stamp()),
     )
     conn.commit()
 
@@ -128,7 +124,7 @@ def add_admin(
         )
     conn.execute(
         "INSERT OR IGNORE INTO admins (discord_id, added_at, added_by) VALUES (?, ?, ?)",
-        (who, _now(), added_by),
+        (who, utc_stamp(), added_by),
     )
     conn.commit()
     row = conn.execute(

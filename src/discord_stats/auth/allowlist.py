@@ -13,6 +13,7 @@ from datetime import datetime, timedelta, timezone
 from discord_stats.auth.admins import is_admin
 from discord_stats.auth.session import Level
 from discord_scraper.config import Config
+from discord_scraper.timeutil import utc_stamp
 
 LOGIN_WINDOW_MINUTES = 15
 LOGIN_ATTEMPT_LIMIT = 10
@@ -45,7 +46,7 @@ def decision_for(conn: sqlite3.Connection, cfg: Config, discord_id: str) -> Leve
 
 def record_login_attempt(conn: sqlite3.Connection, ip: str, *, ok: bool) -> None:
     """One row per attempt; a success clears the failures for that address."""
-    now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    now = utc_stamp()
     if ok:
         conn.execute("DELETE FROM login_attempts WHERE ip = ? AND ok = 0", (str(ip),))
     conn.execute(
