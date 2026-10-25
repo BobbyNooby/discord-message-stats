@@ -1,10 +1,8 @@
 import type { EChartsOption } from "echarts";
 import { useMemo } from "react";
 
-import type { Payload } from "../api/types";
 import { EmptyState, Panel } from "../components/Panel";
-import type { Filters } from "../filters/reducer";
-import { selectAuthors } from "../selectors/cells";
+import { voiceRows } from "../selectors/overview";
 import { legend, tooltip } from "../lib/chartStyle";
 import { EChart } from "../lib/echart";
 import { emptyLabel } from "../lib/empty";
@@ -14,14 +12,6 @@ import { foldSlices, otherColor, type PanelProps, type Slice } from "./timeAggre
 import { colorBarsOption } from "./mediaData";
 import type { WithPanelId } from "./panelScope";
 import { useChartShape, usePanelFilters } from "./panelScope";
-
-/** One row per author with messages in view, busiest first. */
-function voiceRows(payload: Payload, filters: Filters): Slice[] {
-  return selectAuthors(payload, filters)
-    .map((author, index) => ({ name: author.name, value: author.msgs, index }))
-    .filter((row) => row.value > 0)
-    .sort((a, b) => b.value - a.value);
-}
 
 function doughnut(slices: Slice[]): EChartsOption {
   return {

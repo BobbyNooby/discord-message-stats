@@ -1,10 +1,9 @@
 import type { EChartsOption } from "echarts";
 import { useMemo } from "react";
 
-import { C_AUTHOR, C_DAY, C_MSGS, type Payload } from "../api/types";
+import { type Payload } from "../api/types";
 import { EmptyState, Panel } from "../components/Panel";
-import type { Filters } from "../filters/reducer";
-import { selectVisibleCells, yearOf } from "../selectors/cells";
+import { yearMix, type YearMix } from "../selectors/overview";
 import { tooltip } from "../lib/chartStyle";
 import { EChart } from "../lib/echart";
 import { emptyLabel } from "../lib/empty";
@@ -26,29 +25,6 @@ function radiusFor(count: number): number {
   if (count <= 4) return 44;
   if (count <= 6) return 34;
   return 27;
-}
-
-type YearMix = {
-  years: number[];
-  /** Year to author index to messages. */
-  byYear: Map<number, Map<number, number>>;
-  total: number;
-};
-
-/** Each author's filtered messages, year by year, years ascending. */
-function yearMix(payload: Payload, filters: Filters): YearMix {
-  const byYear = new Map<number, Map<number, number>>();
-  let total = 0;
-  for (const cell of selectVisibleCells(payload, filters)) {
-    const day = payload.days[cell[C_DAY]];
-    if (day === undefined) continue;
-    const year = yearOf(day);
-    const authors = byYear.get(year) ?? new Map<number, number>();
-    authors.set(cell[C_AUTHOR], (authors.get(cell[C_AUTHOR]) ?? 0) + cell[C_MSGS]);
-    byYear.set(year, authors);
-    total += cell[C_MSGS];
-  }
-  return { years: [...byYear.keys()].sort(), byYear, total };
 }
 
 function doughnuts(payload: Payload, { years, byYear }: YearMix): EChartsOption {

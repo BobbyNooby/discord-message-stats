@@ -1,10 +1,8 @@
 import type { EChartsOption } from "echarts";
 import { useMemo } from "react";
 
-import { C_DAY, C_MSGS, type Payload } from "../api/types";
 import { EmptyState, Panel } from "../components/Panel";
-import type { Filters } from "../filters/reducer";
-import { selectVisibleCells, yearOf } from "../selectors/cells";
+import { yearTotals, type YearTotals } from "../selectors/overview";
 import { axis, axisLabel, splitLine, tooltip } from "../lib/chartStyle";
 import { EChart } from "../lib/echart";
 import { emptyLabel } from "../lib/empty";
@@ -13,22 +11,6 @@ import { swatch, token } from "../lib/palette";
 import { yearCountLabel, type PanelProps } from "./timeAggregates";
 import type { WithPanelId } from "./panelScope";
 import { usePanelFilters } from "./panelScope";
-
-type YearTotals = { years: number[]; values: number[]; total: number };
-
-/** Filtered messages per calendar year, years ascending. */
-function yearTotals(payload: Payload, filters: Filters): YearTotals {
-  const byYear = new Map<number, number>();
-  for (const cell of selectVisibleCells(payload, filters)) {
-    const day = payload.days[cell[C_DAY]];
-    if (day === undefined) continue;
-    const year = yearOf(day);
-    byYear.set(year, (byYear.get(year) ?? 0) + cell[C_MSGS]);
-  }
-  const years = [...byYear.keys()].sort();
-  const values = years.map((year) => byYear.get(year) ?? 0);
-  return { years, values, total: values.reduce((sum, value) => sum + value, 0) };
-}
 
 function yearBars({ years, values }: YearTotals): EChartsOption {
   const peak = Math.max(...values);
