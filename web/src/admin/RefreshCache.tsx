@@ -6,122 +6,32 @@
  * numbers move — and it is a 202 job, never an inline rebuild. The per-family
  * table turns the provenance row into the question the operator actually has:
  * "how much has arrived since this was built?"
+ *
+ * This file keeps the rebuild and its live feed; the families table, the worker
+ * cards and the jobs are pieces of their own.
  */
 
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useEffect, useRef } from "react";
 
+import { recalculate, type AdminConfig, type AdminStatus, type ConfigPatch } from "./api";
+import { FamiliesTable } from "./FamiliesTable";
+import { JobHistory, JobRunner } from "./Jobs";
+import { FreshnessLine, LiveLog, NowLine, mergeFamilies } from "./ProgressView";
 import {
-  createJob,
-  listJobs,
-  recalculate,
-  type AdminConfig,
-  type AdminStatus,
-  type ConfigPatch,
-  type JobKind,
-  type RollupFamily,
-} from "./api";
-import {
-  FreshnessLine,
-  LiveLog,
-  NowLine,
-  formatSeconds,
-  mergeFamilies,
-  type FamilyProgress,
-} from "./ProgressView";
-import { TokenBox } from "./TokenBox";
-import { useAction } from "./useAction";
-import { useProgress } from "./useProgress";
-import {
+  ActionNotices,
   Def,
   DefList,
   Notice,
-  SaveBar,
   Section,
   SubSection,
   formatStamp,
   workerOffline,
   type SaveMode,
 } from "./shared";
-
-const BUTTONS: { kind: JobKind; label: string; hint: string; changesData: boolean }[] = [
-  {
-    kind: "catch_up",
-    label: "Catch-up",
-    hint: "fetch messages newer than the last ingest",
-    changesData: true,
-  },
-  {
-    kind: "backfill",
-    label: "Backfill",
-    hint: "walk history backwards from the oldest message",
-    changesData: true,
-  },
-  { kind: "probe", label: "Probe token", hint: "ask Discord if the token still works", changesData: false },
-  {
-    kind: "backup",
-    label: "Back up now",
-    hint: "copy the database into backups/ beside it; the worker also does this daily",
-    changesData: false,
-  },
-];
-
-function tokenTone(status: string): "ok" | "warn" | "error" {
-  const value = status.toLowerCase();
-  if (value === "ok") return "ok";
-  if (value === "dead") return "error";
-  return "warn";
-}
-
-/**
- * What the worker will actually do. A value saved from this board wins; until
- * one is saved the worker falls back to config.toml, so "nothing stored" is
- * not "off" — reading it that way showed "off" over a schedule that was running.
- */
-export function scheduleLabel(
-  worker: Pick<AdminStatus["worker"], "cron_enabled" | "cron_hours">,
-  config: AdminConfig | null,
-): string {
-  const stored = worker.cron_enabled?.trim().toLowerCase();
-  const enabled = stored == null ? (config?.effective.cron_enabled ?? true) : !["0", "false", "no", "off"].includes(stored);
-  if (!enabled) return "off";
-  return `every ${worker.cron_hours ?? config?.effective.cron_hours ?? 6} h`;
-}
-
-function stateTone(state: FamilyProgress["state"]): string {
-  if (state === "done") return "text-emerald-300";
-  if (state === "running") return "text-amber-300";
-  if (state === "failed") return "text-red-300";
-  return "text-[var(--color-muted)]";
-}
-
-/** One sentence for what the provenance row says about a family. */
-export function changeSummary(family: {
-  built_from_rows: number | null;
-  added_since: number | null;
-  config_changed: boolean;
-  computed_at: string | null;
-}): string {
-  if (!family.computed_at || family.built_from_rows === null) {
-    return "never built";
-  }
-  const parts = [`built from ${family.built_from_rows.toLocaleString()} messages`];
-  if (family.added_since) {
-    parts.push(`${family.added_since.toLocaleString()} added since`);
-  } else {
-    parts.push("nothing added since");
-  }
-  if (family.config_changed) parts.push("settings changed since");
-  return parts.join(" · ");
-}
-
-/** What the provenance row says about a family, from whichever source has it. */
-export function provenance(row: FamilyProgress, rollup: RollupFamily | undefined): string {
-  if (rollup) return changeSummary(rollup);
-  if (row.computed_at === null) return "never built";
-  if (row.added_since) return `${row.added_since.toLocaleString()} added since`;
-  return "nothing added since";
-}
+import { useAction } from "./useAction";
+import { useProgress } from "./useProgress";
+import { LastIngest, TokenHealth } from "./WorkerCards";
 
 export function RefreshCache({
   status,
@@ -140,20 +50,8 @@ export function RefreshCache({
   onSave: (patch: ConfigPatch, mode: SaveMode) => Promise<AdminConfig>;
 }) {
   const queryClient = useQueryClient();
-  const jobs = useQuery({ queryKey: ["admin", "jobs"], queryFn: () => listJobs(50) });
   const feed = useProgress();
   const { busy, notice, error, run: runRebuild, setNotice } = useAction();
-  const { notice: queued, error: jobError, run: runJob, setNotice: setQueued } = useAction();
-  const [cronEnabled, setCronEnabled] = useState(config?.effective.cron_enabled ?? true);
-  const [cronHours, setCronHours] = useState(String(config?.effective.cron_hours ?? 6));
-  const {
-    busy: cronSaving,
-    notice: cronNotice,
-    error: cronError,
-    run: runCron,
-    setNotice: setCronNotice,
-    setError: setCronError,
-  } = useAction();
 
   const families = Object.entries(status.rollups);
   const totalRows = families.reduce((total, [, family]) => total + family.rows, 0);
@@ -165,12 +63,6 @@ export function RefreshCache({
   // One row per family: the live run's state and the last build's provenance.
   const familyRows = mergeFamilies(feed.data?.families ?? null, status.rollups);
   const runningSeconds = feed.data?.running ? (feed.data.totals.seconds ?? null) : null;
-
-  useEffect(() => {
-    if (!config) return;
-    setCronEnabled(config.effective.cron_enabled);
-    setCronHours(String(config.effective.cron_hours));
-  }, [config]);
 
   // One refetch when a run ends: /status carries the new rollup rows and the
   // worker heartbeat written as the job finished, and the job that was just
@@ -206,37 +98,6 @@ export function RefreshCache({
         const job = await recalculate();
         onDirty();
         setNotice(`Rebuild queued as job #${job.id} (${job.status}). The cache stays stale until it finishes.`);
-        await queryClient.invalidateQueries({ queryKey: ["admin", "jobs"] });
-        await queryClient.invalidateQueries({ queryKey: ["admin", "status"] });
-      },
-      { keepNotice: true },
-    );
-
-  async function saveCron(mode: SaveMode) {
-    const hours = Number(cronHours);
-    if (!Number.isInteger(hours) || hours < 1 || hours > 24) {
-      // The server rejects this too; catching it here keeps the operator from
-      // reading a 400 as "the whole config failed".
-      setCronNotice(null);
-      setCronError("The interval must be a whole number of hours from 1 to 24.");
-      return;
-    }
-    await runCron(async () => {
-      await onSave({ cron_enabled: cronEnabled, cron_hours: hours }, mode);
-      setCronNotice(
-        mode === "recalculate"
-          ? "Schedule saved and a rebuild queued."
-          : "Schedule saved. The cache is stale until you run Recalculate all.",
-      );
-    });
-  }
-
-  const enqueue = (kind: JobKind, label: string, changesData: boolean) =>
-    runJob(
-      async () => {
-        const job = await createJob(kind);
-        if (changesData) onDirty();
-        setQueued(`${label} queued as job #${job.id} (${job.status}).`);
         await queryClient.invalidateQueries({ queryKey: ["admin", "jobs"] });
         await queryClient.invalidateQueries({ queryKey: ["admin", "status"] });
       },
@@ -279,64 +140,7 @@ export function RefreshCache({
           <Def label="Jobs running">{status.jobs.running ?? 0}</Def>
         </DefList>
 
-        <div className="overflow-x-auto rounded border border-[var(--color-line)] bg-[var(--color-surface)] p-3">
-          <table className="w-full text-left text-xs">
-            <caption className="sr-only">
-              Every rollup family with what the running rebuild is doing to it, its row count, when
-              it was computed, what it was built from, and whether it is current or stale
-            </caption>
-            <thead>
-              <tr className="text-[11px] uppercase tracking-wider text-[var(--color-muted)]">
-                <th scope="col" className="py-1 pr-3">
-                  Family
-                </th>
-                <th scope="col" className="py-1 pr-3">
-                  State
-                </th>
-                <th scope="col" className="py-1 pr-3">
-                  Rows
-                </th>
-                <th scope="col" className="py-1 pr-3">
-                  Took
-                </th>
-                <th scope="col" className="py-1 pr-3">
-                  Built
-                </th>
-                <th scope="col" className="py-1 pr-3">
-                  What changed since
-                </th>
-                <th scope="col" className="py-1">
-                  Status
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {familyRows.map((row) => (
-                <tr key={row.family} className="border-t border-[var(--color-line)]/50">
-                  <th scope="row" className="py-1 pr-3 text-left font-medium">
-                    {row.family}
-                  </th>
-                  <td className={`py-1 pr-3 ${stateTone(row.state)}`}>{row.state ?? "—"}</td>
-                  <td className="py-1 pr-3 tabular-nums">
-                    {row.rows === null ? "—" : row.rows.toLocaleString()}
-                  </td>
-                  <td className="py-1 pr-3 tabular-nums text-[var(--color-muted)]">
-                    {row.seconds === null ? "—" : formatSeconds(row.seconds)}
-                  </td>
-                  <td className="py-1 pr-3 whitespace-nowrap text-[var(--color-muted)]">
-                    {formatStamp(row.computed_at)}
-                  </td>
-                  <td className="py-1 pr-3 text-[var(--color-muted)]">
-                    {provenance(row, status.rollups[row.family])}
-                  </td>
-                  <td className={`py-1 ${row.stale ? "text-amber-300" : "text-emerald-300"}`}>
-                    {row.stale ? "stale" : "current"}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <FamiliesTable rows={familyRows} rollups={status.rollups} />
 
         <div>
           <p className="text-xs text-[var(--color-muted)]">
@@ -352,8 +156,7 @@ export function RefreshCache({
             {busy ? "Queueing…" : "Recalculate all"}
           </button>
         </div>
-        {notice ? <Notice tone="ok">{notice}</Notice> : null}
-        {error ? <Notice tone="error">{error}</Notice> : null}
+        <ActionNotices notice={notice} error={error} />
       </SubSection>
 
       <SubSection id="refresh-progress" title="Rebuild progress">
@@ -382,167 +185,13 @@ export function RefreshCache({
 
       <SubSection id="refresh-ingest" title="Fetch new messages">
         <div className="grid gap-3 md:grid-cols-2">
-          <div className="rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] p-4">
-            <h4 className="text-xs font-semibold">Token health</h4>
-            <div className="mt-2">
-              <Notice tone={tokenTone(worker.token_status)}>
-                Token status: <strong>{worker.token_status}</strong>
-                {/* The count arrives as text, and "0" is truthy. */}
-                {Number(worker.consecutive_failures) > 0 ? ` · ${worker.consecutive_failures} consecutive failures` : ""}
-                {worker.token_status === "dead" ? " · scheduled scrapes are paused until a token works" : ""}
-              </Notice>
-            </div>
-            <div className="mt-3">
-              <DefList>
-                <Def label="Last probe">{formatStamp(worker.checked_at)}</Def>
-                <Def label="Last success">{formatStamp(worker.last_ok_at)}</Def>
-              </DefList>
-            </div>
-            <TokenBox />
-          </div>
-
-          <div className="rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] p-4">
-            <h4 className="text-xs font-semibold">Last ingest</h4>
-            <div className="mt-3">
-              <DefList>
-                <Def label="Finished">{formatStamp(worker.last_ingest_at)}</Def>
-                <Def label="Messages added">{worker.last_ingest_added ?? "—"}</Def>
-                <Def label="Worker last seen">{formatStamp(worker.last_seen_at)}</Def>
-                <Def label="Last backup">{formatStamp(worker.last_backup_at ?? null)}</Def>
-                <Def label="Schedule">{scheduleLabel(worker, config)}</Def>
-              </DefList>
-            </div>
-            <p className="mt-2 text-[11px] text-[var(--color-muted)]">
-              The worker reads the schedule from <code>worker_state</code>; saving here writes it
-              there, so a change takes effect without a restart.
-            </p>
-
-            <div className="mt-3 rounded border border-[var(--color-line)] bg-[var(--color-surface-2)] p-3">
-              <div className="flex flex-wrap items-center gap-2">
-                <input
-                  id="admin-cron-enabled"
-                  type="checkbox"
-                  checked={cronEnabled}
-                  onChange={(event) => setCronEnabled(event.target.checked)}
-                  className="h-4 w-4"
-                />
-                <label htmlFor="admin-cron-enabled" className="text-xs font-medium">
-                  Scheduled ingest
-                </label>
-              </div>
-              <div className="mt-2">
-                <label htmlFor="admin-cron-hours" className="block text-[11px] text-[var(--color-muted)]">
-                  Interval in hours (1–24)
-                </label>
-                <input
-                  id="admin-cron-hours"
-                  type="number"
-                  min={1}
-                  max={24}
-                  step={1}
-                  value={cronHours}
-                  onChange={(event) => setCronHours(event.target.value)}
-                  className="mt-1 w-24 rounded border border-[var(--color-line)] bg-[var(--color-ink)] px-2 py-1.5 text-xs tabular-nums"
-                />
-              </div>
-              <div className="mt-3">
-                <SaveBar onSave={saveCron} busy={cronSaving} disabled={!config} />
-              </div>
-              {cronError ? <Notice tone="error">{cronError}</Notice> : null}
-              {cronNotice ? <Notice tone="ok">{cronNotice}</Notice> : null}
-            </div>
-          </div>
+          <TokenHealth worker={worker} />
+          <LastIngest worker={worker} config={config} onSave={onSave} />
         </div>
 
-        <div className="rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] p-4">
-          <h4 className="text-xs font-semibold">Run a job</h4>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {BUTTONS.map((button) => (
-              <button
-                key={button.kind}
-                type="button"
-                title={button.hint}
-                onClick={() => enqueue(button.kind, button.label, button.changesData)}
-                className="rounded border border-[var(--color-line)] px-3 py-1.5 text-xs"
-              >
-                {button.label}
-              </button>
-            ))}
-          </div>
-          {queued ? <Notice tone="ok">{queued}</Notice> : null}
-          {jobError ? <Notice tone="error">{jobError}</Notice> : null}
-        </div>
+        <JobRunner onDirty={onDirty} />
 
-        <div className="rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] p-4">
-          <h4 className="text-xs font-semibold">Job history</h4>
-          {jobs.isError ? <Notice tone="error">{(jobs.error as Error).message}</Notice> : null}
-          <div className="mt-3 overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <caption className="sr-only">Recent jobs, newest first, including failures</caption>
-              <thead>
-                <tr className="text-[11px] uppercase tracking-wider text-[var(--color-muted)]">
-                  <th scope="col" className="py-1 pr-3">
-                    Job
-                  </th>
-                  <th scope="col" className="py-1 pr-3">
-                    Kind
-                  </th>
-                  <th scope="col" className="py-1 pr-3">
-                    Status
-                  </th>
-                  <th scope="col" className="py-1 pr-3">
-                    Requested
-                  </th>
-                  <th scope="col" className="py-1 pr-3">
-                    Finished
-                  </th>
-                  <th scope="col" className="py-1">
-                    Outcome
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {(jobs.data?.jobs ?? []).map((job) => (
-                  <tr key={job.id} className="border-t border-[var(--color-line)]/50 align-top">
-                    <td className="py-1 pr-3 tabular-nums">{job.id}</td>
-                    <td className="py-1 pr-3">{job.kind}</td>
-                    <td
-                      className={`py-1 pr-3 ${
-                        job.status === "failed"
-                          ? "text-red-300"
-                          : job.status === "done"
-                            ? "text-emerald-300"
-                            : ""
-                      }`}
-                    >
-                      {job.status}
-                    </td>
-                    <td className="py-1 pr-3 whitespace-nowrap text-[var(--color-muted)]">
-                      {formatStamp(job.requested_at)}
-                    </td>
-                    <td className="py-1 pr-3 whitespace-nowrap text-[var(--color-muted)]">
-                      {formatStamp(job.finished_at)}
-                    </td>
-                    <td className="py-1">
-                      {job.error ? (
-                        <span className="text-red-300">{job.error}</span>
-                      ) : (
-                        <span className="text-[var(--color-muted)]">{job.result ?? "—"}</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-                {(jobs.data?.jobs ?? []).length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="py-2 text-[var(--color-muted)]">
-                      No jobs yet.
-                    </td>
-                  </tr>
-                ) : null}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <JobHistory />
       </SubSection>
     </Section>
   );
