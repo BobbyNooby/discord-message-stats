@@ -1,9 +1,9 @@
 import { EmptyState, Panel } from "../components/Panel";
 import { EChart } from "../lib/echart";
+import { globalEmpty, emptyFor } from "../lib/empty";
 import { fmt } from "../lib/format";
 import {
   reactionColor,
-  globalEmpty,
   horizontalBarsOption,
   pairCount,
   pairRows,
@@ -19,7 +19,7 @@ const TITLE = "Reactions";
 export function Reactions({ payload, filters: fallbackFilters }: MediaPanelProps & WithPanelId) {
   const filters = usePanelFilters("reactions", fallbackFilters);
   const rows = pairRows(payload.reactions, 14);
-  const blank = globalEmpty(payload, filters) ?? (rows.length ? null : "No reactions yet — ingest, or upload a database from the Admin board.");
+  const blank = globalEmpty(payload, filters) ?? (rows.length ? null : emptyFor("reactions"));
 
   return (
     <Panel

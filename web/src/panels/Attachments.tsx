@@ -1,9 +1,9 @@
 import { EmptyState, Panel } from "../components/Panel";
 import { EChart } from "../lib/echart";
+import { globalEmpty, emptyFor } from "../lib/empty";
 import { fmt } from "../lib/format";
 import {
   attachColor,
-  globalEmpty,
   horizontalBarsOption,
   pairCount,
   pairRows,
@@ -19,7 +19,7 @@ const TITLE = "What gets attached";
 export function Attachments({ payload, filters: fallbackFilters }: MediaPanelProps & WithPanelId) {
   const filters = usePanelFilters("what-gets-attached", fallbackFilters);
   const rows = pairRows(payload.attachments, 8);
-  const blank = globalEmpty(payload, filters) ?? (rows.length ? null : "No attachments yet — ingest, or upload a database from the Admin board.");
+  const blank = globalEmpty(payload, filters) ?? (rows.length ? null : emptyFor("attachments"));
 
   return (
     <Panel

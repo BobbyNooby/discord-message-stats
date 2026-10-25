@@ -6,6 +6,7 @@ import type { Payload } from "../api/types";
 import { EmptyState, Panel } from "../components/Panel";
 import type { Filters } from "../filters/reducer";
 import { EChart } from "../lib/echart";
+import { EMPTY_AUTHORS, noAuthorsSelected } from "../lib/empty";
 import { fmt } from "../lib/format";
 import { swatch } from "../lib/palette";
 import { authorIndexById, monthLabel, MonthlyBars, monthlyStacks } from "./MonthlyBars";
@@ -98,8 +99,7 @@ export function WhoSaysIt({
   // The bars honour the author selection, so the total has to as well or the
   // subtitle would disagree with the chart beside it.
   const total = useMemo(() => rows.reduce((sum, row) => sum + row.value, 0), [rows]);
-  const allOff =
-    payload.authors.length > 0 && filters.active.length > 0 && !filters.active.some(Boolean);
+  const allOff = noAuthorsSelected(payload, filters);
 
   const option = useMemo<EChartsOption>(
     () => ({
@@ -171,7 +171,7 @@ export function WhoSaysIt({
               : OUTSIDE_SLICE}
         </EmptyState>
       ) : allOff ? (
-        <EmptyState>No authors selected — switch one back on in the filters.</EmptyState>
+        <EmptyState>{EMPTY_AUTHORS}</EmptyState>
       ) : !rows.length ? (
         <EmptyState>None of the selected authors use this word.</EmptyState>
       ) : (

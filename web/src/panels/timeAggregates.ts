@@ -1,7 +1,6 @@
 import { C_AUTHOR, C_DAY, C_MSGS, type Payload } from "../api/types";
 import type { Filters } from "../filters/reducer";
 import { bucketOf, selectVisibleCells } from "../filters/selectors";
-import { EMPTY_AUTHORS, EMPTY_DATABASE, EMPTY_FILTER } from "../lib/empty";
 import { swatch } from "../lib/palette";
 
 /**
@@ -31,23 +30,6 @@ export function bucketCountLabel(count: number, bucket: Filters["bucket"]): stri
 
 export function yearCountLabel(count: number): string {
   return `${count} ${count === 1 ? "year" : "years"}`;
-}
-
-/**
- * "All authors off" is not the same as "no data": one is a filter the reader
- * can undo, the other is an empty database. The panels say which (§11.2).
- */
-export function noAuthorsSelected(payload: Payload, filters: Filters): boolean {
-  return (
-    payload.authors.length > 0 &&
-    filters.active.length > 0 &&
-    !filters.active.some(Boolean)
-  );
-}
-
-export function emptyLabel(payload: Payload, filters: Filters): string {
-  if (!payload.cells?.length) return EMPTY_DATABASE;
-  return noAuthorsSelected(payload, filters) ? EMPTY_AUTHORS : EMPTY_FILTER;
 }
 
 /** Author indices the filters leave visible, in payload order. */

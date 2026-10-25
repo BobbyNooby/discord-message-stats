@@ -3,6 +3,7 @@ import { EmptyState, Panel } from "../components/Panel";
 import type { Filters } from "../filters/reducer";
 import { TERMS } from "../lib/glossary";
 import { EChart } from "../lib/echart";
+import { emptyFor } from "../lib/empty";
 import { dur, fmt } from "../lib/format";
 import { hbarOption, responseRows, weightedAverage } from "./people";
 import { usePanelFilters } from "./panelScope";
@@ -15,7 +16,7 @@ export function ResponseTime({ payload, filters: fallbackFilters }: { panelId?: 
   if (!rows.length) {
     return (
       <Panel title="How fast people reply">
-        <EmptyState>No reply latencies yet — ingest, or upload a database from the Admin board.</EmptyState>
+        <EmptyState>{emptyFor("reply latencies")}</EmptyState>
       </Panel>
     );
   }

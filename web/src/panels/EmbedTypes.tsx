@@ -1,5 +1,6 @@
 import { EmptyState, Panel } from "../components/Panel";
 import { EChart } from "../lib/echart";
+import { emptyFor } from "../lib/empty";
 import { fmt } from "../lib/format";
 import { swatch } from "../lib/palette";
 import type { Payload } from "../api/types";
@@ -32,7 +33,7 @@ export function EmbedTypes({ payload, }: { panelId?: string; payload: Payload; f
       }
     >
       {!rows.length ? (
-        <EmptyState>No embeds yet — ingest, or upload a database from the Admin board.</EmptyState>
+        <EmptyState>{emptyFor("embeds")}</EmptyState>
       ) : shape === "pie" ? (
         <EChart option={pieOption(foldPie(rows), "embeds")} height={340} />
       ) : (

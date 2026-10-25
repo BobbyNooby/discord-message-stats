@@ -2,10 +2,11 @@ import type { EChartsOption } from "echarts";
 
 import { EmptyState, Panel } from "../components/Panel";
 import { EChart } from "../lib/echart";
+import { emptyLabel } from "../lib/empty";
 import { fmt } from "../lib/format";
 import { chartHeat, chartHeatEdge, token } from "../lib/palette";
 import { hourLabel, timeFormatOf } from "../lib/timeFormat";
-import { DOW, TOOLTIP, emptyLabel, heatGrid, type PanelProps } from "./timeAggregates";
+import { DOW, TOOLTIP, heatGrid, type PanelProps } from "./timeAggregates";
 import type { WithPanelId } from "./panelScope";
 import { usePanelFilters } from "./panelScope";
 

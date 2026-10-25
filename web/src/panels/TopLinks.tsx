@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import type { Payload } from "../api/types";
 import { EmptyState, Panel } from "../components/Panel";
 import { EChart } from "../lib/echart";
+import { emptyFor } from "../lib/empty";
 import { fmt, kfmt } from "../lib/format";
 import { swatch } from "../lib/palette";
 import type { Filters } from "../filters/reducer";
@@ -74,7 +75,7 @@ export function TopLinks({ payload, }: { panelId?: string; payload: Payload; fil
       subtitle="normalised · query strings and fragments stripped"
     >
       {!rows.length ? (
-        <EmptyState>No links yet — ingest, or upload a database from the Admin board.</EmptyState>
+        <EmptyState>{emptyFor("links")}</EmptyState>
       ) : (
         <EChart option={option} height={340} />
       )}

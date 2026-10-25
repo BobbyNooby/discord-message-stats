@@ -2,6 +2,7 @@ import type { Payload } from "../api/types";
 import { EmptyState, Panel } from "../components/Panel";
 import type { Filters } from "../filters/reducer";
 import { EChart } from "../lib/echart";
+import { emptyFor } from "../lib/empty";
 import { fmt, kfmt } from "../lib/format";
 import { hbarOption, starterRows } from "./people";
 import { usePanelFilters } from "./panelScope";
@@ -14,7 +15,7 @@ export function Starters({ payload, filters: fallbackFilters }: { panelId?: stri
   if (!rows.length) {
     return (
       <Panel title="Who starts conversations">
-        <EmptyState>No conversation starts yet — ingest, or upload a database from the Admin board.</EmptyState>
+        <EmptyState>{emptyFor("conversation starts")}</EmptyState>
       </Panel>
     );
   }

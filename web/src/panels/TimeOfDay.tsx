@@ -4,10 +4,11 @@ import type { EChartsOption } from "echarts";
 import { Chip } from "../components/AppShell";
 import { EmptyState, Panel } from "../components/Panel";
 import { EChart } from "../lib/echart";
+import { emptyLabel } from "../lib/empty";
 import { fmt, kfmt } from "../lib/format";
 import { chartAxisDim, chartPeak, swatch, token } from "../lib/palette";
 import { hourLabel, timeFormatOf } from "../lib/timeFormat";
-import { TOOLTIP, byHour, emptyLabel, heatGrid, type PanelProps } from "./timeAggregates";
+import { TOOLTIP, byHour, heatGrid, type PanelProps } from "./timeAggregates";
 import type { WithPanelId } from "./panelScope";
 import { usePanelFilters } from "./panelScope";
 

@@ -4,9 +4,10 @@ import type { EChartsOption } from "echarts";
 import { EmptyState, Panel } from "../components/Panel";
 import { selectVisibleCells } from "../filters/selectors";
 import { EChart } from "../lib/echart";
+import { emptyLabel } from "../lib/empty";
 import { fmt, kfmt } from "../lib/format";
 import { swatch } from "../lib/palette";
-import { AXIS, MON, TOOLTIP, emptyLabel, type PanelProps } from "./timeAggregates";
+import { AXIS, MON, TOOLTIP, type PanelProps } from "./timeAggregates";
 import type { WithPanelId } from "./panelScope";
 import { usePanelFilters } from "./panelScope";
 

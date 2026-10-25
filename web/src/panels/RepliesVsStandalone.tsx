@@ -1,5 +1,6 @@
 import { EmptyState, Panel } from "../components/Panel";
 import { EChart } from "../lib/echart";
+import { EMPTY_FILTER } from "../lib/empty";
 import { fmt, pctOf } from "../lib/format";
 import {
   REMAINDER_COLOR,
@@ -21,7 +22,7 @@ export function RepliesVsStandalone({ payload, filters: fallbackFilters }: Media
   const shape = useChartShape("replies-vs-standalone");
   const { cells, empty } = mediaCells(payload, filters);
   const { replies, standalone, total } = replyShare(cells);
-  const blank = empty ?? (total > 0 ? null : "No messages match the active filters — widen the time range, or switch an author back on.");
+  const blank = empty ?? (total > 0 ? null : EMPTY_FILTER);
   // Two parts that add up to every filtered message: a nameable whole.
   const rows = [
     { name: "replies", value: replies, color: replyColor() },

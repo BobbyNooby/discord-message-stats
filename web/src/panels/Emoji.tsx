@@ -1,9 +1,9 @@
 import { EmptyState, Panel } from "../components/Panel";
 import { EChart } from "../lib/echart";
+import { globalEmpty, emptyFor } from "../lib/empty";
 import { fmt } from "../lib/format";
 import {
   emojiColor,
-  globalEmpty,
   horizontalBarsOption,
   pairCount,
   pairRows,
@@ -19,7 +19,7 @@ const TITLE = "Emoji in text";
 export function Emoji({ payload, filters: fallbackFilters }: MediaPanelProps & WithPanelId) {
   const filters = usePanelFilters("emoji-in-text", fallbackFilters);
   const rows = pairRows(payload.emoji, 14);
-  const blank = globalEmpty(payload, filters) ?? (rows.length ? null : "No emoji yet — ingest, or upload a database from the Admin board.");
+  const blank = globalEmpty(payload, filters) ?? (rows.length ? null : emptyFor("emoji"));
 
   return (
     <Panel

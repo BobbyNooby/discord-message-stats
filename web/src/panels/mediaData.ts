@@ -22,7 +22,7 @@ import {
 } from "../api/types";
 import type { Filters } from "../filters/reducer";
 import { selectVisibleCells } from "../filters/selectors";
-import { EMPTY_AUTHORS, EMPTY_DATABASE, EMPTY_FILTER } from "../lib/empty";
+import { emptyLabel } from "../lib/empty";
 import { fmt, kfmt } from "../lib/format";
 import { swatch } from "../lib/palette";
 
@@ -119,11 +119,6 @@ export function healthGauges(cells: Cell[]): Gauge[] {
   ];
 }
 
-/** No author is switched on (used before the payload arrives, when nobody can be off). */
-function authorFilterIsEmpty(filters: Filters): boolean {
-  return filters.active.length > 0 && !filters.active.some(Boolean);
-}
-
 /**
  * The cells a cell-backed panel may use, plus the reason to render an empty
  * state instead. One function, so no panel invents its own idea of "empty".
@@ -132,27 +127,8 @@ export function mediaCells(
   payload: Payload,
   filters: Filters,
 ): { cells: Cell[]; empty: string | null } {
-  if (!payload.cells?.length) return { cells: [], empty: EMPTY_DATABASE };
-  const cells = selectVisibleCells(payload, filters);
-  if (!cells.length) {
-    return {
-      cells: [],
-      empty: authorFilterIsEmpty(filters) ? EMPTY_AUTHORS : EMPTY_FILTER,
-    };
-  }
-  return { cells, empty: null };
-}
-
-/**
- * The panels with no date dimension still honour the author switch, because
- * showing global bars while every chip is off would be the silent-filter
- * failure §11.2 warns about. A time filter never empties them: they keep their
- * numbers, and the section note names them once.
- */
-export function globalEmpty(payload: Payload, filters: Filters): string | null {
-  if (!payload.cells?.length) return EMPTY_DATABASE;
-  if (authorFilterIsEmpty(filters)) return EMPTY_AUTHORS;
-  return null;
+  const cells = payload.cells?.length ? selectVisibleCells(payload, filters) : [];
+  return cells.length ? { cells, empty: null } : { cells: [], empty: emptyLabel(payload, filters) };
 }
 
 /* ---------- the global arrays: types, attachments, emoji, reactions ---------- */

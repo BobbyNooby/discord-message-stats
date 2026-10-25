@@ -4,6 +4,7 @@ import type { Payload } from "../api/types";
 import { EmptyState, Panel } from "../components/Panel";
 import type { Filters } from "../filters/reducer";
 import { EChart } from "../lib/echart";
+import { EMPTY_AUTHORS } from "../lib/empty";
 import { fmt } from "../lib/format";
 import { AXIS_LINE, AXIS_TEXT, matrixData, TOOLTIP } from "./people";
 import { usePanelFilters } from "./panelScope";
@@ -37,7 +38,7 @@ export function ReplyMatrix({
   if (!matrix.k) {
     return (
       <Panel title="Reply matrix" className={className}>
-        <EmptyState>No authors selected — switch one back on in the filters.</EmptyState>
+        <EmptyState>{EMPTY_AUTHORS}</EmptyState>
       </Panel>
     );
   }

@@ -1,5 +1,6 @@
 import { EmptyState, Panel } from "../components/Panel";
 import { EChart } from "../lib/echart";
+import { emptyFor } from "../lib/empty";
 import { fmt } from "../lib/format";
 import { providerLabel } from "../lib/mediaLabels";
 import { swatch } from "../lib/palette";
@@ -52,7 +53,7 @@ export function Providers({ payload, filters }: { panelId?: string; payload: Pay
       subtitle={`who Discord unfurled · ${fmt(total)} embeds from ${scope}`}
     >
       {!rows.length ? (
-        <EmptyState>No embeds yet — ingest, or upload a database from the Admin board.</EmptyState>
+        <EmptyState>{emptyFor("embeds")}</EmptyState>
       ) : (
         <EChart option={horizontalBarsOption(rows, swatch(0), 11)} height={340} />
       )}

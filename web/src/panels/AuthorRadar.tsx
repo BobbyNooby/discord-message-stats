@@ -4,6 +4,7 @@ import type { Payload } from "../api/types";
 import { EmptyState, Panel } from "../components/Panel";
 import type { Filters } from "../filters/reducer";
 import { EChart } from "../lib/echart";
+import { EMPTY_FILTER } from "../lib/empty";
 import { swatch } from "../lib/palette";
 import { AXIS_TEXT, RADAR_TRAITS, radarData, TOOLTIP } from "./people";
 import { usePanelFilters } from "./panelScope";
@@ -21,7 +22,7 @@ export function AuthorRadar({ payload, filters: fallbackFilters }: { panelId?: s
   if (!radar.top.length) {
     return (
       <Panel title="Author profile">
-        <EmptyState>No messages match the active filters — widen the time range, or switch an author back on.</EmptyState>
+        <EmptyState>{EMPTY_FILTER}</EmptyState>
       </Panel>
     );
   }

@@ -7,6 +7,7 @@ import type { Payload } from "../api/types";
 import { EmptyState, Panel } from "../components/Panel";
 import type { Filters } from "../filters/reducer";
 import { EChart } from "../lib/echart";
+import { EMPTY_AUTHORS, emptyFor } from "../lib/empty";
 import { usePanelFilters } from "./panelScope";
 import { periodNote, periodPrefix, useWordView } from "./wordPeriod";
 
@@ -125,9 +126,9 @@ export function WordLift({ payload: full, filters: fallbackFilters }: { panelId?
       {note ? (
         <EmptyState>{note}</EmptyState>
       ) : !payload.words.length ? (
-        <EmptyState>No words yet — ingest, or upload a database from the Admin board.</EmptyState>
+        <EmptyState>{emptyFor("words")}</EmptyState>
       ) : !anyActive ? (
-        <EmptyState>No authors selected — switch one back on in the filters.</EmptyState>
+        <EmptyState>{EMPTY_AUTHORS}</EmptyState>
       ) : (
         <EChart option={option} height={430} />
       )}

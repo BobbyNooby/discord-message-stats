@@ -4,6 +4,7 @@ import type { Payload } from "../api/types";
 import { EmptyState, Panel } from "../components/Panel";
 import type { Filters } from "../filters/reducer";
 import { EChart } from "../lib/echart";
+import { EMPTY_AUTHORS } from "../lib/empty";
 import { fmt } from "../lib/format";
 import { swatch } from "../lib/palette";
 import { activeEdges, authorName, globalTotals, TOOLTIP } from "./people";
@@ -25,7 +26,7 @@ export function ReplyNetwork({ payload, filters: fallbackFilters }: { panelId?: 
   if (!nodes.length) {
     return (
       <Panel title="Who replies to whom">
-        <EmptyState>No authors selected — switch one back on in the filters.</EmptyState>
+        <EmptyState>{EMPTY_AUTHORS}</EmptyState>
       </Panel>
     );
   }

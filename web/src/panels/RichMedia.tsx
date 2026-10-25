@@ -7,6 +7,7 @@ import { useMedia } from "../api/queries";
 import { EmptyState, Panel, CARD_COLUMNS, SectionHeading } from "../components/Panel";
 import { SectionScopeNote } from "../components/SectionScopeNote";
 import { EChart } from "../lib/echart";
+import { emptyFor } from "../lib/empty";
 import { fmt } from "../lib/format";
 import { kindLabel, providerChoices, providerLabel } from "../lib/mediaLabels";
 import type { Filters } from "../filters/reducer";
@@ -218,7 +219,7 @@ export function RichMedia({ payload, filters }: { panelId?: string; payload: Pay
             <EmptyState>
               {hasScope
                 ? "No embeds in this filter — widen it, or browse them all."
-                : "No embeds yet — ingest, or upload a database from the Admin board."}
+                : emptyFor("embeds")}
             </EmptyState>
           ) : (
             <ol className="grid grid-cols-1 gap-3 md:grid-cols-2">
@@ -243,7 +244,7 @@ export function RichMedia({ payload, filters }: { panelId?: string; payload: Pay
         subtitle="Klipy and Tenor both appear because Discord switched"
       >
         {providers.length === 0 ? (
-          <EmptyState>No embeds yet — ingest, or upload a database from the Admin board.</EmptyState>
+          <EmptyState>{emptyFor("embeds")}</EmptyState>
         ) : (
           <EChart option={option} height={260} />
         )}

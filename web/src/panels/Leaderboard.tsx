@@ -2,6 +2,7 @@ import type { Payload } from "../api/types";
 import { EmptyState, Panel } from "../components/Panel";
 import type { Filters } from "../filters/reducer";
 import { EChart } from "../lib/echart";
+import { EMPTY_FILTER } from "../lib/empty";
 import { fmt, kfmt } from "../lib/format";
 import { hbarOption, leaderLabel, leaderRows } from "./people";
 import { usePanelFilters } from "./panelScope";
@@ -16,7 +17,7 @@ export function Leaderboard({ payload, filters: fallbackFilters }: { panelId?: s
   if (!rows.length) {
     return (
       <Panel title="Who talks the most" subtitle={label}>
-        <EmptyState>No messages match the active filters — widen the time range, or switch an author back on.</EmptyState>
+        <EmptyState>{EMPTY_FILTER}</EmptyState>
       </Panel>
     );
   }

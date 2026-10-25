@@ -4,6 +4,7 @@ import type { Payload } from "../api/types";
 import { EmptyState, Panel } from "../components/Panel";
 import type { Filters } from "../filters/reducer";
 import { EChart } from "../lib/echart";
+import { EMPTY_AUTHORS } from "../lib/empty";
 import { fmt, kfmt } from "../lib/format";
 import { swatch } from "../lib/palette";
 import { AXIS_TEXT, globalTotals, sendRecv, SPLIT_LINE, TOOLTIP } from "./people";
@@ -31,7 +32,7 @@ export function ReplyBalance({ payload, filters: fallbackFilters }: { panelId?: 
   if (!points.length) {
     return (
       <Panel title="Reply balance">
-        <EmptyState>No authors selected — switch one back on in the filters.</EmptyState>
+        <EmptyState>{EMPTY_AUTHORS}</EmptyState>
       </Panel>
     );
   }

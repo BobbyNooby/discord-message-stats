@@ -5,6 +5,7 @@ import { useWords, useWordSuggestions } from "../api/queries";
 import type { Payload } from "../api/types";
 import { EmptyState, Panel } from "../components/Panel";
 import { EChart } from "../lib/echart";
+import { emptyFor } from "../lib/empty";
 import { fmt, kfmt } from "../lib/format";
 import { chartPeak, chartTooltipBg, swatch, token } from "../lib/palette";
 import { WORD_SEARCH_ID } from "../lib/shortcuts";
@@ -218,7 +219,7 @@ export function WordIndex({ payload, selected, onSelect }: WordIndexProps) {
       ) : note && !needle ? (
         <EmptyState>{note}</EmptyState>
       ) : !needle ? (
-        <EmptyState>No indexed words yet — ingest, or upload a database from the Admin board.</EmptyState>
+        <EmptyState>{emptyFor("indexed words")}</EmptyState>
       ) : remote.isFetching ? (
         <EmptyState>Searching the full word index…</EmptyState>
       ) : found && found.total > 0 ? (

@@ -6,6 +6,7 @@ import { EmptyState, Panel } from "../components/Panel";
 import type { Filters } from "../filters/reducer";
 import { inRange } from "../filters/selectors";
 import { EChart } from "../lib/echart";
+import { EMPTY_AUTHORS, noAuthorsSelected } from "../lib/empty";
 import { fmt, kfmt } from "../lib/format";
 import { swatch } from "../lib/palette";
 import { usePanelFilters } from "./panelScope";
@@ -47,8 +48,7 @@ export function domainRows(
 export function LinkDomains({ payload, filters: fallbackFilters }: { panelId?: string; payload: Payload; filters?: Filters }) {
   const filters = usePanelFilters("where-the-chat-lives", fallbackFilters);
   const rows = useMemo(() => domainRows(payload, filters), [payload, filters]);
-  const allOff =
-    payload.authors.length > 0 && filters.active.length > 0 && !filters.active.some(Boolean);
+  const allOff = noAuthorsSelected(payload, filters);
 
   const option = useMemo<EChartsOption>(
     () => {
@@ -101,7 +101,7 @@ export function LinkDomains({ payload, filters: fallbackFilters }: { panelId?: s
       {!rows.length ? (
         <EmptyState>
           {allOff
-            ? "No authors selected — switch one back on in the filters."
+            ? EMPTY_AUTHORS
             : "No links match the active filters — widen the time range, or switch an author back on."}
         </EmptyState>
       ) : (

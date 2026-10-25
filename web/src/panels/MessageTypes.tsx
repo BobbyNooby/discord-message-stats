@@ -1,15 +1,10 @@
 import { EmptyState, Panel } from "../components/Panel";
 import { EChart } from "../lib/echart";
+import { globalEmpty } from "../lib/empty";
 import { fmt } from "../lib/format";
 import { swatch } from "../lib/palette";
 import { foldPie, pieNote, pieOption } from "./chartShape";
-import {
-  allTypeRows,
-  globalEmpty,
-  horizontalBarsOption,
-  sumRows,
-  type MediaPanelProps,
-} from "./mediaData";
+import { allTypeRows, horizontalBarsOption, sumRows, type MediaPanelProps } from "./mediaData";
 import type { WithPanelId } from "./panelScope";
 import { useChartShape, usePanelFilters } from "./panelScope";
 
