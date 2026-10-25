@@ -122,6 +122,15 @@ describe("<AppShell>", () => {
     expect(queryByRole("link", { name: "Admin" })).toBeNull();
   });
 
+  it("offers a way to sign out to every signed-in reader", () => {
+    const { getByRole } = render(
+      <AppShell sidebar={<p>filters</p>} header={<span>range</span>}>
+        <p>charts</p>
+      </AppShell>,
+    );
+    expect(getByRole("link", { name: "Sign out" })).toHaveAttribute("href", "/auth/logout");
+  });
+
   it("opens the filters as a dismissable drawer on a phone", async () => {
     window.innerWidth = 390;
     const { getByRole, queryByRole } = render(

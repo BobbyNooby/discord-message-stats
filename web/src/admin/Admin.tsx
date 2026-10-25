@@ -147,6 +147,9 @@ export function Admin() {
           <a className="underline" href="/">
             Back to the stats page
           </a>
+          <a className="underline" href="/auth/logout">
+            Sign out
+          </a>
           <button
             type="button"
             onClick={refresh}

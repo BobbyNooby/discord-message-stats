@@ -270,6 +270,7 @@ describe("<Admin>", () => {
     renderAdmin();
 
     const nav = await screen.findByRole("navigation", { name: /admin tasks/i });
+    expect(screen.getByRole("link", { name: "Sign out" })).toHaveAttribute("href", "/auth/logout");
     for (const label of [
       "Fix the data",
       "Refresh the cache",

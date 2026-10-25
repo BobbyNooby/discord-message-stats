@@ -133,6 +133,10 @@ export function AppShell({
                 Admin
               </a>
             ) : null}
+            {/* Ends this browser's session on the server, not only the cookie. */}
+            <a href="/auth/logout" className="underline">
+              Sign out
+            </a>
           </div>
         </header>
         {children}
