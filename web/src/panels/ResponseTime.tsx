@@ -7,8 +7,9 @@ import { TERMS } from "../lib/glossary";
 import { EChart } from "../lib/echart";
 import { emptyFor } from "../lib/empty";
 import { dur, fmt } from "../lib/format";
-import { hbarOption, responseRows, weightedAverage } from "./people";
+import { responseRows, weightedAverage } from "../selectors/people";
 import { usePanelFilters } from "./panelScope";
+import { hbarOption } from "../charts/bars";
 
 /** "How fast people reply" — `rollup_response`, so the time filter cannot apply. */
 export function ResponseTime({ payload, filters: fallbackFilters }: { panelId?: string; payload: Payload; filters?: Filters }) {

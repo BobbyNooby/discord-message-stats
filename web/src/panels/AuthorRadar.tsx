@@ -8,7 +8,7 @@ import { tooltip } from "../lib/chartStyle";
 import { EChart } from "../lib/echart";
 import { EMPTY_FILTER } from "../lib/empty";
 import { swatch, token } from "../lib/palette";
-import { RADAR_TRAITS, radarData, type RadarData } from "./people";
+import { RADAR_TRAITS, radarData, type RadarData } from "../selectors/people";
 import { usePanelFilters } from "./panelScope";
 
 function radarOption(radar: RadarData): EChartsOption {

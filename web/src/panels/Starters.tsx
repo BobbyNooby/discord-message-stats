@@ -6,8 +6,9 @@ import type { Filters } from "../filters/reducer";
 import { EChart } from "../lib/echart";
 import { emptyFor } from "../lib/empty";
 import { fmt, kfmt } from "../lib/format";
-import { hbarOption, starterRows } from "./people";
+import { starterRows } from "../selectors/people";
 import { usePanelFilters } from "./panelScope";
+import { hbarOption } from "../charts/bars";
 
 /** "Who starts conversations" — `rollup_starter`, so the time filter cannot apply. */
 export function Starters({ payload, filters: fallbackFilters }: { panelId?: string; payload: Payload; filters?: Filters }) {

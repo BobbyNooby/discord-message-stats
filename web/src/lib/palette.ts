@@ -97,3 +97,10 @@ export function token(name: ThemeToken): string {
 export function ramp(name: "--chart-heat" | "--chart-matrix" | "--chart-lift"): string[] {
   return [1, 2, 3, 4, 5].map((step) => token(`${name}-${step}` as ThemeToken));
 }
+
+/** Lighten a swatch for a nested treemap tile — the mockup's `tint`. */
+export function tint(hex: string, amount: number): string {
+  const n = Number.parseInt(hex.slice(1), 16);
+  const mix = (channel: number) => Math.round(channel + (255 - channel) * amount);
+  return `rgb(${mix((n >> 16) & 255)},${mix((n >> 8) & 255)},${mix(n & 255)})`;
+}

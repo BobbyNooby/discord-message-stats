@@ -9,29 +9,10 @@ import { EChart } from "../lib/echart";
 import { EMPTY_AUTHORS } from "../lib/empty";
 import { fmt } from "../lib/format";
 import { swatch, token } from "../lib/palette";
-import { activeEdges, authorName, globalTotals } from "./people";
 import { usePanelFilters } from "./panelScope";
+import { replyNetwork, type Network } from "../selectors/people";
 
-type Network = {
-  nodes: { name: string; index: number; msgs: number }[];
-  links: { source: string; target: string; value: number }[];
-  replies: number;
-};
 
-/** The switched-on authors as nodes, sized by their date-less totals, and every reply pair between them. */
-function replyNetwork(payload: Payload, filters: Filters): Network {
-  const edges = activeEdges(payload, filters);
-  const totals = globalTotals(payload, filters);
-  const nodes = payload.authors
-    .map((author, index) => ({ name: author.name, index, msgs: totals[index]?.msgs ?? 0 }))
-    .filter((node) => filters.active[node.index] !== false);
-  const links = edges.map(([from, to, msgs]) => ({
-    source: authorName(payload, from),
-    target: authorName(payload, to),
-    value: msgs,
-  }));
-  return { nodes, links, replies: edges.reduce((sum, edge) => sum + edge[2], 0) };
-}
 
 function networkOption({ nodes, links }: Network): EChartsOption {
   return {

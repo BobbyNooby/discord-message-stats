@@ -8,7 +8,7 @@ import { axisLabel, axisLine, splitLine, tooltip } from "../lib/chartStyle";
 import { EChart } from "../lib/echart";
 import { fmt, kfmt } from "../lib/format";
 import { token } from "../lib/palette";
-import { burstiness, quantile, type Burst } from "./people";
+import { burstiness, quantile, type Burst } from "../selectors/people";
 import { usePanelFilters } from "./panelScope";
 
 function burstOption(bursts: Burst[]): EChartsOption {

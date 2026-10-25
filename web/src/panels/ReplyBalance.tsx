@@ -9,28 +9,12 @@ import { EChart } from "../lib/echart";
 import { EMPTY_AUTHORS } from "../lib/empty";
 import { fmt, kfmt } from "../lib/format";
 import { swatch, token } from "../lib/palette";
-import { globalTotals, sendRecv } from "./people";
 import { usePanelFilters } from "./panelScope";
+import { replyBalance, type BalancePoint } from "../selectors/people";
 
-type Point = { index: number; name: string; msgs: number; sent: number; received: number };
 
-/** Replies each switched-on author sent and received; authors with no messages are left out. */
-function replyBalance(payload: Payload, filters: Filters): { points: Point[]; total: number } {
-  const balance = sendRecv(payload, filters);
-  const totals = globalTotals(payload, filters);
-  const points = payload.authors
-    .map((author, index) => ({
-      index,
-      name: author.name,
-      msgs: totals[index]?.msgs ?? 0,
-      sent: balance.sent[index] ?? 0,
-      received: balance.received[index] ?? 0,
-    }))
-    .filter((point) => filters.active[point.index] !== false && point.msgs > 0);
-  return { points, total: balance.total };
-}
 
-function balanceOption(points: Point[]): EChartsOption {
+function balanceOption(points: BalancePoint[]): EChartsOption {
   let max = 1;
   for (const point of points) max = Math.max(max, point.sent, point.received);
   const axis = max * 1.12;

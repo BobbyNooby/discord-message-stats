@@ -1,7 +1,7 @@
 /**
- * The People section's aggregation and option building, kept out of the
- * components so the numbers can be tested without a DOM (§11.2: every panel is
- * a pure function of `(payload, filters)`).
+ * The People section's numbers, kept out of the components so they can be
+ * tested without a DOM (§11.2: every panel is a pure function of
+ * `(payload, filters)`).
  *
  * Four of the rollups behind these panels — `rollup_reply`, `rollup_response`,
  * `rollup_starter`, `rollup_edit_speed` — have no date column. They are read
@@ -10,8 +10,6 @@
  * cards once so a filtered page never shows an unfiltered number without saying
  * so.
  */
-import type { EChartsOption } from "echarts";
-
 import {
   C_AUTHOR,
   C_CHARS,
@@ -24,10 +22,7 @@ import {
   type Payload,
 } from "../api/types";
 import type { Filters } from "../filters/reducer";
-import { bucketOf, selectAuthors, selectVisibleCells } from "../selectors/cells";
-import { axisLabel, axisLine, splitLine, tooltip } from "../lib/chartStyle";
-import { kfmt } from "../lib/format";
-import { swatch, token } from "../lib/palette";
+import { bucketOf, selectAuthors, selectVisibleCells } from "./cells";
 
 export type Row = { index: number; name: string; value: number; n: number };
 
@@ -154,6 +149,47 @@ export function sendRecv(payload: Payload, filters: Filters): Balance {
   return { sent, received, total };
 }
 
+export type BalancePoint = { index: number; name: string; msgs: number; sent: number; received: number };
+
+/** Replies each switched-on author sent and received; authors with no messages are left out. */
+export function replyBalance(payload: Payload, filters: Filters): { points: BalancePoint[]; total: number } {
+  const balance = sendRecv(payload, filters);
+  const totals = globalTotals(payload, filters);
+  const points = payload.authors
+    .map((author, index) => ({
+      index,
+      name: author.name,
+      msgs: totals[index]?.msgs ?? 0,
+      sent: balance.sent[index] ?? 0,
+      received: balance.received[index] ?? 0,
+    }))
+    .filter((point) => filters.active[point.index] !== false && point.msgs > 0);
+  return { points, total: balance.total };
+}
+
+/* ---------- who replies to whom ---------- */
+
+export type Network = {
+  nodes: { name: string; index: number; msgs: number }[];
+  links: { source: string; target: string; value: number }[];
+  replies: number;
+};
+
+/** The switched-on authors as nodes, sized by their date-less totals, and every reply pair between them. */
+export function replyNetwork(payload: Payload, filters: Filters): Network {
+  const edges = activeEdges(payload, filters);
+  const totals = globalTotals(payload, filters);
+  const nodes = payload.authors
+    .map((author, index) => ({ name: author.name, index, msgs: totals[index]?.msgs ?? 0 }))
+    .filter((node) => filters.active[node.index] !== false);
+  const links = edges.map(([from, to, msgs]) => ({
+    source: authorName(payload, from),
+    target: authorName(payload, to),
+    value: msgs,
+  }));
+  return { nodes, links, replies: edges.reduce((sum, edge) => sum + edge[2], 0) };
+}
+
 /* ---------- how fast people reply / who starts ---------- */
 
 export function responseRows(payload: Payload, filters: Filters): Row[] {
@@ -270,13 +306,6 @@ export function treemapData(payload: Payload, filters: Filters): TreemapNode[] {
     .sort((a, b) => b.total - a.total);
 }
 
-/** Lighten a swatch for a nested treemap tile — the mockup's `tint`. */
-export function tint(hex: string, amount: number): string {
-  const n = Number.parseInt(hex.slice(1), 16);
-  const mix = (channel: number) => Math.round(channel + (255 - channel) * amount);
-  return `rgb(${mix((n >> 16) & 255)},${mix((n >> 8) & 255)},${mix(n & 255)})`;
-}
-
 /* ---------- burstiness ---------- */
 
 export function quantile(sorted: number[], p: number): number {
@@ -369,59 +398,5 @@ export function editTrend(payload: Payload, filters: Filters): EditTrend {
     pct,
     overall: messages ? Number(((100 * edits) / messages).toFixed(2)) : 0,
     messages,
-  };
-}
-
-/* ---------- the shared horizontal bar ---------- */
-
-export type BarOptions = {
-  axis?: (value: number) => string;
-  label?: (row: Row) => string;
-  tooltip?: (row: Row) => string;
-};
-
-/** The mockup's `hbar`: sorted shortest-first so the longest bar reads top. */
-export function hbarOption(rows: Row[], options: BarOptions = {}): EChartsOption {
-  const sorted = [...rows].sort((a, b) => a.value - b.value);
-  const axis = options.axis ?? kfmt;
-  const label = options.label ?? ((row: Row) => axis(row.value));
-  return {
-    tooltip: {
-      ...tooltip(),
-      formatter: (params: any) => {
-        const row = sorted[params.dataIndex];
-        return options.tooltip ? options.tooltip(row) : `${row.name}<br><b>${axis(row.value)}</b>`;
-      },
-    },
-    grid: { left: 6, right: 56, top: 8, bottom: 8, containLabel: true },
-    xAxis: {
-      type: "value",
-      axisLabel: { ...axisLabel(10.5), formatter: (value: number) => axis(value) },
-      splitLine: splitLine(),
-    },
-    yAxis: {
-      type: "category",
-      data: sorted.map((row) => row.name),
-      axisLabel: axisLabel(10.5),
-      axisLine: axisLine(),
-      axisTick: { show: false },
-    },
-    series: [
-      {
-        type: "bar",
-        barWidth: "62%",
-        data: sorted.map((row) => ({
-          value: row.value,
-          itemStyle: { color: swatch(row.index), borderRadius: [0, 4, 4, 0] },
-        })),
-        label: {
-          show: true,
-          position: "right",
-          color: token("--color-muted"),
-          fontSize: 10,
-          formatter: (params: any) => label(sorted[params.dataIndex]),
-        },
-      },
-    ],
   };
 }

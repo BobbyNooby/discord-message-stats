@@ -12,13 +12,13 @@ import { swatch } from "../lib/palette";
 import {
   editRateRows,
   editTrend,
-  hbarOption,
   weightedAverage,
   type EditMetric,
   type EditTrend,
   type Row,
-} from "./people";
+} from "../selectors/people";
 import { usePanelFilters } from "./panelScope";
+import { hbarOption } from "../charts/bars";
 
 const TITLE = "Who proofreads";
 

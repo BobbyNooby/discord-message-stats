@@ -6,8 +6,9 @@ import type { Filters } from "../filters/reducer";
 import { EChart } from "../lib/echart";
 import { EMPTY_FILTER } from "../lib/empty";
 import { fmt, kfmt } from "../lib/format";
-import { hbarOption, leaderLabel, leaderRows } from "./people";
+import { leaderLabel, leaderRows } from "../selectors/people";
 import { usePanelFilters } from "./panelScope";
+import { hbarOption } from "../charts/bars";
 
 /**
  * "Who writes the most" — the same activity cells as "Who talks the most", ranked

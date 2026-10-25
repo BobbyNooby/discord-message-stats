@@ -9,7 +9,7 @@ import { EChart } from "../lib/echart";
 import { EMPTY_AUTHORS } from "../lib/empty";
 import { fmt } from "../lib/format";
 import { ramp, token } from "../lib/palette";
-import { matrixData, type Matrix } from "./people";
+import { matrixData, type Matrix } from "../selectors/people";
 import { usePanelFilters } from "./panelScope";
 
 /** The legend's steps, busiest first; read at draw time so a theme reaches them. */

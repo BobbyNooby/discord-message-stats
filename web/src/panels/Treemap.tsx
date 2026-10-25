@@ -7,8 +7,8 @@ import type { Filters } from "../filters/reducer";
 import { tooltip } from "../lib/chartStyle";
 import { EChart } from "../lib/echart";
 import { fmt } from "../lib/format";
-import { swatch, token } from "../lib/palette";
-import { tint, treemapData, type TreemapNode } from "./people";
+import { swatch, tint, token } from "../lib/palette";
+import { treemapData, type TreemapNode } from "../selectors/people";
 import { usePanelFilters } from "./panelScope";
 
 function treemapOption(nodes: TreemapNode[]): EChartsOption {

@@ -6,8 +6,9 @@ import type { Filters } from "../filters/reducer";
 import { EChart } from "../lib/echart";
 import { EMPTY_FILTER } from "../lib/empty";
 import { fmt, kfmt } from "../lib/format";
-import { hbarOption, leaderLabel, leaderRows } from "./people";
+import { leaderLabel, leaderRows } from "../selectors/people";
 import { usePanelFilters } from "./panelScope";
+import { hbarOption } from "../charts/bars";
 
 /** "Who talks the most" — cells, so it honours the time filter (§11.1). Its
  *  twin, "Who writes the most", ranks the same cells by characters. */

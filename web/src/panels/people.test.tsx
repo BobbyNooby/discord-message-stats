@@ -10,7 +10,7 @@ import { PeopleSection } from "./PeopleSection";
 import { ReplyMatrix } from "./ReplyMatrix";
 import { ResponseTime } from "./ResponseTime";
 import { WhoWrites } from "./WhoWrites";
-import { matrixData } from "./people";
+import { matrixData } from "../selectors/people";
 import { charts } from "../test/echarts";
 
 /**
