@@ -18,14 +18,14 @@ import sqlite3
 from datetime import datetime
 from typing import Any
 
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Query, Request
 
 from discord_stats.api.deps import connect
-from discord_stats.auth.session import require_admin
 from discord_scraper.config import Config
 from discord_scraper.rollups.schema import FAMILIES
 
-router = APIRouter(prefix="/api/admin", dependencies=[Depends(require_admin)])
+# Mounted under /api/admin, behind require_admin, by the package's router.
+router = APIRouter()
 
 # The client asks for what is new; this bounds what a first load can return.
 LOG_CAP = 200

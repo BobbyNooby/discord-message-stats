@@ -11,7 +11,7 @@ import sqlite3
 
 import pytest
 
-import discord_stats.api.admin as admin
+from discord_scraper.scraper import api as discord_api
 
 USER_BODY = {"id": "42", "username": "scraper", "global_name": "Scraper", "avatar": "abc"}
 CHANNEL_BODY = {"id": "c1", "name": "general"}
@@ -30,9 +30,9 @@ OPS = (
 
 
 def _mock(monkeypatch, *, user=(200, USER_BODY, None), channel=(200, CHANNEL_BODY, None)):
-    monkeypatch.setattr(admin.discord_api, "get_current_user",
+    monkeypatch.setattr(discord_api, "get_current_user",
                         lambda token, timeout=10.0: user)
-    monkeypatch.setattr(admin.discord_api, "get_channel",
+    monkeypatch.setattr(discord_api, "get_channel",
                         lambda token, channel_id, timeout=10.0: channel)
 
 
@@ -78,9 +78,9 @@ def test_a_working_token_is_saved_owner_only_and_never_echoed(admin_client, monk
     from discord_scraper.config import token_file_for
 
     seen = []
-    monkeypatch.setattr(admin.discord_api, "get_current_user",
+    monkeypatch.setattr(discord_api, "get_current_user",
                         lambda token, timeout=10.0: seen.append(token) or (200, USER_BODY, None))
-    monkeypatch.setattr(admin.discord_api, "get_channel",
+    monkeypatch.setattr(discord_api, "get_channel",
                         lambda token, channel_id, timeout=10.0: (200, CHANNEL_BODY, None))
     response = admin_client.put("/api/admin/token", json={"token": "  new.secret-token \n"})
     assert response.status_code == 200
@@ -111,7 +111,7 @@ def test_a_token_that_cannot_be_checked_is_not_saved(admin_client, monkeypatch):
 
 def test_a_malformed_token_body_is_refused_without_echoing_it(admin_client, monkeypatch):
     """FastAPI's 422 repeats the input it could not validate; here that is the secret."""
-    monkeypatch.setattr(admin.discord_api, "get_current_user",
+    monkeypatch.setattr(discord_api, "get_current_user",
                         lambda *a, **k: pytest.fail("Discord should not be asked"))
     secret = "mfa.SECRET-should-never-come-back"
     attempts = [
@@ -128,7 +128,7 @@ def test_a_malformed_token_body_is_refused_without_echoing_it(admin_client, monk
 
 
 def test_a_token_with_spaces_inside_is_refused_without_asking_discord(admin_client, monkeypatch):
-    monkeypatch.setattr(admin.discord_api, "get_current_user",
+    monkeypatch.setattr(discord_api, "get_current_user",
                         lambda *a, **k: pytest.fail("Discord should not be asked"))
     assert admin_client.put("/api/admin/token", json={"token": "two words"}).status_code == 400
 
@@ -137,9 +137,9 @@ def test_the_saved_token_is_what_the_test_button_checks_and_can_be_forgotten(
     admin_client, monkeypatch
 ):
     seen = []
-    monkeypatch.setattr(admin.discord_api, "get_current_user",
+    monkeypatch.setattr(discord_api, "get_current_user",
                         lambda token, timeout=10.0: seen.append(token) or (200, USER_BODY, None))
-    monkeypatch.setattr(admin.discord_api, "get_channel",
+    monkeypatch.setattr(discord_api, "get_channel",
                         lambda token, channel_id, timeout=10.0: (200, CHANNEL_BODY, None))
     admin_client.put("/api/admin/token", json={"token": "saved-one"})
     admin_client.post("/api/admin/token/test")
@@ -174,7 +174,7 @@ def test_an_animated_avatar_keeps_its_gif(admin_client, monkeypatch):
 
 def test_a_network_failure_is_a_reported_result_not_a_500(admin_client, monkeypatch):
     """An unreachable Discord is the honest outcome the button must show."""
-    monkeypatch.setattr(admin.discord_api, "get_current_user",
+    monkeypatch.setattr(discord_api, "get_current_user",
                         lambda token, timeout=10.0: (None, None, "network error: no route to host"))
     response = admin_client.post("/api/admin/token/test")
     assert response.status_code == 200
@@ -188,7 +188,7 @@ def test_a_network_failure_is_a_reported_result_not_a_500(admin_client, monkeypa
 
 
 def test_a_revoked_token_reads_as_failed(admin_client, monkeypatch):
-    monkeypatch.setattr(admin.discord_api, "get_current_user",
+    monkeypatch.setattr(discord_api, "get_current_user",
                         lambda token, timeout=10.0: (401, None, "HTTP 401: token is invalid or revoked"))
     body = admin_client.post("/api/admin/token/test").json()
     assert body["ok"] is False
@@ -229,8 +229,8 @@ def test_no_token_material_is_returned_or_logged(admin_client, monkeypatch, capl
         seen["token"] = token
         return 200, USER_BODY, None
 
-    monkeypatch.setattr(admin.discord_api, "get_current_user", spy)
-    monkeypatch.setattr(admin.discord_api, "get_channel",
+    monkeypatch.setattr(discord_api, "get_current_user", spy)
+    monkeypatch.setattr(discord_api, "get_channel",
                         lambda token, channel_id, timeout=10.0: (200, CHANNEL_BODY, None))
     with caplog.at_level("DEBUG"):
         tested = admin_client.post("/api/admin/token/test")
@@ -255,7 +255,9 @@ def test_a_bad_channel_is_proved_in_one_click(admin_client, monkeypatch):
 
 def test_a_real_call_never_raises_and_reports_what_happened(admin_client, monkeypatch):
     """No mock: what the button does on this machine, network or not."""
-    monkeypatch.setattr(admin, "TOKEN_TEST_TIMEOUT", 3.0)
+    from discord_stats.api.admin import token
+
+    monkeypatch.setattr(token, "TOKEN_TEST_TIMEOUT", 3.0)
     response = admin_client.post("/api/admin/token/test")
     assert response.status_code == 200
     body = response.json()
@@ -337,7 +339,9 @@ def test_diagnostics_never_counts_messages_with_a_scan(admin_client, monkeypatch
         connection.execute("PRAGMA busy_timeout=10000")
         return connection
 
-    monkeypatch.setattr(admin, "connect_writable", spy)
+    from discord_stats.api.admin import common
+
+    monkeypatch.setattr(common, "connect_writable", spy)
     admin_client.get("/api/admin/diagnostics")
     assert seen
     assert not any("count(*)" in sql.lower() and "messages" in sql.lower() for sql in seen)

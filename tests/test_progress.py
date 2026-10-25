@@ -14,7 +14,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from discord_stats.api.app import create_app
-from discord_stats.api.progress import ABANDONED_AFTER_SECONDS
+from discord_stats.api.admin.progress import ABANDONED_AFTER_SECONDS
 from discord_stats.auth.session import SESSION_COOKIE, Level, establish_session
 from discord_scraper.rollups.build import (
     EVENTS_KEEP,
@@ -316,7 +316,7 @@ def test_the_behind_count_uses_the_message_primary_key_index(seeded_db, cfg):
     so the SQL pins the implicit primary-key index — the same trick
     `_newest_message_id` already uses.
     """
-    from discord_stats.api.progress import _TAIL_COUNT_SQL
+    from discord_stats.api.admin.progress import _TAIL_COUNT_SQL
 
     plan = " ".join(
         str(row[3])
@@ -329,7 +329,7 @@ def test_the_behind_count_uses_the_message_primary_key_index(seeded_db, cfg):
 
 
 def test_the_behind_count_only_counts_messages_in_the_channel(seeded_db, cfg):
-    from discord_stats.api.progress import _added_since
+    from discord_stats.api.admin.progress import _added_since
 
     seeded_db.execute(
         "INSERT INTO messages (id, channel_id, author_id, content, created_at, type) "

@@ -32,14 +32,14 @@ import sqlite3
 import time
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Query, Request
 from fastapi.responses import StreamingResponse
 
+from discord_stats.api.admin.progress import read_events
 from discord_stats.api.deps import connect_readonly
-from discord_stats.api.progress import read_events
-from discord_stats.auth.session import require_admin
 
-router = APIRouter(prefix="/api/admin", dependencies=[Depends(require_admin)])
+# Mounted under /api/admin, behind require_admin, by the package's router.
+router = APIRouter()
 
 # How often the writer's rows are checked. The writer is another process, so
 # there is nothing to subscribe to; half a second is the latency an operator

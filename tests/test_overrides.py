@@ -135,10 +135,11 @@ def test_validate_names_the_offending_setting():
 def test_the_api_re_exports_the_single_authority():
     """The admin surface must not keep a second copy that can drift."""
     from discord_scraper import overrides
-    from discord_stats.api import admin
+    from discord_stats.api import deps
+    from discord_stats.api.admin import board
 
-    assert admin.OVERRIDABLE is overrides.OVERRIDABLE
-    assert admin.effective_config is overrides.apply
-    assert admin.effective_for is overrides.effective_for
-    assert admin._overrides is overrides.read
-    assert admin.InvalidOverride is overrides.InvalidOverride
+    assert board.OVERRIDABLE is overrides.OVERRIDABLE
+    assert board.effective_config is overrides.apply
+    assert board._overrides is overrides.read
+    assert board.InvalidOverride is overrides.InvalidOverride
+    assert deps.effective_for is overrides.effective_for

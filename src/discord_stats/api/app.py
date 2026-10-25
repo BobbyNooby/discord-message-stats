@@ -19,7 +19,7 @@ from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from discord_stats.api import admin, dashboard, login, logstream, progress, thumbs
+from discord_stats.api import admin, dashboard, login, thumbs
 from discord_stats.api.cache import BoundedCache
 from discord_stats.api.deps import connect_writable
 from discord_scraper.config import Config
@@ -42,8 +42,7 @@ def create_app(
     app.state.payload_cache: dict[str, dict] = {}
     app.state.period_cache = BoundedCache(dashboard.PERIOD_CACHE_ENTRIES)
     app.state.thumbs = thumbs.ThumbProxy()
-    for router in (dashboard.router, login.router, thumbs.router,
-                   admin.router, progress.router, logstream.router):
+    for router in (dashboard.router, login.router, thumbs.router, admin.router):
         app.include_router(router)
     if dev_login:
         app.include_router(login.dev_router)
