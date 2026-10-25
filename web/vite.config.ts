@@ -17,7 +17,7 @@ export default defineConfig({
     testTimeout: 15000,
     environment: "jsdom",
     globals: true,
-    setupFiles: ["./src/test-setup.ts"],
+    setupFiles: ["./src/test/setup.ts"],
     // The admin board prints the viewer's local time; one fixed zone keeps
     // the expected strings the same on every machine.
     env: { TZ: "UTC" },
