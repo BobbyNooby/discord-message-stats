@@ -9,7 +9,8 @@ import { emptyFor } from "../lib/empty";
 import { fmt } from "../lib/format";
 import { providerLabel } from "../lib/mediaLabels";
 import { swatch } from "../lib/palette";
-import { allPairRows, sumRows } from "../selectors/media";
+import { providerRows } from "../selectors/links";
+import { sumRows } from "../selectors/media";
 import { usePanelFilters } from "./panelScope";
 
 /**
@@ -32,18 +33,7 @@ const MAX_BARS = 12;
 export function Providers({ payload, filters }: { panelId?: string; payload: Payload; filters?: Filters }) {
   const scoped = usePanelFilters("embed-providers", filters);
   const provider = scoped.provider ?? null;
-  const all = useMemo(() => {
-    const source = provider
-      ? (payload.providers ?? []).filter(([name]) => name === provider)
-      : payload.providers;
-    return allPairRows(source).map((row) => ({
-      ...row,
-      // Discord's `unprovidenced` is a bucket, not a provider name (§UI/UX rule 1).
-      // This list has no URL to split CDN uploads from unnamed links, so both read
-      // "No provider".
-      name: providerLabel(row.name, row.name),
-    }));
-  }, [payload, provider]);
+  const all = useMemo(() => providerRows(payload, provider), [payload, provider]);
   const rows = useMemo(() => all.slice(0, MAX_BARS), [all]);
   const option = useMemo(() => horizontalBarsOption(rows, swatch(0), 11), [rows]);
   const total = sumRows(rows);

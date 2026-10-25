@@ -4,12 +4,12 @@ import { useMemo } from "react";
 import type { Payload } from "../api/types";
 import { EmptyState, Panel } from "../components/Panel";
 import type { Filters } from "../filters/reducer";
-import { inRange } from "../selectors/cells";
 import { axisLabel, axisLine, splitLine, tooltip } from "../lib/chartStyle";
 import { EChart } from "../lib/echart";
 import { EMPTY_AUTHORS, noAuthorsSelected } from "../lib/empty";
 import { fmt, kfmt } from "../lib/format";
 import { swatch, token } from "../lib/palette";
+import { domainRows } from "../selectors/links";
 import { usePanelFilters } from "./panelScope";
 
 /**
@@ -22,28 +22,8 @@ import { usePanelFilters } from "./panelScope";
  * subset that Discord also unfurled.
  */
 
-/** The top cut §5.11 documents; the long tail is already dropped from the payload. */
-const TOP_DOMAINS = 15;
-
 export function linkStatsLine(stats: Payload["linkStats"]): string {
   return `${fmt(stats.msgs)} msgs · ${fmt(stats.domains)} domains · ${fmt(stats.both)} unfurled`;
-}
-
-export function domainRows(
-  payload: Payload,
-  filters: Filters,
-  top = TOP_DOMAINS,
-): [string, number][] {
-  const totals = new Map<number, number>();
-  for (const [dayIndex, authorIndex, domainIndex, uses] of payload.linkCells ?? []) {
-    if (filters.active[authorIndex] === false) continue;
-    if (!inRange(payload, filters, dayIndex)) continue;
-    totals.set(domainIndex, (totals.get(domainIndex) ?? 0) + uses);
-  }
-  return [...totals.entries()]
-    .map(([index, uses]): [string, number] => [payload.linkDomains[index] ?? `#${index}`, uses])
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, top);
 }
 
 export function LinkDomains({ payload, filters: fallbackFilters }: { panelId?: string; payload: Payload; filters?: Filters }) {

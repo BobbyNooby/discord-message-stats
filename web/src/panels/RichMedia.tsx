@@ -2,22 +2,23 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { EChartsOption } from "echarts";
 
-import type { MediaRow, Payload } from "../api/types";
 import { useMedia } from "../api/queries";
-import { EmptyState, Panel, CARD_COLUMNS, SectionHeading } from "../components/Panel";
+import type { MediaRow, Payload } from "../api/types";
+import { CARD_COLUMNS, EmptyState, Panel, SectionHeading } from "../components/Panel";
 import { SectionScopeNote } from "../components/SectionScopeNote";
+import { readMediaOpen, writeMediaState } from "../filters/persist";
+import type { Filters } from "../filters/reducer";
 import { axisLabel, axisLine, splitLine, tooltip } from "../lib/chartStyle";
 import { EChart } from "../lib/echart";
 import { emptyFor } from "../lib/empty";
 import { fmt } from "../lib/format";
 import { kindLabel, providerChoices, providerLabel } from "../lib/mediaLabels";
 import { token } from "../lib/palette";
-import type { Filters } from "../filters/reducer";
-import { readMediaOpen, writeMediaState } from "../filters/persist";
-import { usePanelFilters } from "./panelScope";
+import { providerTotals } from "../selectors/links";
 import { MediaDetailDialog } from "./MediaDetail";
 import { MediaTile } from "./MediaTile";
 import { MediaView } from "./MediaView";
+import { usePanelFilters } from "./panelScope";
 
 /**
  * "Most reposted" (§11.1, the rich-media idea).
@@ -76,20 +77,6 @@ function useMediaViewState(): { viewOpen: boolean; onViewOpenChange: (open: bool
   }, []);
 
   return { viewOpen, onViewOpenChange };
-}
-
-/**
- * Raw provider totals, with Discord's unnamed bucket split by host: an
- * `cdn.discordapp.com` attachment is somebody's own upload, not a mystery.
- */
-function providerTotals(payload: Payload): [string, number][] {
-  return Object.values(
-    (payload.providers ?? []).reduce<Record<string, [string, number]>>((acc, [name, count]) => {
-      const key = providerLabel(name, name);
-      acc[key] = [key, (acc[key]?.[1] ?? 0) + count];
-      return acc;
-    }, {}),
-  ).sort((a, b) => b[1] - a[1]);
 }
 
 function providerBars(providers: [string, number][]): EChartsOption {

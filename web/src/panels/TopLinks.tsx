@@ -3,12 +3,13 @@ import { useMemo } from "react";
 
 import type { Payload } from "../api/types";
 import { EmptyState, Panel } from "../components/Panel";
+import type { Filters } from "../filters/reducer";
 import { axisLabel, axisLine, splitLine, tooltip } from "../lib/chartStyle";
 import { EChart } from "../lib/echart";
 import { emptyFor } from "../lib/empty";
 import { fmt, kfmt } from "../lib/format";
 import { swatch, token } from "../lib/palette";
-import type { Filters } from "../filters/reducer";
+import { topLinkRows } from "../selectors/links";
 
 /**
  * "Most reposted links" — the mockup's `drawTopLinks`.
@@ -19,13 +20,8 @@ import type { Filters } from "../filters/reducer";
  * names it once rather than badging the card.
  */
 
-const TOP_LINKS = 13;
-
 export function TopLinks({ payload, }: { panelId?: string; payload: Payload; filters?: Filters }) {
-  const rows = useMemo(
-    () => (payload.topLinks ?? []).slice(0, TOP_LINKS).sort((a, b) => b[1] - a[1]),
-    [payload],
-  );
+  const rows = useMemo(() => topLinkRows(payload), [payload]);
 
   const option = useMemo<EChartsOption>(
     () => {
