@@ -123,13 +123,10 @@ def _current_level(request: Request) -> Level | None:
         # treated every visitor as a level was removed: an unauthenticated
         # request must be refused, always.
         return None
-    from discord_stats.api.deps import connect_writable
+    from discord_stats.api.deps import database
 
-    conn = connect_writable(request.app.state.db_path)
-    try:
+    with database(request, write=True) as conn:
         return session_level(conn, token)
-    finally:
-        conn.close()
 
 
 def require_viewer(request: Request) -> Level:

@@ -20,7 +20,7 @@ from typing import Any
 
 from fastapi import APIRouter, Query, Request
 
-from discord_stats.api.deps import connect
+from discord_stats.api.deps import database
 from discord_scraper.config import Config
 from discord_scraper.rollups.schema import FAMILIES
 
@@ -100,11 +100,8 @@ def progress(request: Request, since: int = Query(0, ge=0)) -> dict:
     than it and ``latest_id`` is what to ask with next. A poll during a quiet
     stretch therefore returns an empty ``log`` without re-reading the history.
     """
-    conn = connect(request.app.state.db_path)
-    try:
+    with database(request) as conn:
         return build_progress(conn, request.app.state.cfg, since=since)
-    finally:
-        conn.close()
 
 
 def build_progress(conn: sqlite3.Connection, cfg: Config, *,
@@ -114,10 +111,7 @@ def build_progress(conn: sqlite3.Connection, cfg: Config, *,
     # family look stale here while /status called the same tables current.
     from discord_scraper import overrides
 
-    try:
-        cfg = overrides.effective_for(conn, cfg)
-    except sqlite3.OperationalError:
-        pass   # no config table yet: the file is all there is
+    cfg = overrides.effective_for(conn, cfg)
     channel_id = cfg.channel_id
     fresh = _freshness(conn, channel_id, cfg)
     view = _freshness_view(fresh)

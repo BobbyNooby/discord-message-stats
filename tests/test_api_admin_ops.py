@@ -339,9 +339,9 @@ def test_diagnostics_never_counts_messages_with_a_scan(admin_client, monkeypatch
         connection.execute("PRAGMA busy_timeout=10000")
         return connection
 
-    from discord_stats.api.admin import common
+    from discord_stats.api import deps
 
-    monkeypatch.setattr(common, "connect_writable", spy)
+    monkeypatch.setattr(deps, "connect_writable", spy)
     admin_client.get("/api/admin/diagnostics")
     assert seen
     assert not any("count(*)" in sql.lower() and "messages" in sql.lower() for sql in seen)

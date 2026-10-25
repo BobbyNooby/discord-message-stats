@@ -11,8 +11,9 @@ from zoneinfo import available_timezones
 
 from fastapi import APIRouter, HTTPException, Request
 
-from discord_stats.api.admin.common import _conn, _effective_for, _log_event, app_db_path
+from discord_stats.api.admin.common import app_db_path, log_event, saved_config
 from discord_stats.api.admin.jobs import JOB_STATUSES
+from discord_stats.api.deps import board, database
 from discord_scraper.config import AUTO_TIMEZONE
 from discord_scraper.overrides import (
     OVERRIDABLE,
@@ -62,9 +63,7 @@ def _worker_view(conn: sqlite3.Connection) -> dict[str, Any]:
 
 @router.get("/status")
 def status(request: Request) -> dict:
-    conn = _conn(request)
-    try:
-        cfg = _effective_for(request, conn)
+    with board(request, write=True) as (conn, cfg):
         digest = config_digest(cfg, conn)
         # One count for the whole board: "how much has arrived since the build"
         # is the same source figure for every family.
@@ -130,8 +129,6 @@ def status(request: Request) -> dict:
             "sessions": {"active": int(active_sessions)},
             "checked_at": utc_stamp(),
         }
-    finally:
-        conn.close()
 
 
 # --- diagnostics -------------------------------------------------------------
@@ -213,9 +210,7 @@ def diagnostics(request: Request) -> dict:
     from discord_scraper import overrides as override_authority
     from discord_scraper.scraper.config import PROJECT_DIR
 
-    conn = _conn(request)
-    try:
-        cfg = _effective_for(request, conn)
+    with board(request, write=True) as (conn, cfg):
         # Read through the override table's single authority, not a local copy,
         # so the "where did this come from?" answer stays correct when the
         # rebuild path resolves config the same way.
@@ -267,8 +262,6 @@ def diagnostics(request: Request) -> dict:
             running_job = {"id": int(running[0]), "kind": str(running[1]),
                            "started_at": running[2], "phase": running[3]}
         failures = _recent_failures(conn)
-    finally:
-        conn.close()
 
     disk: dict[str, Any] | None = None
     try:
@@ -322,8 +315,7 @@ def diagnostics(request: Request) -> dict:
 
 @router.get("/config")
 def get_config(request: Request) -> dict:
-    conn = _conn(request)
-    try:
+    with database(request, write=True) as conn:
         overrides = _overrides(conn)
         cfg = effective_config(request.app.state.cfg, overrides)
         return {
@@ -340,8 +332,6 @@ def get_config(request: Request) -> dict:
             },
             "overridden": sorted(k for k in overrides if k in OVERRIDABLE),
         }
-    finally:
-        conn.close()
 
 
 @router.get("/timezones")
@@ -354,11 +344,7 @@ def list_timezones(request: Request) -> dict:
     """
     from discord_scraper.timeutil import resolve_tz
 
-    conn = _conn(request)
-    try:
-        cfg = _effective_for(request, conn)
-    finally:
-        conn.close()
+    cfg = saved_config(request)
     host = resolve_tz("auto")
     auto_zone = getattr(host, "key", None) or str(host)
     return {
@@ -376,8 +362,7 @@ def put_config(request: Request, payload: dict) -> dict:
     unknown = sorted(set(payload) - set(OVERRIDABLE))
     if unknown:
         raise HTTPException(status_code=400, detail=f"not overridable: {', '.join(unknown)}")
-    conn = _conn(request)
-    try:
+    with database(request, write=True) as conn:
         for key, value in payload.items():
             _validate(key, value)
         for key, value in payload.items():
@@ -395,9 +380,7 @@ def put_config(request: Request, payload: dict) -> dict:
             if key in payload:
                 set_worker_state(conn, key, payload[key])
         conn.commit()
-    finally:
-        conn.close()
-    _log_event(request, scope="config", phase="changed",
+    log_event(request, scope="config", phase="changed",
                message=f"config changed: {', '.join(sorted(payload))}")
     return get_config(request)
 

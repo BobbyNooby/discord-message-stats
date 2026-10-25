@@ -5,7 +5,7 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel
 
-from discord_stats.api.admin.common import _conn, _effective_for
+from discord_stats.api.deps import board, database
 from discord_scraper.rollups import query
 
 router = APIRouter()
@@ -22,8 +22,7 @@ class JobRequest(BaseModel):
 
 @router.get("/jobs")
 def list_jobs(request: Request, limit: int = Query(50, ge=1, le=200)) -> dict:
-    conn = _conn(request)
-    try:
+    with database(request, write=True) as conn:
         found = query.rows(
             conn,
             """
@@ -36,8 +35,6 @@ def list_jobs(request: Request, limit: int = Query(50, ge=1, le=200)) -> dict:
         fields = ("id", "channel_id", "kind", "status", "requested_at", "started_at",
                   "finished_at", "result", "error")
         return {"jobs": [dict(zip(fields, row)) for row in found]}
-    finally:
-        conn.close()
 
 
 @router.post("/jobs", status_code=201)
@@ -46,9 +43,7 @@ def create_job(request: Request, body: JobRequest) -> dict:
 
     if body.kind not in JOB_KINDS:
         raise HTTPException(status_code=400, detail=f"kind must be one of {', '.join(JOB_KINDS)}")
-    conn = _conn(request)
-    try:
-        cfg = _effective_for(request, conn)
+    with board(request, write=True) as (conn, cfg):
         if body.kind == "rebuild_rollups":
             # A rebuild takes minutes and writes every family; a second identical
             # one behind it is pure delay. Recalculate returns the job already in
@@ -68,8 +63,6 @@ def create_job(request: Request, body: JobRequest) -> dict:
         job_id = enqueue(conn, cfg.channel_id, body.kind)
         return {"id": job_id, "channel_id": cfg.channel_id,
                 "kind": body.kind, "status": "queued", "already": False}
-    finally:
-        conn.close()
 
 
 @router.post("/recalculate", status_code=202)
@@ -88,13 +81,10 @@ def cancel_a_job(request: Request, job_id: int) -> dict:
     """
     from discord_scraper.worker.jobs import JobNotCancellable, JobNotFound, cancel_job
 
-    conn = _conn(request)
-    try:
+    with database(request, write=True) as conn:
         try:
             return cancel_job(conn, job_id)
         except JobNotFound as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from None
         except JobNotCancellable as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from None
-    finally:
-        conn.close()

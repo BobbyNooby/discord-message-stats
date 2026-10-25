@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Query, Request
 
-from discord_stats.api.admin.common import _conn, _effective_for
+from discord_stats.api.deps import board
 from discord_scraper.rollups import query
 
 router = APIRouter()
@@ -23,9 +23,7 @@ def search(
     offset: int = Query(0, ge=0),
 ) -> dict:
     """The one endpoint that returns message text (§4.4)."""
-    conn = _conn(request)
-    try:
-        cfg = _effective_for(request, conn)
+    with board(request, write=True) as (conn, cfg):
         pattern = f"%{q}%"
         total = conn.execute(
             "SELECT COUNT(*) FROM messages WHERE channel_id = ? AND content LIKE ?",
@@ -59,5 +57,3 @@ def search(
                 for row in found
             ],
         }
-    finally:
-        conn.close()

@@ -7,7 +7,8 @@ import sqlite3
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
-from discord_stats.api.admin.common import _conn, _effective_for, _log_event
+from discord_stats.api.admin.common import log_event
+from discord_stats.api.deps import board
 from discord_scraper.config import Config
 from discord_scraper.timeutil import utc_stamp
 
@@ -83,9 +84,7 @@ def put_identity(request: Request, body: IdentityRequest) -> dict:
     the call replaced — names included — which is what the undo button writes
     back, so undo restores the whole chain and the names it had.
     """
-    conn = _conn(request)
-    try:
-        cfg = _effective_for(request, conn)
+    with board(request, write=True) as (conn, cfg):
         previous = [
             {
                 "canonical": canonical,
@@ -187,7 +186,7 @@ def put_identity(request: Request, body: IdentityRequest) -> dict:
         added, removed = _identity_delta(previous, merges)
         phase = "merged" if added > removed else ("unmerged" if removed else "updated")
         moved = f", {len(admins_moved)} admin moved" if admins_moved else ""
-        _log_event(request, scope="identity", phase=phase,
+        log_event(request, scope="identity", phase=phase,
                    message=(f"identity {phase}: +{added} -{removed} accounts across "
                             f"{len(merges)} identities{moved}"))
         return {
@@ -196,8 +195,6 @@ def put_identity(request: Request, body: IdentityRequest) -> dict:
             "previous": previous,
             "admins_moved": admins_moved,
         }
-    finally:
-        conn.close()
 
 
 def _identity_delta(previous: list[dict], merges: list[dict]) -> tuple[int, int]:
@@ -224,9 +221,7 @@ class InclusionRequest(BaseModel):
 @router.put("/inclusions")
 def put_inclusions(request: Request, body: InclusionRequest) -> dict:
     """Who shows (§5.6). Hide, never delete: the messages stay on disk."""
-    conn = _conn(request)
-    try:
-        cfg = _effective_for(request, conn)
+    with board(request, write=True) as (conn, cfg):
         for author_id, shown in body.included.items():
             conn.execute(
                 """
@@ -238,5 +233,3 @@ def put_inclusions(request: Request, body: InclusionRequest) -> dict:
             )
         conn.commit()
         return {"included": dict(body.included), "cache_stale": True}
-    finally:
-        conn.close()

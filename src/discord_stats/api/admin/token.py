@@ -8,7 +8,8 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request
 
-from discord_stats.api.admin.common import _conn, _effective_for, _log_event
+from discord_stats.api.admin.common import log_event, saved_config
+from discord_stats.api.deps import board, database
 from discord_scraper.scraper import api as discord_api
 from discord_scraper.timeutil import utc_stamp
 
@@ -156,16 +157,13 @@ def _token_result(row: sqlite3.Row) -> dict[str, Any]:
 
 
 def _remember_check(request: Request, result: dict[str, Any]) -> None:
-    conn = _conn(request)
-    try:
+    with database(request, write=True) as conn:
         try:
             _store_token_check(conn, result)
         except sqlite3.OperationalError:
             # An unwritable control plane must not erase the answer the button
             # was pressed for; the reply is still honest, just not remembered.
             pass
-    finally:
-        conn.close()
 
 
 def _token_source(request: Request) -> str:
@@ -178,15 +176,13 @@ def _token_source(request: Request) -> str:
         return "saved"
     if request.app.state.cfg.token:
         return "environment"
-    conn = _conn(request)
-    try:
-        found = conn.execute(
-            "SELECT value FROM worker_state WHERE key = 'token_source'"
-        ).fetchone()
-    except sqlite3.OperationalError:
-        found = None
-    finally:
-        conn.close()
+    with database(request, write=True) as conn:
+        try:
+            found = conn.execute(
+                "SELECT value FROM worker_state WHERE key = 'token_source'"
+            ).fetchone()
+        except sqlite3.OperationalError:
+            found = None
     return "environment" if found and found[0] == "environment" else "none"
 
 
@@ -204,11 +200,7 @@ def test_token(request: Request) -> dict:
     """Run the check now and persist it, so the board need not run it again."""
     from discord_scraper.config import current_token
 
-    conn = _conn(request)
-    try:
-        cfg = _effective_for(request, conn)
-    finally:
-        conn.close()
+    cfg = saved_config(request)
     # Read at click time, so a token saved a moment ago is the one tested.
     result = run_token_check(current_token(cfg, request.app.state.db_path), cfg.channel_id)
     _remember_check(request, result)
@@ -257,11 +249,7 @@ def _check_and_save_token(request: Request, token: str) -> dict:
     from discord_scraper.config import save_token as write_token
     from discord_scraper.worker.jobs import enqueue
 
-    conn = _conn(request)
-    try:
-        cfg = _effective_for(request, conn)
-    finally:
-        conn.close()
+    cfg = saved_config(request)
     result = run_token_check(token, cfg.channel_id)
     if not result["ok"]:
         status = result.get("http_status")
@@ -271,16 +259,13 @@ def _check_and_save_token(request: Request, token: str) -> dict:
     write_token(request.app.state.db_path, token)
     _remember_check(request, result)
     try:
-        conn = _conn(request)
-        try:
+        with database(request, write=True) as conn:
             enqueue(conn, cfg.channel_id, "probe")
-        finally:
-            conn.close()
     except sqlite3.Error:
         # The token is saved either way; a busy database only means the worker
         # meets it on its next interval instead of in fifteen seconds.
         pass
-    _log_event(request, scope="token", message="token replaced from the admin board")
+    log_event(request, scope="token", message="token replaced from the admin board")
     return {**result, "source": "saved"}
 
 
@@ -295,26 +280,21 @@ def forget_token(request: Request) -> None:
     from discord_scraper.worker.jobs import enqueue
 
     token_file_for(request.app.state.db_path).unlink(missing_ok=True)
-    conn = _conn(request)
-    try:
-        enqueue(conn, _effective_for(request, conn).channel_id, "probe")
-    finally:
-        conn.close()
-    _log_event(request, scope="token", message="saved token removed from the admin board")
+    with board(request, write=True) as (conn, cfg):
+        enqueue(conn, cfg.channel_id, "probe")
+    log_event(request, scope="token", message="saved token removed from the admin board")
 
 
 @router.get("/token")
 def token_status(request: Request) -> dict:
     """The stored last check. ``unknown`` is a real state: never checked."""
-    conn = _conn(request)
-    try:
-        row = conn.execute(
-            "SELECT * FROM token_checks ORDER BY id DESC LIMIT 1"
-        ).fetchone()
-    except sqlite3.OperationalError:
-        row = None
-    finally:
-        conn.close()
+    with database(request, write=True) as conn:
+        try:
+            row = conn.execute(
+                "SELECT * FROM token_checks ORDER BY id DESC LIMIT 1"
+            ).fetchone()
+        except sqlite3.OperationalError:
+            row = None
     if row is None:
         return {"status": "unknown", "checked_at": None, "bot": None,
                 "error": None, "channel": None, "source": _token_source(request)}

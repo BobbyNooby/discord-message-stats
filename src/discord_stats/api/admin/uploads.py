@@ -8,9 +8,9 @@ from typing import Any
 
 from fastapi import APIRouter, File, HTTPException, Request, UploadFile
 
-from discord_stats.api.admin.common import _conn, _effective_for, _log_event, app_db_path
+from discord_stats.api.admin.common import app_db_path, log_event
 from discord_stats.api.admin.jobs import JobRequest, create_job
-from discord_stats.api.deps import connect_readonly
+from discord_stats.api.deps import board, connect_readonly
 
 router = APIRouter()
 
@@ -78,12 +78,8 @@ def upload_database(request: Request, file: UploadFile = File(...)) -> dict:
     from discord_stats.api import upload as staging
 
     target = Path(request.app.state.db_path)
-    conn = _conn(request)
-    try:
+    with board(request, write=True) as (conn, cfg):
         running = _running_jobs(conn)
-        cfg = _effective_for(request, conn)
-    finally:
-        conn.close()
     if running:
         # A rebuild mid-upload would read a moving file (§10.6 step 1).
         raise HTTPException(
@@ -99,7 +95,7 @@ def upload_database(request: Request, file: UploadFile = File(...)) -> dict:
         raise HTTPException(status_code=400, detail=str(exc)) from None
 
     PENDING_UPLOADS[staged.upload_id] = staged
-    _log_event(request, scope="upload", phase="staged", rows=staged.rows,
+    log_event(request, scope="upload", phase="staged", rows=staged.rows,
                message=(f"upload staged: {staged.rows} rows, +{staged.added} "
                         f"-{staged.lost} against the live database"))
     return {
@@ -144,7 +140,7 @@ def commit_upload(request: Request, upload_id: str) -> dict:
         raise HTTPException(status_code=410,
                             detail="the staged file is gone — upload it again") from None
     job = create_job(request, JobRequest(kind="rebuild_rollups"))
-    _log_event(request, scope="upload", phase="committed", rows=staged.rows,
+    log_event(request, scope="upload", phase="committed", rows=staged.rows,
                message=(f"upload committed: {staged.rows} rows, "
                         f"job {job['id']} queued"))
     return {
@@ -163,5 +159,5 @@ def discard_upload(request: Request, upload_id: str) -> None:
     staged = PENDING_UPLOADS.pop(upload_id, None)
     if staged is not None:
         staging.discard(staged)
-        _log_event(request, scope="upload", phase="discarded", rows=staged.rows,
+        log_event(request, scope="upload", phase="discarded", rows=staged.rows,
                    message=f"upload discarded: {staged.rows} rows staged, never committed")
