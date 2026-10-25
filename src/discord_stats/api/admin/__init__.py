@@ -13,10 +13,10 @@ from fastapi import APIRouter, Depends
 
 from discord_stats.api.admin import (
     access,
-    board,
     identity,
     jobs,
     logstream,
+    overview,
     progress,
     search,
     token,
@@ -25,5 +25,5 @@ from discord_stats.api.admin import (
 from discord_stats.auth.session import require_admin
 
 router = APIRouter(prefix="/api/admin", dependencies=[Depends(require_admin)])
-for topic in (board, token, jobs, uploads, search, identity, access, progress, logstream):
+for topic in (overview, token, jobs, uploads, search, identity, access, progress, logstream):
     router.include_router(topic.router)
