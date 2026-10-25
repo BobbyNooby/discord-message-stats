@@ -3,8 +3,8 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { Payload } from "../api/types";
 import { EMPTY_FILTERS, initialFilters } from "../filters/reducer";
+import { buildWeeks, calendarGeometry, clampStart, MIN_WEEKS, weekdayLabels } from "../selectors/calendar";
 import { Calendar } from "./Calendar";
-import { buildWeeks, calendarGeometry, clampStart, MIN_WEEKS, weekdayLabels } from "./calendarWeeks";
 
 const payload = {
   days: ["2026-01-01", "2026-01-02", "2026-02-01"],

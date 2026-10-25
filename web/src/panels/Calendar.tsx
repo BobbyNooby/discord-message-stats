@@ -6,15 +6,15 @@ import type { Filters } from "../filters/reducer";
 import { EChart } from "../lib/echart";
 import { swatch, token } from "../lib/palette";
 import {
-  DEFAULT_WEEKS,
-  MIN_WEEKS,
   buildWeeks,
   calendarGeometry,
   clampStart,
+  DEFAULT_WEEKS,
+  MIN_WEEKS,
   weekdayLabels,
   type Geometry,
   type WeekStart,
-} from "./calendarWeeks";
+} from "../selectors/calendar";
 import { usePanelFilters } from "./panelScope";
 
 function calendarOption(
