@@ -139,7 +139,9 @@ def create_app(
 ) -> FastAPI:
     app = FastAPI(title=cfg.app_name, docs_url=None, redoc_url=None)
     # 544 KB of JSON per dashboard load, every load. Gzip takes it to ~140 KB.
-    app.add_middleware(GZipMiddleware, minimum_size=1024)
+    # Level 6, not the default 9: the same size on this payload at a quarter of
+    # the time (about 80 ms against 350 ms), paid on every load.
+    app.add_middleware(GZipMiddleware, minimum_size=1024, compresslevel=6)
     # The payload is a pure function of the rollups and the config, and it costs
     # seconds to assemble — so it is assembled once per rebuild, not per request.
     app.state.payload_cache: dict[str, dict] = {}
