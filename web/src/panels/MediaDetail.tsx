@@ -9,8 +9,9 @@ import { fmt } from "../lib/format";
 import { kindLabel, postedLabel, providerLabel } from "../lib/mediaLabels";
 import { useReducedMotion } from "../lib/motion";
 import { swatch } from "../lib/palette";
+import { authorIndexById, monthlyStacks } from "../selectors/months";
 import { mediaName, thumbnailSrc } from "./MediaTile";
-import { authorIndexById, MonthlyBars, monthlyStacks } from "./MonthlyBars";
+import { MonthlyBars } from "./MonthlyBars";
 
 /**
  * One reposted GIF or link, opened up: who posted it and how often, who posted

@@ -8,8 +8,9 @@ import { tooltip } from "../lib/chartStyle";
 import { EChart } from "../lib/echart";
 import { fmt } from "../lib/format";
 import { swatch, token } from "../lib/palette";
+import { periodNote, periodPrefix, useWordView } from "../selectors/wordPeriod";
+import { cloudRows } from "../selectors/words";
 import { usePanelFilters } from "./panelScope";
-import { periodNote, periodPrefix, useWordView } from "./wordPeriod";
 
 /**
  * "Word cloud" — the one `echarts-wordcloud` user (§11.1 calls it decorative).
@@ -20,33 +21,9 @@ import { periodNote, periodPrefix, useWordView } from "./wordPeriod";
  * degrades to a sentence rather than a blank panel.
  */
 
-const LIMIT = 120;
-
 /** Importing `echarts-wordcloud` is what registers the `wordCloud` series type. */
 function importWordCloudPlugin(): Promise<unknown> {
   return import("echarts-wordcloud");
-}
-
-/**
- * The words the cloud draws. `rollup_word` carries no date dimension, but it does
- * carry a per-author breakdown for 420 of the 500 shipped words, so a restricted
- * author selection is applied where the data allows it.
- */
-export function cloudRows(payload: Payload, filters: Filters, limit = LIMIT): [string, number][] {
-  const allOn = payload.authors.every((_, index) => filters.active[index] !== false);
-  if (allOn) return payload.words.slice(0, limit);
-
-  const rows: [string, number][] = [];
-  for (const [word] of payload.words) {
-    const byAuthor = payload.wordAuthors[word];
-    if (!byAuthor) continue;
-    let uses = 0;
-    for (const [authorIndex, count] of byAuthor) {
-      if (filters.active[authorIndex] !== false) uses += count;
-    }
-    if (uses > 0) rows.push([word, uses]);
-  }
-  return rows.sort((a, b) => b[1] - a[1]).slice(0, limit);
 }
 
 export function WordCloud({

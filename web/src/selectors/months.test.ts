@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { Author } from "../api/types";
-import { monthLabel, monthlyStacks, monthRange } from "./MonthlyBars";
+import { monthLabel, monthlyStacks, monthRange } from "./months";
 
 const authors: Author[] = [
   { id: "u1", name: "Ada", msgs: 10 },

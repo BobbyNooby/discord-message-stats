@@ -9,50 +9,11 @@ import { EChart } from "../lib/echart";
 import { EMPTY_AUTHORS, emptyFor } from "../lib/empty";
 import { TERMS } from "../lib/glossary";
 import { ramp, token } from "../lib/palette";
+import { periodNote, periodPrefix, useWordView } from "../selectors/wordPeriod";
+import { liftGrid, type LiftCell } from "../selectors/words";
 import { usePanelFilters } from "./panelScope";
-import { periodNote, periodPrefix, useWordView } from "./wordPeriod";
 
-/**
- * "Whose word is it" — the mockup's `drawLift`, ported as a pure function of
- * (payload, filters). Lift is the one number here that needs the payload's
- * per-author totals rather than the word's own count: a word is only a
- * signature of somebody if they use it more often than they use words in
- * general, so the denominator is `authorWordTotals[author]`, not the grand total.
- */
-
-const TOP_WORDS = 18;
-/** Above 4× the heat scale stops meaning anything and one word flattens the rest. */
-const LIFT_CAP = 4;
-
-/** [author x, word y, lift] for the heatmap. */
-export type LiftCell = [number, number, number];
-
-export type LiftGrid = { names: string[]; words: string[]; cells: LiftCell[] };
-
-export function liftGrid(payload: Payload, filters: Filters, top = TOP_WORDS): LiftGrid {
-  const words = payload.words.slice(0, top);
-  const grand = payload.authorWordTotals.reduce((a, b) => a + b, 0) || 1;
-  const active: number[] = [];
-  payload.authors.forEach((_, index) => {
-    if (filters.active[index] !== false) active.push(index);
-  });
-
-  const cells: LiftCell[] = [];
-  words.forEach((entry, wordIndex) => {
-    const word = entry[0];
-    const usesTotal = entry[1];
-    const byAuthor = new Map(payload.wordAuthors[word] ?? []);
-    active.forEach((authorIndex, x) => {
-      const uses = byAuthor.get(authorIndex) ?? 0;
-      const share = uses / (payload.authorWordTotals[authorIndex] || 1);
-      const expected = usesTotal / grand;
-      cells.push([x, wordIndex, expected > 0 ? Math.min(share / expected, LIFT_CAP) : 0]);
-    });
-  });
-
-  return { names: active.map((index) => payload.authors[index].name), words: words.map((w) => w[0]), cells };
-}
-
+/** "Whose word is it" — the mockup's `drawLift`; the numbers are `liftGrid`'s. */
 export function WordLift({ payload: full, filters: fallbackFilters }: { panelId?: string; payload: Payload; filters?: Filters }) {
   const filters = usePanelFilters("word-lift", fallbackFilters);
   // The payload's words, or the period's while a time filter is on.

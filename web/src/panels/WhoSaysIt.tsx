@@ -10,9 +10,11 @@ import { EChart } from "../lib/echart";
 import { EMPTY_AUTHORS, noAuthorsSelected } from "../lib/empty";
 import { fmt } from "../lib/format";
 import { swatch, token } from "../lib/palette";
-import { authorIndexById, monthLabel, MonthlyBars, monthlyStacks } from "./MonthlyBars";
+import { monthLabel, monthlyStacks } from "../selectors/months";
+import { answerFor, inPeriod, periodLabel, periodOf } from "../selectors/wordPeriod";
+import { remoteRows, whoSaysItRows } from "../selectors/words";
+import { MonthlyBars } from "./MonthlyBars";
 import { usePanelFilters } from "./panelScope";
-import { answerFor, inPeriod, periodLabel, periodOf } from "./wordPeriod";
 
 /**
  * "Who says it" — the mockup's `drawWordLead`, plus when they said it.
@@ -24,41 +26,6 @@ import { answerFor, inPeriod, periodLabel, periodOf } from "./wordPeriod";
  */
 
 export const OUTSIDE_SLICE = "No per-author breakdown — outside the indexed slice.";
-
-export type WhoSaysItRow = { name: string; value: number; index: number };
-
-/** The selected word's rows, filtered to the authors still switched on. */
-export function whoSaysItRows(payload: Payload, filters: Filters, word: string | null): WhoSaysItRow[] {
-  if (!word) return [];
-  return (payload.wordAuthors[word] ?? [])
-    .filter(([authorIndex]) => filters.active[authorIndex] !== false)
-    .map(([authorIndex, uses]) => ({
-      name: payload.authors[authorIndex]?.name ?? `#${authorIndex}`,
-      value: uses,
-      index: authorIndex,
-    }))
-    .filter((row) => row.value > 0)
-    .sort((a, b) => a.value - b.value);
-}
-
-/** The same rows from the server's answer, for a word outside the slice. */
-export function remoteRows(
-  payload: Payload,
-  filters: Filters,
-  authors: { id: string; count: number }[],
-): WhoSaysItRow[] {
-  const byId = authorIndexById(payload.authors);
-  const combined = new Map<number, number>();
-  for (const author of authors) {
-    const index = byId.get(author.id);
-    if (index === undefined || filters.active[index] === false) continue;
-    combined.set(index, (combined.get(index) ?? 0) + author.count);
-  }
-  return [...combined.entries()]
-    .map(([index, value]) => ({ name: payload.authors[index]?.name ?? `#${index}`, value, index }))
-    .filter((row) => row.value > 0)
-    .sort((a, b) => a.value - b.value);
-}
 
 export function WhoSaysIt({
   payload,

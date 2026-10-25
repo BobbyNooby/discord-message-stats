@@ -4,13 +4,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { Payload } from "../api/types";
 import { EMPTY_FILTERS, type Filters } from "../filters/reducer";
+import { liftGrid } from "../selectors/words";
 import { charts } from "../test/echarts";
 import { testPayload } from "../test/payload";
 import { PanelScopeProvider } from "./panelScope";
 import { WhoSaysIt } from "./WhoSaysIt";
 import { WordCloud } from "./WordCloud";
 import { WordIndex } from "./WordIndex";
-import { WordLift, liftGrid } from "./WordLift";
+import { WordLift } from "./WordLift";
 
 /**
  * The Words section's two hard rules: the embedded slice answers typing on its

@@ -10,8 +10,8 @@ import { emptyFor } from "../lib/empty";
 import { fmt, kfmt } from "../lib/format";
 import { swatch, token } from "../lib/palette";
 import { WORD_SEARCH_ID } from "../lib/shortcuts";
+import { answerFor, periodLabel, periodNote, useWordView } from "../selectors/wordPeriod";
 import { usePanelFilters } from "./panelScope";
-import { answerFor, periodLabel, periodNote, useWordView } from "./wordPeriod";
 
 /**
  * "Word index" — the mockup's `drawWords` plus the search box.

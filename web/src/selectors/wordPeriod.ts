@@ -4,7 +4,7 @@ import type { getWords, Period } from "../api/client";
 import { useWordPeriod } from "../api/queries";
 import type { Payload } from "../api/types";
 import type { Filters } from "../filters/reducer";
-import { monthLabel } from "./MonthlyBars";
+import { monthLabel } from "./months";
 
 /**
  * The word cards under a time filter.
