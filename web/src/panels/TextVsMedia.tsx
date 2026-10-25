@@ -1,25 +1,19 @@
 import { useMemo } from "react";
 
+import { colorBarsOption } from "../charts/bars";
+import { doughnutOption } from "../charts/pie";
+import { mediaColor, remainderColor } from "../charts/roles";
 import { EmptyState, Panel } from "../components/Panel";
 import { EChart } from "../lib/echart";
 import { EMPTY_FILTER } from "../lib/empty";
 import { fmt, pctOf } from "../lib/format";
-import {
-  colorBarsOption,
-  doughnutOption,
-  mediaCells,
-  mediaColor,
-  mediaShare,
-  remainderColor,
-  type MediaPanelProps,
-} from "./mediaData";
-import type { WithPanelId } from "./panelScope";
-import { useChartShape, usePanelFilters } from "./panelScope";
+import { mediaCells, mediaShare } from "../selectors/media";
+import { useChartShape, usePanelFilters, type PanelProps, type WithPanelId } from "./panelScope";
 
 const TITLE = "Text vs media";
 
 /** Share of messages carrying an attachment or an embed (§5.10). */
-export function TextVsMedia({ payload, filters: fallbackFilters }: MediaPanelProps & WithPanelId) {
+export function TextVsMedia({ payload, filters: fallbackFilters }: PanelProps & WithPanelId) {
   const filters = usePanelFilters("text-vs-media", fallbackFilters);
   const shape = useChartShape("text-vs-media");
   const { cells, empty } = useMemo(() => mediaCells(payload, filters), [payload, filters]);

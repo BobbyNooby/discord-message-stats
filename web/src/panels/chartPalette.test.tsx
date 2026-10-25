@@ -14,26 +14,26 @@ vi.mock("../lib/echart", () => ({
 }));
 
 import type { Payload } from "../api/types";
+import { foldPie, pieOption } from "../charts/pie";
 import { initialFilters } from "../filters/reducer";
 import { Attachments } from "./Attachments";
 import { ChatHealth } from "./ChatHealth";
 import { Conversational } from "./Conversational";
 import { EditRate } from "./EditRate";
-import { foldPie, pieOption } from "./chartShape";
 import { EmbedTypes } from "./EmbedTypes";
 import { Emoji } from "./Emoji";
 import { LinkDomains } from "./LinkDomains";
-import { MessageTypes } from "./MessageTypes";
 import { MessagesPerYear } from "./MessagesPerYear";
+import { MessageTypes } from "./MessageTypes";
 import { Providers } from "./Providers";
 import { Reactions } from "./Reactions";
 import { RepliesVsStandalone } from "./RepliesVsStandalone";
+import { ReplyMatrix } from "./ReplyMatrix";
 import { Season } from "./Season";
 import { TextVsMedia } from "./TextVsMedia";
 import { TopLinks } from "./TopLinks";
 import { WordCloud } from "./WordCloud";
 import { WordLift } from "./WordLift";
-import { ReplyMatrix } from "./ReplyMatrix";
 
 const payload = {
   authors: [{ id: "u1", name: "A", msgs: 5 }],

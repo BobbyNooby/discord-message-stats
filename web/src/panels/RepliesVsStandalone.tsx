@@ -1,25 +1,19 @@
 import { useMemo } from "react";
 
+import { colorBarsOption } from "../charts/bars";
+import { doughnutOption } from "../charts/pie";
+import { remainderColor, replyColor } from "../charts/roles";
 import { EmptyState, Panel } from "../components/Panel";
 import { EChart } from "../lib/echart";
 import { EMPTY_FILTER } from "../lib/empty";
 import { fmt, pctOf } from "../lib/format";
-import {
-  colorBarsOption,
-  doughnutOption,
-  mediaCells,
-  remainderColor,
-  replyColor,
-  replyShare,
-  type MediaPanelProps,
-} from "./mediaData";
-import type { WithPanelId } from "./panelScope";
-import { useChartShape, usePanelFilters } from "./panelScope";
+import { mediaCells, replyShare } from "../selectors/media";
+import { useChartShape, usePanelFilters, type PanelProps, type WithPanelId } from "./panelScope";
 
 const TITLE = "Replies vs standalone";
 
 /** Share of messages that quote another message. */
-export function RepliesVsStandalone({ payload, filters: fallbackFilters }: MediaPanelProps & WithPanelId) {
+export function RepliesVsStandalone({ payload, filters: fallbackFilters }: PanelProps & WithPanelId) {
   const filters = usePanelFilters("replies-vs-standalone", fallbackFilters);
   const shape = useChartShape("replies-vs-standalone");
   const { cells, empty } = useMemo(() => mediaCells(payload, filters), [payload, filters]);

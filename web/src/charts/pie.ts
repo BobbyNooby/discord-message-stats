@@ -15,6 +15,7 @@ import type { EChartsOption } from "echarts";
 import { tooltip } from "../lib/chartStyle";
 import { fmt } from "../lib/format";
 import { swatch, token } from "../lib/palette";
+import type { ColorRow } from "./bars";
 
 /** Eight named slices + "Other". A ninth colour is already indistinguishable. */
 export const MAX_PIE_SLICES = 8;
@@ -110,6 +111,51 @@ export function pieOption(slices: readonly ShapeRow[], unit: string): EChartsOpt
           itemStyle: {
             color: slice.name === OTHER_SLICE ? otherColor() : swatch(index),
           },
+        })),
+      },
+    ],
+  };
+}
+
+export function doughnutOption(slices: ColorRow[], unit: string): EChartsOption {
+  return {
+    tooltip: {
+      ...tooltip(),
+      formatter: (params: unknown) => {
+        const point = params as { name?: string; value?: number; percent?: number };
+        const percent = typeof point.percent === "number" ? ` (${point.percent.toFixed(1)}%)` : "";
+        return `${point.name ?? ""}<br><b>${fmt(point.value ?? 0)}</b> ${unit}${percent}`;
+      },
+    },
+    legend: {
+      type: "scroll",
+      bottom: 0,
+      itemWidth: 10,
+      itemHeight: 8,
+      textStyle: { color: token("--color-muted"), fontSize: 10 },
+    },
+    series: [
+      {
+        type: "pie",
+        radius: ["46%", "72%"],
+        center: ["50%", "43%"],
+        avoidLabelOverlap: true,
+        padAngle: 1.5,
+        itemStyle: { borderColor: token("--chart-heat-edge"), borderWidth: 2 },
+        label: {
+          color: token("--color-muted"),
+          fontSize: 10,
+          formatter: (params: unknown) => {
+            const percent = (params as { percent?: number }).percent ?? 0;
+            return percent >= 4 ? `${percent.toFixed(0)}%` : "";
+          },
+        },
+        labelLine: { lineStyle: { color: token("--chart-guide") } },
+        emphasis: { label: { color: token("--color-text"), fontSize: 12, fontWeight: 600 as const } },
+        data: slices.map((slice) => ({
+          name: slice.name,
+          value: slice.value,
+          itemStyle: { color: slice.color },
         })),
       },
     ],

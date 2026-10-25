@@ -1,16 +1,16 @@
 import type { EChartsOption } from "echarts";
 import { useMemo } from "react";
 
-import { type Payload } from "../api/types";
+import type { Payload } from "../api/types";
+import { foldSlices, otherColor, type Slice } from "../charts/pie";
 import { EmptyState, Panel } from "../components/Panel";
-import { yearMix, type YearMix } from "../selectors/overview";
 import { tooltip } from "../lib/chartStyle";
 import { EChart } from "../lib/echart";
 import { emptyLabel } from "../lib/empty";
 import { fmt, yearCountLabel } from "../lib/format";
 import { swatch, token } from "../lib/palette";
+import { yearMix, type YearMix } from "../selectors/overview";
 import { usePanelFilters, type PanelProps, type WithPanelId } from "./panelScope";
-import { foldSlices, otherColor, type Slice } from "./chartShape";
 
 /** Radius that keeps seven doughnuts legible on one row without a width probe. */
 function radiusFor(count: number): number {

@@ -5,17 +5,18 @@ import { describe, expect, it } from "vitest";
 import type { Payload } from "../api/types";
 import { initialFilters } from "../filters/reducer";
 import { selectTotals, selectVisibleCells } from "../selectors/cells";
+import { healthGauges, mediaShare, replyShare } from "../selectors/media";
+import { charts } from "../test/echarts";
+import { testMeta, testPayload } from "../test/payload";
 import { Attachments } from "./Attachments";
 import { ChatHealth } from "./ChatHealth";
 import { Emoji } from "./Emoji";
 import { MediaSection } from "./MediaSection";
 import { MessageTypes } from "./MessageTypes";
+import type { PanelProps } from "./panelScope";
 import { Reactions } from "./Reactions";
 import { RepliesVsStandalone } from "./RepliesVsStandalone";
 import { TextVsMedia } from "./TextVsMedia";
-import { healthGauges, mediaShare, replyShare, type MediaPanelProps } from "./mediaData";
-import { charts } from "../test/echarts";
-import { testMeta, testPayload } from "../test/payload";
 
 type DoughnutOption = { series: { data: { value: number; name?: string }[] }[] };
 
@@ -130,7 +131,7 @@ describe("Media & reactions", () => {
     const payload = fixture();
     const base = initialFilters(payload);
     const timeFiltered = { ...base, years: [2024] };
-    const cases: [ComponentType<MediaPanelProps>, RegExp][] = [
+    const cases: [ComponentType<PanelProps>, RegExp][] = [
       [Attachments, /49 attachments across 2 mime types/],
       [Emoji, /42 uses across 2 emoji/],
       [Reactions, /29 reactions across 2 emoji/],

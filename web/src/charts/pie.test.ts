@@ -1,13 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  MAX_PIE_SLICES,
-  OTHER_SLICE,
-  foldPie,
-  pieNote,
-  pieOption,
-  type ShapeRow,
-} from "./chartShape";
+import { foldPie, MAX_PIE_SLICES, OTHER_SLICE, pieNote, pieOption, type ShapeRow } from "./pie";
 
 /** Twelve rows, deliberately out of order, so sorting is the helper's job. */
 const rows: ShapeRow[] = [

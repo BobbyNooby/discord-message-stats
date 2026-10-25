@@ -1,16 +1,16 @@
 import type { EChartsOption } from "echarts";
 import { useMemo } from "react";
 
+import { colorBarsOption } from "../charts/bars";
+import { foldSlices, otherColor, type Slice } from "../charts/pie";
 import { EmptyState, Panel } from "../components/Panel";
-import { voiceRows } from "../selectors/overview";
 import { legend, tooltip } from "../lib/chartStyle";
 import { EChart } from "../lib/echart";
 import { emptyLabel } from "../lib/empty";
 import { fmt } from "../lib/format";
 import { swatch, token } from "../lib/palette";
-import { colorBarsOption } from "./mediaData";
+import { voiceRows } from "../selectors/overview";
 import { useChartShape, usePanelFilters, type PanelProps, type WithPanelId } from "./panelScope";
-import { foldSlices, otherColor, type Slice } from "./chartShape";
 
 function doughnut(slices: Slice[]): EChartsOption {
   return {

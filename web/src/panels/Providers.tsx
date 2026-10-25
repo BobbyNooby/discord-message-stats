@@ -1,14 +1,15 @@
 import { useMemo } from "react";
 
+import type { Payload } from "../api/types";
+import { horizontalBarsOption } from "../charts/bars";
 import { EmptyState, Panel } from "../components/Panel";
+import type { Filters } from "../filters/reducer";
 import { EChart } from "../lib/echart";
 import { emptyFor } from "../lib/empty";
 import { fmt } from "../lib/format";
 import { providerLabel } from "../lib/mediaLabels";
 import { swatch } from "../lib/palette";
-import type { Payload } from "../api/types";
-import { allPairRows, horizontalBarsOption, sumRows } from "./mediaData";
-import type { Filters } from "../filters/reducer";
+import { allPairRows, sumRows } from "../selectors/media";
 import { usePanelFilters } from "./panelScope";
 
 /**

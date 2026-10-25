@@ -1,14 +1,14 @@
 import { useMemo } from "react";
 
+import { horizontalBarsOption } from "../charts/bars";
+import { foldPie, pieNote, pieOption } from "../charts/pie";
 import { EmptyState, Panel } from "../components/Panel";
 import { EChart } from "../lib/echart";
 import { globalEmpty } from "../lib/empty";
 import { fmt } from "../lib/format";
 import { swatch } from "../lib/palette";
-import { foldPie, pieNote, pieOption } from "./chartShape";
-import { allTypeRows, horizontalBarsOption, sumRows, type MediaPanelProps } from "./mediaData";
-import type { WithPanelId } from "./panelScope";
-import { useChartShape, usePanelFilters } from "./panelScope";
+import { allTypeRows, sumRows } from "../selectors/media";
+import { useChartShape, usePanelFilters, type PanelProps, type WithPanelId } from "./panelScope";
 
 const TITLE = "Message types";
 
@@ -21,7 +21,7 @@ const TITLE = "Message types";
  * tail into "Other" and says how much of the list that is (`pieNote`), because
  * `rollup_type` is the one rollup here that ships every row rather than a cut.
  */
-export function MessageTypes({ payload, filters: fallbackFilters }: MediaPanelProps & WithPanelId) {
+export function MessageTypes({ payload, filters: fallbackFilters }: PanelProps & WithPanelId) {
   const filters = usePanelFilters("message-types", fallbackFilters);
   const shape = useChartShape("message-types");
   const rows = useMemo(() => allTypeRows(payload), [payload]);
