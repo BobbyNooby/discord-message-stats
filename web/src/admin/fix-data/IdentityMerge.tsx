@@ -18,10 +18,10 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import type { Author, Payload } from "../api/types";
-import { EmptyState } from "../components/Panel";
-import { RebuildRequired } from "./Rebuild";
-import { putIdentity, type MergeEntry } from "./api";
+import type { Author, Payload } from "../../api/types";
+import { EmptyState } from "../../components/Panel";
+import { RebuildRequired } from "../Rebuild";
+import { putIdentity, type MergeEntry } from "../api";
 import { AbsorbConfirm, MergeCard } from "./MergeCard";
 import { MergePicker, type NameChoice } from "./MergePicker";
 import { MergeSuggestions } from "./MergeSuggestions";
@@ -39,8 +39,8 @@ import {
   type Absorb,
   type Merge,
 } from "./merges";
-import { Notice, SubSection } from "./shared";
-import { useAction } from "./useAction";
+import { Notice, SubSection } from "../shared";
+import { useAction } from "../useAction";
 
 export function IdentityMerge({
   payload,

@@ -14,8 +14,8 @@
 
 import { useQuery } from "@tanstack/react-query";
 
-import { getTimezones } from "./api";
-import { Notice } from "./shared";
+import { getTimezones } from "../api";
+import { Notice } from "../shared";
 
 export function TimezonePicker({
   value,

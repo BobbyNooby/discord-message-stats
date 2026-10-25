@@ -11,7 +11,7 @@ const api = vi.hoisted(() => ({
   forgetToken: vi.fn(),
 }));
 
-vi.mock("./api", () => api);
+vi.mock("../api", () => api);
 
 function renderBox() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });

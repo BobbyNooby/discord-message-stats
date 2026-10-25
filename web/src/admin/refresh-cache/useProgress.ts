@@ -13,7 +13,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { getProgress, type Progress, type ProgressLogEntry } from "./api";
+import { getProgress, type Progress, type ProgressLogEntry } from "../api";
 
 /** A run under way is worth a second's lag on the elapsed line. */
 export const RUNNING_MS = 1000;

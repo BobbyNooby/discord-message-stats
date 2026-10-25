@@ -10,8 +10,8 @@
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
 
-import type { Payload } from "../api/types";
-import { StatCard } from "../components/StatCard";
+import type { Payload } from "../../api/types";
+import { StatCard } from "../../components/StatCard";
 import {
   JobRunning,
   discardUpload as discardStaged,
@@ -21,7 +21,7 @@ import {
   type AdminStatus,
   type ConfigPatch,
   type UploadPreview,
-} from "./api";
+} from "../api";
 import {
   Def,
   DefList,
@@ -33,9 +33,9 @@ import {
   formatDay,
   formatStamp,
   type SaveMode,
-} from "./shared";
+} from "../shared";
 import { TimezonePicker } from "./TimezonePicker";
-import { useAction } from "./useAction";
+import { useAction } from "../useAction";
 
 export function ReplaceDatabase({
   status,

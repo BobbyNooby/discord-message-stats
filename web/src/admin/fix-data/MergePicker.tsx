@@ -1,6 +1,6 @@
-import type { Author } from "../api/types";
+import type { Author } from "../../api/types";
 import { normalise, type MergeDirectory } from "./merges";
-import { Notice } from "./shared";
+import { Notice } from "../shared";
 
 export type NameChoice = "a" | "b" | "custom";
 

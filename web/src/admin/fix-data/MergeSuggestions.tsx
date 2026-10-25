@@ -1,4 +1,4 @@
-import type { Author } from "../api/types";
+import type { Author } from "../../api/types";
 import type { Suggestion } from "./merges";
 
 /**

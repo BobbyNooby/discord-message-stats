@@ -21,12 +21,12 @@ import {
   Unauthorized,
   getBootstrap,
 } from "../api/client";
-import { Access } from "../admin/Access";
-import { FixData } from "../admin/FixData";
-import { RefreshCache } from "../admin/RefreshCache";
-import { ReplaceDatabase } from "../admin/ReplaceDatabase";
-import { getConfig, getStatus, putConfig, recalculate, type ConfigPatch } from "../admin/api";
-import { LOCAL_ZONE, Notice, type SaveMode } from "../admin/shared";
+import { Access } from "./access/Access";
+import { FixData } from "./fix-data/FixData";
+import { RefreshCache } from "./refresh-cache/RefreshCache";
+import { ReplaceDatabase } from "./replace-database/ReplaceDatabase";
+import { getConfig, getStatus, putConfig, recalculate, type ConfigPatch } from "./api";
+import { LOCAL_ZONE, Notice, type SaveMode } from "./shared";
 import {
   DashboardSkeleton,
   Forbidden as ForbiddenScreen,

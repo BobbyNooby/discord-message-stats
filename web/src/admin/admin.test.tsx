@@ -18,7 +18,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { Payload } from "../api/types";
-import { Admin } from "../routes/Admin";
+import { Admin } from "./Admin";
 import type { AdminConfig, AdminRow, AdminStatus, MergeEntry, Progress } from "./api";
 
 const STATUS: AdminStatus = {

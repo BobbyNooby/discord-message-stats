@@ -2,7 +2,7 @@
  * The words and colours the Refresh task puts on its numbers, kept apart from
  * the screen so each rule can be tested on its own.
  */
-import type { AdminConfig, AdminStatus, RollupFamily } from "./api";
+import type { AdminConfig, AdminStatus, RollupFamily } from "../api";
 import type { FamilyProgress } from "./ProgressView";
 
 export function tokenTone(status: string): "ok" | "warn" | "error" {

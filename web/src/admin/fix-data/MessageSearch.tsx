@@ -7,8 +7,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
 
-import { searchMessages } from "./api";
-import { Notice, SubSection, formatStamp } from "./shared";
+import { searchMessages } from "../api";
+import { Notice, SubSection, formatStamp } from "../shared";
 
 export function MessageSearch() {
   const [term, setTerm] = useState("");

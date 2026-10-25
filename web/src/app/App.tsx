@@ -40,7 +40,7 @@ import { schemaWarning } from "../lib/schemaWarning";
 import { stampLabel, timeFormatOf } from "../lib/timeFormat";
 import { CustomSection } from "../panels/CustomSection";
 import { PanelSections } from "../panels/Sections";
-import { Admin } from "../routes/Admin";
+import { Admin } from "../admin/Admin";
 import { Login } from "./Login";
 
 export default function App() {

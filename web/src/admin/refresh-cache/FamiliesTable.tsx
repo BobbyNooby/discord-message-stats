@@ -1,7 +1,7 @@
-import type { RollupFamily } from "./api";
+import type { RollupFamily } from "../api";
 import { formatSeconds, type FamilyProgress } from "./ProgressView";
 import { provenance, stateTone } from "./refreshLabels";
-import { formatStamp } from "./shared";
+import { formatStamp } from "../shared";
 
 /**
  * One row per rollup family: what the running rebuild is doing to it, and what

@@ -13,7 +13,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { FreshnessLine, LiveLog } from "./ProgressView";
 import { RefreshCache } from "./RefreshCache";
-import type { AdminConfig, AdminStatus, Progress, ProgressFamily, ProgressLogEntry } from "./api";
+import type { AdminConfig, AdminStatus, Progress, ProgressFamily, ProgressLogEntry } from "../api";
 import type { ReactNode } from "react";
 
 const FAMILIES = [

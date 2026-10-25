@@ -9,11 +9,11 @@
  * rebuild prompt next to the merge it applies.
  */
 
-import type { Payload } from "../api/types";
+import type { Payload } from "../../api/types";
 import { IdentityMerge } from "./IdentityMerge";
 import { MessageSearch } from "./MessageSearch";
 import { WhoShows } from "./WhoShows";
-import { Section } from "./shared";
+import { Section } from "../shared";
 
 export function FixData({
   payload,

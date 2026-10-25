@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { Author } from "../api/types";
+import type { Author } from "../../api/types";
 import { addAlt, foldSuggestion, mergeDirectory, mergePair, removeAlt, type Merge } from "./merges";
 
 const authors: Author[] = [

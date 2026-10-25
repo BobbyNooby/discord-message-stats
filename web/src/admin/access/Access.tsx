@@ -11,7 +11,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 
-import type { Payload } from "../api/types";
+import type { Payload } from "../../api/types";
 import {
   ApiError,
   type AdminConfig,
@@ -22,9 +22,9 @@ import {
   listAdmins,
   removeAdmin,
   revokeAllSessions,
-} from "./api";
-import { Def, DefList, Notice, SaveBar, Section, SubSection, type SaveMode } from "./shared";
-import { useAction } from "./useAction";
+} from "../api";
+import { Def, DefList, Notice, SaveBar, Section, SubSection, type SaveMode } from "../shared";
+import { useAction } from "../useAction";
 
 const POLICIES: { value: string; label: string; hint: string }[] = [
   {

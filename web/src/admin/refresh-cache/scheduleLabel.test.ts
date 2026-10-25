@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { AdminConfig } from "./api";
+import type { AdminConfig } from "../api";
 import { scheduleLabel } from "./refreshLabels";
 
 const config = (cron_enabled: boolean, cron_hours: number) =>

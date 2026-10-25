@@ -6,8 +6,8 @@
  * Every edit returns the *whole* next set, because `PUT /api/admin/identity`
  * replaces rather than patches.
  */
-import type { Author, Payload } from "../api/types";
-import type { AdminMove, MergeEntry } from "./api";
+import type { Author, Payload } from "../../api/types";
+import type { AdminMove, MergeEntry } from "../api";
 
 /** One person: the canonical account and the alts folded into it. */
 export type Merge = { canonical: string; members: string[] };

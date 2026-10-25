@@ -1,8 +1,8 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { createJob, listJobs, type JobKind } from "./api";
-import { Notice, formatStamp } from "./shared";
-import { useAction } from "./useAction";
+import { createJob, listJobs, type JobKind } from "../api";
+import { Notice, formatStamp } from "../shared";
+import { useAction } from "../useAction";
 
 const BUTTONS: { kind: JobKind; label: string; hint: string; changesData: boolean }[] = [
   {

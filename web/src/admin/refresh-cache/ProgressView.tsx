@@ -12,8 +12,8 @@
  * time — a per-family bar would be a lie.
  */
 
-import type { ProgressFamily, ProgressLast, ProgressLogEntry } from "./api";
-import { formatClock, Notice } from "./shared";
+import type { ProgressFamily, ProgressLast, ProgressLogEntry } from "../api";
+import { formatClock, Notice } from "../shared";
 
 /** "05:37" — the clock half of a freshness answer, in the stamp's own wall time. */
 

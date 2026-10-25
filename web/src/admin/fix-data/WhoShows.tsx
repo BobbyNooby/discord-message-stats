@@ -13,11 +13,11 @@
 
 import { useMemo, useState } from "react";
 
-import type { Payload } from "../api/types";
-import { EmptyState } from "../components/Panel";
-import { putInclusions } from "./api";
-import { Notice, SubSection } from "./shared";
-import { useAction } from "./useAction";
+import type { Payload } from "../../api/types";
+import { EmptyState } from "../../components/Panel";
+import { putInclusions } from "../api";
+import { Notice, SubSection } from "../shared";
+import { useAction } from "../useAction";
 
 export function WhoShows({ payload, onDirty }: { payload: Payload | null; onDirty: () => void }) {
   const [excluded, setExcluded] = useState<Record<string, boolean>>({});

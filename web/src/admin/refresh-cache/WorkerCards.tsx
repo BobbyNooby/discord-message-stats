@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 
-import type { AdminConfig, AdminStatus, ConfigPatch } from "./api";
+import type { AdminConfig, AdminStatus, ConfigPatch } from "../api";
 import { scheduleLabel, tokenTone } from "./refreshLabels";
-import { Def, DefList, Notice, SaveBar, formatStamp, type SaveMode } from "./shared";
+import { Def, DefList, Notice, SaveBar, formatStamp, type SaveMode } from "../shared";
 import { TokenBox } from "./TokenBox";
-import { useAction } from "./useAction";
+import { useAction } from "../useAction";
 
 type Worker = AdminStatus["worker"];
 

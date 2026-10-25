@@ -11,9 +11,9 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, type CSSProperties } from "react";
 
-import { forgetToken, getTokenCheck, saveToken, type TokenSource } from "./api";
-import { ActionNotices } from "./shared";
-import { useAction } from "./useAction";
+import { forgetToken, getTokenCheck, saveToken, type TokenSource } from "../api";
+import { ActionNotices } from "../shared";
+import { useAction } from "../useAction";
 
 const SOURCE_LABEL: Record<TokenSource, string> = {
   saved: "saved from this board",

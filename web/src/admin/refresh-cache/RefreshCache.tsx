@@ -14,7 +14,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
 
-import { recalculate, type AdminConfig, type AdminStatus, type ConfigPatch } from "./api";
+import { recalculate, type AdminConfig, type AdminStatus, type ConfigPatch } from "../api";
 import { FamiliesTable } from "./FamiliesTable";
 import { JobHistory, JobRunner } from "./Jobs";
 import { FreshnessLine, LiveLog, NowLine, mergeFamilies } from "./ProgressView";
@@ -28,8 +28,8 @@ import {
   formatStamp,
   workerOffline,
   type SaveMode,
-} from "./shared";
-import { useAction } from "./useAction";
+} from "../shared";
+import { useAction } from "../useAction";
 import { useProgress } from "./useProgress";
 import { LastIngest, TokenHealth } from "./WorkerCards";
 
