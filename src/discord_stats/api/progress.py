@@ -109,7 +109,16 @@ def progress(request: Request, since: int = Query(0, ge=0)) -> dict:
 
 def build_progress(conn: sqlite3.Connection, cfg: Config, *,
                    since: int = 0, log_cap: int = LOG_CAP) -> dict:
-    channel_id = _channel_id(conn, cfg.channel_id)
+    # The board's saved settings, resolved the way the rebuild resolves them.
+    # Judged against config.toml alone, a timezone saved on the board made every
+    # family look stale here while /status called the same tables current.
+    from discord_scraper import overrides
+
+    try:
+        cfg = overrides.effective_for(conn, cfg)
+    except sqlite3.OperationalError:
+        pass   # no config table yet: the file is all there is
+    channel_id = cfg.channel_id
     fresh = _freshness(conn, channel_id, cfg)
     view = _freshness_view(fresh)
 
@@ -342,15 +351,6 @@ def _newest_message_id(conn: sqlite3.Connection, channel_id: str) -> str | None:
             continue
         return None if row is None else str(row[0])
     return None
-
-
-def _channel_id(conn: sqlite3.Connection, default: str) -> str:
-    """The operator's channel override, read without importing ``admin.py``."""
-    try:
-        row = conn.execute("SELECT value FROM config WHERE key = 'channel_id'").fetchone()
-    except sqlite3.OperationalError:
-        return default
-    return str(row[0]) if row is not None and row[0] else default
 
 
 def _has_table(conn: sqlite3.Connection, name: str) -> bool:

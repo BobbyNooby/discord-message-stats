@@ -354,3 +354,17 @@ def test_progress_answers_without_rollups_at_all(seeded_db_path, tmp_path):
     body = client.get("/api/admin/progress").json()
     assert body["freshness"]["current"] is False
     assert body["freshness"]["built_at"] is None
+
+
+def test_progress_judges_freshness_with_the_settings_saved_on_the_board(db_cfg, conn):
+    """A timezone saved on the board made every family read stale here."""
+    from discord_scraper import overrides
+
+    cfg, path = db_cfg
+    conn.execute("INSERT INTO config (key, value) VALUES ('timezone', 'Asia/Kuala_Lumpur')")
+    conn.commit()
+    # Rebuilt the way the worker rebuilds: with the board's settings applied.
+    rebuild_all(conn, overrides.effective_for(conn, cfg))
+    body = _client(path, cfg).get("/api/admin/progress").json()
+    assert body["freshness"]["current"] is True
+    assert not [family["family"] for family in body["families"] if family["stale"]]
