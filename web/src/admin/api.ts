@@ -1,8 +1,8 @@
 /**
  * The admin board's API calls.
  *
- * `client.ts` keeps its `request` helper private, so this module has its own
- * with the same contract: a 401 becomes `Unauthorized` (the caller shows the
+ * The fetch itself is `client.ts`'s `requestJson`; this module only says what
+ * each failure means here: a 401 becomes `Unauthorized` (the caller shows the
  * login wall), everything else is an `ApiError` carrying the server's `detail`.
  *
  * Response shapes are read from `src/discord_stats/api/admin.py`, not guessed.
@@ -11,7 +11,7 @@
  * that sends a token up; the server checks it, stores it and never echoes it.
  */
 
-import { Forbidden, Offline, Unauthorized } from "../api/client";
+import { Forbidden, Unauthorized, requestJson, type RequestFailures } from "../api/client";
 
 export class ApiError extends Error {
   constructor(
@@ -250,48 +250,18 @@ export type SearchResults = {
   }[];
 };
 
-function detailFrom(body: unknown, fallback: string): string {
-  if (body && typeof body === "object" && "detail" in body) {
-    const detail = (body as { detail: unknown }).detail;
-    if (typeof detail === "string") return detail;
-    if (Array.isArray(detail)) {
-      // Pydantic's validation errors are a list of objects.
-      const messages = detail
-        .map((item) =>
-          item && typeof item === "object" && "msg" in item
-            ? String((item as { msg: unknown }).msg)
-            : JSON.stringify(item),
-        )
-        .join("; ");
-      if (messages) return messages;
-    }
-  }
-  return fallback;
-}
+const ADMIN: RequestFailures = {
+  offline: "the admin board could not reach the server",
+  fail(status, detail) {
+    if (status === 401) return new Unauthorized("login required");
+    // A viewer who typed /admin: a boundary, not a failure they can retry away.
+    if (status === 403) return new Forbidden("admin only");
+    if (status === 409) return new JobRunning(detail, status);
+    return new ApiError(detail, status);
+  },
+};
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  let response: Response;
-  try {
-    response = await fetch(path, { credentials: "same-origin", ...init });
-  } catch {
-    throw new Offline("the admin board could not reach the server");
-  }
-  if (response.status === 401) throw new Unauthorized("login required");
-  // A viewer who typed /admin: a boundary, not a failure they can retry away.
-  if (response.status === 403) throw new Forbidden("admin only");
-  if (!response.ok) {
-    let detail = `${response.status} ${response.statusText}`;
-    try {
-      detail = detailFrom(await response.json(), detail);
-    } catch {
-      /* a non-JSON body keeps the status line */
-    }
-    if (response.status === 409) throw new JobRunning(detail, response.status);
-    throw new ApiError(detail, response.status);
-  }
-  if (response.status === 204) return undefined as T;
-  return (await response.json()) as T;
-}
+const request = <T>(path: string, init?: RequestInit) => requestJson<T>(path, init, ADMIN);
 
 const json = (method: string, body: unknown): RequestInit => ({
   method,

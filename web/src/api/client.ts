@@ -1,4 +1,4 @@
-/** One fetch wrapper, so every query fails the same way. */
+/** One fetch wrapper, so every query — the dashboard's and the admin board's — fails the same way. */
 
 /**
  * The four ways a fetch can fail, told apart so the screen can say something
@@ -18,29 +18,74 @@ export class ServerError extends Error {
   }
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+/** The server's own words for a failure, or `fallback` when it sent none. */
+function detailFrom(body: unknown, fallback: string): string {
+  if (body && typeof body === "object" && "detail" in body) {
+    const detail = (body as { detail: unknown }).detail;
+    if (typeof detail === "string" && detail) return detail;
+    if (Array.isArray(detail)) {
+      // Pydantic's validation errors are a list of objects.
+      const messages = detail
+        .map((item) =>
+          item && typeof item === "object" && "msg" in item
+            ? String((item as { msg: unknown }).msg)
+            : JSON.stringify(item),
+        )
+        .join("; ");
+      if (messages) return messages;
+    }
+  }
+  return fallback;
+}
+
+export type RequestFailures = {
+  /** What `Offline` says when the browser never reached the server. */
+  offline: string;
+  /** The error a non-2xx status becomes, given the server's `detail`. */
+  fail: (status: number, detail: string) => Error;
+};
+
+/**
+ * Same-origin cookies, a rejected fetch as `Offline`, the server's `detail` on
+ * a failure and no body on a 204. Which error a status becomes is the caller's
+ * to say: the admin board names a 409 that the dashboard never sees.
+ */
+export async function requestJson<T>(
+  path: string,
+  init: RequestInit | undefined,
+  failures: RequestFailures,
+): Promise<T> {
   let response: Response;
   try {
     response = await fetch(path, { credentials: "same-origin", ...init });
   } catch {
     // A rejected fetch is the browser saying it never reached the server.
-    throw new Offline("the dashboard could not reach the server");
+    throw new Offline(failures.offline);
   }
   if (!response.ok) {
     let detail = `${response.status} ${response.statusText}`;
     try {
-      const body = await response.json();
-      if (body?.detail) detail = String(body.detail);
+      detail = detailFrom(await response.json(), detail);
     } catch {
       /* a non-JSON body keeps the status line */
     }
-    if (response.status === 401) throw new Unauthorized(detail);
-    if (response.status === 403) throw new Forbidden(detail);
-    if (response.status >= 500) throw new ServerError(detail, response.status);
-    throw new Error(detail);
+    throw failures.fail(response.status, detail);
   }
+  if (response.status === 204) return undefined as T;
   return (await response.json()) as T;
 }
+
+const DASHBOARD: RequestFailures = {
+  offline: "the dashboard could not reach the server",
+  fail(status, detail) {
+    if (status === 401) return new Unauthorized(detail);
+    if (status === 403) return new Forbidden(detail);
+    if (status >= 500) return new ServerError(detail, status);
+    return new Error(detail);
+  },
+};
+
+const request = <T>(path: string, init?: RequestInit) => requestJson<T>(path, init, DASHBOARD);
 
 export const getBootstrap = () => request<import("./types").Payload>("/api/bootstrap");
 
