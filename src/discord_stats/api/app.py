@@ -9,8 +9,6 @@ from __future__ import annotations
 
 import sqlite3
 import threading
-import time
-import urllib.parse
 from pathlib import Path
 from typing import Any
 
@@ -19,7 +17,7 @@ from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from discord_stats.api import admin, logstream, progress, viewer
+from discord_stats.api import admin, logstream, progress, thumbs, viewer
 from discord_stats.api.cache import BoundedCache
 from discord_stats.api.deps import connect, connect_writable
 from discord_stats.auth import oauth
@@ -38,17 +36,6 @@ from discord_scraper.rollups.schema import is_stale
 from discord_scraper.timeutil import utc_stamp
 
 STATE_COOKIE = "dsh_oauth_state"
-
-# 400 cached thumbnails at the 25 MB fetch cap would be 10 GB of resident memory,
-# so the cache is bounded by total bytes as well as by entry count.
-THUMB_CACHE_BYTES = 256 * 1024 * 1024
-
-# A signed CDN link outlives its signature: fetching one that now 404s again on
-# every dashboard load is noise, not a retry. A refusal is remembered for a
-# short while instead. Nothing but the refusal is stored, so the count is the
-# only budget this cache needs.
-THUMB_FAILURES = 512
-THUMB_FAIL_TTL = 600
 
 # A local month, as the word-by-month rollup keys it.
 MONTH_PATTERN = r"^\d{4}-(0[1-9]|1[0-2])$"
@@ -144,9 +131,11 @@ def create_app(
     app.state.payload_cache: dict[str, dict] = {}
     app.state.cfg = cfg
     app.state.db_path = str(db_path)
+    app.state.thumbs = thumbs.ThumbProxy()
     app.include_router(admin.router)
     app.include_router(progress.router)
     app.include_router(logstream.router)
+    app.include_router(thumbs.router)
 
     # Bring the database up to shape once, at boot. `CREATE TABLE IF NOT EXISTS`
     # never adds a column, so an instance started before a schema addition fails
@@ -191,136 +180,6 @@ def create_app(
     def safe_redirect() -> str:
         """Where to land after login — the payload the browser came for."""
         return "/" if app.state.cfg.redirect_uri else "/"
-
-    # ---- thumbnails ---------------------------------------------------------
-    # A GIF posted 63 times is worth showing, but letting every viewer's browser
-    # fetch it from Tenor hands those CDNs a list of who is reading this chat.
-    # `media.thumbnails = "proxy"` (the default) fetches and caches it here; the
-    # suffix list is what the data actually contains, and it is a hard allowlist
-    # because this endpoint takes a URL from the query string.
-    THUMB_SUFFIXES = (
-        "ytimg.com", "ggpht.com", "ytimg.googleusercontent.com",
-        "tenor.com", "tenor.co", "klipy.com",
-        "twimg.com", "discordapp.net", "discordapp.com",
-        "akamaihd.net", "scdn.co", "streamable.com", "imgur.com", "redd.it", "reddit.com",
-    )
-    # Streamed, not buffered: the body is read in chunks and abandoned the moment
-    # it passes the cap, so a large asset costs a bounded amount of memory rather
-    # than its own size. That is what makes a generous cap safe — and a cap is
-    # still needed, because this endpoint fetches a URL from the query string
-    # (the largest thumbnail in the reference data is 36.8 MB).
-    THUMB_MAX_BYTES = 25 * 1024 * 1024
-    THUMB_CACHE_ENTRIES = 400
-    # Insertion-ordered, so the front of the dict is the least recently used
-    # entry; a hit is moved to the back and eviction takes from the front.
-    thumb_cache: dict[str, tuple[float, bytes, str]] = {}
-    thumb_cache_bytes = 0
-    # Refusals, ordered the same way: the front is the least recently refused.
-    # The value is what to replay — (expiry, status, detail) — not a body.
-    thumb_failures: dict[str, tuple[float, int, str]] = {}
-    # Without this, N parallel requests each hold their own 25 MB body, which is
-    # what would turn the byte ceiling above into a per-request promise.
-    thumb_fetches = threading.Semaphore(4)
-    # Storing is a read-modify-write of the cache and its running total, and the
-    # endpoint runs on worker threads: two stores landing together would evict
-    # the same entry twice, or drop a subtraction, and the total would drift.
-    thumb_lock = threading.Lock()
-
-    def _thumb_allowed(url: str) -> bool:
-        try:
-            parsed = urllib.parse.urlparse(url)
-        except ValueError:
-            return False
-        if parsed.scheme not in ("http", "https") or not parsed.hostname:
-            return False
-        host = parsed.hostname.lower()
-        return any(host == s or host.endswith("." + s) for s in THUMB_SUFFIXES)
-
-    def _thumb_refused(u: str, status: int, detail: str) -> None:
-        """Remember a refusal so the next request for it is answered, not fetched."""
-        with thumb_lock:
-            thumb_failures.pop(u, None)
-            while len(thumb_failures) >= THUMB_FAILURES:
-                thumb_failures.pop(next(iter(thumb_failures)))
-            thumb_failures[u] = (time.monotonic() + THUMB_FAIL_TTL, status, detail)
-
-    @app.get("/api/thumb")
-    def thumb(u: str = Query(..., max_length=2048),
-              _level: Level = Depends(require_viewer)) -> Response:
-        import httpx
-
-        nonlocal thumb_cache_bytes
-        if not _thumb_allowed(u):
-            raise HTTPException(status_code=400, detail="that host is not on the thumbnail allowlist")
-        now = time.monotonic()
-        with thumb_lock:
-            hit = thumb_cache.get(u)
-            if hit is not None and hit[0] > now:
-                # A hit is a use: move the entry to the most-recently-used end so
-                # eviction below throws away the genuinely cold entries.
-                thumb_cache[u] = thumb_cache.pop(u)
-                return Response(hit[1], media_type=hit[2],
-                                headers={"Cache-Control": "public, max-age=86400"})
-            refused = thumb_failures.get(u)
-            if refused is not None:
-                if refused[0] > now:
-                    thumb_failures[u] = thumb_failures.pop(u)
-                    raise HTTPException(status_code=refused[1], detail=refused[2])
-                del thumb_failures[u]
-        too_big = f"that image is larger than {THUMB_MAX_BYTES // 1024 // 1024} MB"
-        thumb_fetches.acquire()
-        try:
-            try:
-                # Redirects are not followed: a redirect is how an allowlisted host
-                # would be used to reach one that is not.
-                with httpx.stream("GET", u, timeout=10.0, follow_redirects=False) as response:
-                    kind = response.headers.get("content-type", "").split(";")[0].strip().lower()
-                    # mp4 as well as images: the playable asset of a gifv is an mp4,
-                    # and routing it through here is what keeps Tenor and Klipy out
-                    # of the viewer's browser.
-                    if response.status_code != 200 or not (
-                        kind.startswith("image/") or kind in ("video/mp4", "video/webm")
-                    ):
-                        raise HTTPException(status_code=502, detail="that URL did not return an image")
-                    declared = response.headers.get("content-length", "")
-                    if declared.isdigit() and int(declared) > THUMB_MAX_BYTES:
-                        raise HTTPException(status_code=502, detail=too_big)
-                    body = bytearray()
-                    for chunk in response.iter_bytes():
-                        body += chunk
-                        if len(body) > THUMB_MAX_BYTES:
-                            raise HTTPException(status_code=502, detail=too_big)
-            except HTTPException as refusal:
-                # An expired link 404s every time it is asked, so remember the
-                # refusal — and nothing else — rather than ask again.
-                _thumb_refused(u, refusal.status_code, str(refusal.detail))
-                raise
-            except Exception as exc:
-                detail = f"thumbnail fetch failed: {exc}"
-                _thumb_refused(u, 502, detail)
-                raise HTTPException(status_code=502, detail=detail) from exc
-        finally:
-            thumb_fetches.release()
-        body = bytes(body)
-        with thumb_lock:
-            # A success supersedes a remembered refusal for the same URL.
-            thumb_failures.pop(u, None)
-            # An entry for this URL that has expired is replaced, not double-counted.
-            expired = thumb_cache.pop(u, None)
-            if expired is not None:
-                thumb_cache_bytes -= len(expired[1])
-            while thumb_cache and (
-                len(thumb_cache) >= THUMB_CACHE_ENTRIES
-                or thumb_cache_bytes + len(body) > THUMB_CACHE_BYTES
-            ):
-                # `dict` keeps insertion order and has no `popitem(last=False)`, so
-                # the front of the dict — the least recently used entry — is named.
-                coldest = next(iter(thumb_cache))
-                thumb_cache_bytes -= len(thumb_cache.pop(coldest)[1])
-            thumb_cache[u] = (now + 86400, body, kind)
-            thumb_cache_bytes += len(body)
-        return Response(body, media_type=kind,
-                        headers={"Cache-Control": "public, max-age=86400"})
 
     @app.get("/api/health")
     def health() -> dict:

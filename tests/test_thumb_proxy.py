@@ -106,9 +106,7 @@ def _urls(*names):
 
 def test_the_cache_ceiling_counts_bytes_not_just_entries(client, monkeypatch):
     """400 entries at the 25 MB fetch cap would be 10 GB of resident memory."""
-    import discord_stats.api.app as app_module
-
-    monkeypatch.setattr(app_module, "THUMB_CACHE_BYTES", 2500, raising=False)
+    client.app.state.thumbs.images.max_weight = 2500
     seen = use(monkeypatch, chunks=[b"x" * 1000])
 
     first, second, third = _urls("a", "b", "c")
@@ -122,9 +120,7 @@ def test_the_cache_ceiling_counts_bytes_not_just_entries(client, monkeypatch):
 
 
 def test_a_recently_read_entry_is_evicted_last(client, monkeypatch):
-    import discord_stats.api.app as app_module
-
-    monkeypatch.setattr(app_module, "THUMB_CACHE_BYTES", 2500, raising=False)
+    client.app.state.thumbs.images.max_weight = 2500
     seen = use(monkeypatch, chunks=[b"x" * 1000])
 
     first, second, third = _urls("a", "b", "c")
@@ -148,41 +144,31 @@ def test_a_refused_oversized_image_never_takes_a_positive_cache_slot(client, mon
                                      "content-length": str(26 * 1024 * 1024)})
     url = "https://media.tenor.com/huge.gif"
     assert client.get("/api/thumb", params={"u": url}).status_code == 502
-    cache, total, _ = _thumb_cache(client.app)
-    assert cache.cell_contents == {}, "a refused image took a slot in the byte cache"
-    assert total.cell_contents == 0, "a refused image counted bytes it does not hold"
+    images = client.app.state.thumbs.images
+    assert images.snapshot() == {}, "a refused image took a slot in the byte cache"
+    assert images.weight == 0, "a refused image counted bytes it does not hold"
 
     # The refusal is what is remembered instead, so the repeat is not a fetch.
     assert client.get("/api/thumb", params={"u": url}).status_code == 502
     assert seen["calls"] == 1, "a refused image was fetched twice"
 
 
-def _thumb_cache(app):
-    """The endpoint's live closure: both caches and the byte counter.
-
-    Read-only introspection, so the assertion is about the real structures the
-    endpoint uses and not about a stub that happens to agree with itself.
-    """
-    for route in app.routes:
-        endpoint = getattr(route, "endpoint", None)
-        if getattr(endpoint, "__name__", "") == "thumb":
-            cells = dict(zip(endpoint.__code__.co_freevars, endpoint.__closure__))
-            return cells["thumb_cache"], cells["thumb_cache_bytes"], cells["thumb_failures"]
-    raise AssertionError("no /api/thumb route")
-
-
 def _thumb_failures(app) -> dict:
-    """The negative cache the endpoint actually holds."""
-    return _thumb_cache(app)[2].cell_contents
+    """The negative cache the endpoint actually holds, coldest first.
+
+    Read from the app's live cache, so the assertion is about the real
+    structure the endpoint uses and not about a stub that agrees with itself.
+    """
+    return app.state.thumbs.refusals.snapshot()
 
 
 def _clock(monkeypatch):
     """A clock the test moves by hand, so a TTL can be spent without waiting.
 
-    Only `app.py`'s view of `time` is replaced, the way the semaphore tests
+    Only the proxy module's view of `time` is replaced, the way the semaphore tests
     replace its view of `threading`.
     """
-    import discord_stats.api.app as app_module
+    import discord_stats.api.thumbs as thumbs_module
 
     class Clock:
         def __init__(self):
@@ -192,7 +178,7 @@ def _clock(monkeypatch):
             return self.now
 
     clock = Clock()
-    monkeypatch.setattr(app_module, "time", clock)
+    monkeypatch.setattr(thumbs_module, "time", clock)
     return clock
 
 
@@ -230,7 +216,7 @@ def test_a_transport_error_is_remembered_too(client, monkeypatch):
 
 def test_a_later_success_wins_over_a_remembered_failure(client, monkeypatch):
     """The refusal is short-lived: once its window lapses, a success takes over."""
-    import discord_stats.api.app as app_module
+    import discord_stats.api.thumbs as thumbs_module
 
     clock = _clock(monkeypatch)
     url = "https://media.tenor.com/revived.gif"
@@ -240,7 +226,7 @@ def test_a_later_success_wins_over_a_remembered_failure(client, monkeypatch):
     assert failed["calls"] == 1
 
     # The same URL starts answering with an image, so the refusal must not win.
-    clock.now += app_module.THUMB_FAIL_TTL + 1
+    clock.now += thumbs_module.THUMB_FAIL_TTL + 1
     succeeded = use(monkeypatch, chunks=[b"GIF89a-revived"])
     served = client.get("/api/thumb", params={"u": url})
 
@@ -255,9 +241,9 @@ def test_a_later_success_wins_over_a_remembered_failure(client, monkeypatch):
 
 
 def test_a_remembered_failure_expires_after_its_ttl(client, monkeypatch):
-    import discord_stats.api.app as app_module
+    import discord_stats.api.thumbs as thumbs_module
 
-    assert app_module.THUMB_FAIL_TTL == 600, "the refusal TTL is not the documented one"
+    assert thumbs_module.THUMB_FAIL_TTL == 600, "the refusal TTL is not the documented one"
     clock = _clock(monkeypatch)
     seen = use(monkeypatch, headers={"content-type": "text/html"}, chunks=[b"<html>"])
     url = "https://media.tenor.com/expired.gif"
@@ -266,15 +252,13 @@ def test_a_remembered_failure_expires_after_its_ttl(client, monkeypatch):
     assert client.get("/api/thumb", params={"u": url}).status_code == 502
     assert seen["calls"] == 1, "a live refusal was not answered from the negative cache"
 
-    clock.now += app_module.THUMB_FAIL_TTL + 1
+    clock.now += thumbs_module.THUMB_FAIL_TTL + 1
     assert client.get("/api/thumb", params={"u": url}).status_code == 502
     assert seen["calls"] == 2, "the lapsed refusal was never retried"
 
 
 def test_the_negative_cache_is_bounded_to_its_newest_entries(client, monkeypatch):
-    import discord_stats.api.app as app_module
-
-    monkeypatch.setattr(app_module, "THUMB_FAILURES", 3, raising=False)
+    client.app.state.thumbs.refusals.max_entries = 3
     seen = use(monkeypatch, headers={"content-type": "text/html"}, chunks=[b"<html>"])
     urls = _urls(*[f"dead-{n}" for n in range(5)])
 
@@ -296,9 +280,7 @@ def test_the_negative_cache_is_bounded_to_its_newest_entries(client, monkeypatch
 
 
 def test_reading_a_remembered_failure_makes_it_the_last_evicted(client, monkeypatch):
-    import discord_stats.api.app as app_module
-
-    monkeypatch.setattr(app_module, "THUMB_FAILURES", 2, raising=False)
+    client.app.state.thumbs.refusals.max_entries = 2
     seen = use(monkeypatch, headers={"content-type": "text/html"}, chunks=[b"<html>"])
     first, second, third = _urls("a", "b", "c")
 
@@ -337,7 +319,7 @@ def test_concurrent_stores_leave_the_counter_equal_to_the_bytes_held(db_cfg, con
     import threading
     import types
 
-    import discord_stats.api.app as app_module
+    import discord_stats.api.thumbs as thumbs_module
     from discord_stats.auth.session import SESSION_COOKIE, Level, establish_session
 
     class NoopSemaphore:
@@ -352,10 +334,9 @@ def test_concurrent_stores_leave_the_counter_equal_to_the_bytes_held(db_cfg, con
         def release(self):
             pass
 
-    monkeypatch.setattr(app_module, "threading", types.SimpleNamespace(
+    monkeypatch.setattr(thumbs_module, "threading", types.SimpleNamespace(
         Semaphore=NoopSemaphore, Thread=threading.Thread, Lock=threading.Lock))
     body = b"x" * 100
-    monkeypatch.setattr(app_module, "THUMB_CACHE_BYTES", 100 * len(body) * 100, raising=False)
     use(monkeypatch, chunks=[body])
 
     cfg, path = db_cfg
@@ -364,7 +345,7 @@ def test_concurrent_stores_leave_the_counter_equal_to_the_bytes_held(db_cfg, con
     # not be re-raised in a worker thread where nobody sees it.
     client = TestClient(app, raise_server_exceptions=False)
     client.cookies.set(SESSION_COOKIE, establish_session(conn, "u1", Level.VIEWER))
-    cache, total, _ = _thumb_cache(app)
+    images = app.state.thumbs.images
 
     # The default 5 ms switch interval is far longer than this critical section,
     # so a test has to make preemption land inside it to see the interleaving.
@@ -375,11 +356,11 @@ def test_concurrent_stores_leave_the_counter_equal_to_the_bytes_held(db_cfg, con
             # A cache filled to a hundred entries, then squeezed: every store
             # below has to evict most of it, which is the window that races.
             use(monkeypatch, chunks=[body])
-            monkeypatch.setattr(app_module, "THUMB_CACHE_BYTES", 100 * len(body) * 100)
+            images.max_weight = 100 * len(body) * 100
             for n in range(100):
                 warm = _urls(f"warm-{burst}-{n}")[0]
                 assert client.get("/api/thumb", params={"u": warm}).status_code == 200
-            monkeypatch.setattr(app_module, "THUMB_CACHE_BYTES", 10 * len(body))
+            images.max_weight = 10 * len(body)
 
             urls = _urls(*[f"cold-{burst}-{n}" for n in range(12)])
             ready = threading.Barrier(len(urls))
@@ -402,10 +383,10 @@ def test_concurrent_stores_leave_the_counter_equal_to_the_bytes_held(db_cfg, con
             for thread in threads:
                 thread.join(timeout=30)
 
-            held = sum(len(entry[1]) for entry in cache.cell_contents.values())
+            held = sum(len(value[0]) for value in images.snapshot().values())
             assert failures == [], f"burst {burst}: a concurrent store failed: {failures}"
-            assert total.cell_contents == held, (
-                f"burst {burst}: the counter says {total.cell_contents} bytes, "
+            assert images.weight == held, (
+                f"burst {burst}: the counter says {images.weight} bytes, "
                 f"the cache holds {held}"
             )
             assert held <= 10 * len(body), (
@@ -420,7 +401,7 @@ def test_at_most_four_fetches_run_at_once_and_a_slot_is_always_freed(db_cfg, con
     import threading
     import types
 
-    import discord_stats.api.app as app_module
+    import discord_stats.api.thumbs as thumbs_module
     from discord_stats.auth.session import SESSION_COOKIE, Level, establish_session
 
     made = []
@@ -438,9 +419,9 @@ def test_at_most_four_fetches_run_at_once_and_a_slot_is_always_freed(db_cfg, con
         def release(self):
             self.released += 1
 
-    # Replace only how app.py sees `threading`: patching the real module would
+    # Replace only how the proxy sees `threading`: patching the real module would
     # hand the fake to every library the test client uses.
-    monkeypatch.setattr(app_module, "threading", types.SimpleNamespace(
+    monkeypatch.setattr(thumbs_module, "threading", types.SimpleNamespace(
         Semaphore=RecordingSemaphore, Thread=threading.Thread, Lock=threading.Lock))
     use(monkeypatch, headers={"content-type": "image/gif",
                               "content-length": str(26 * 1024 * 1024)})
