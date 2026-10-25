@@ -103,7 +103,7 @@ def test_the_run_start_is_committed_before_the_slow_prelude(seeded_db_path, cfg,
     seen: list[int] = []
     real = build.resolve_identities
 
-    def spy(conn, config):
+    def spy(conn, config, *rest):
         check = sqlite3.connect(seeded_db_path)
         try:
             seen.append(check.execute(
@@ -111,7 +111,7 @@ def test_the_run_start_is_committed_before_the_slow_prelude(seeded_db_path, cfg,
             ).fetchone()[0])
         finally:
             check.close()
-        return real(conn, config)
+        return real(conn, config, *rest)
 
     monkeypatch.setattr(build, "resolve_identities", spy)
     conn = sqlite3.connect(seeded_db_path)
