@@ -4,14 +4,14 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { Payload } from "../api/types";
 import { EMPTY_FILTERS, initialFilters, type Filters } from "../filters/reducer";
-import { EditRate } from "./EditRate";
-import { Leaderboard } from "./Leaderboard";
-import { PeopleSection } from "./PeopleSection";
-import { ReplyMatrix } from "./ReplyMatrix";
-import { ResponseTime } from "./ResponseTime";
-import { WhoWrites } from "./WhoWrites";
 import { matrixData } from "../selectors/people";
 import { charts } from "../test/echarts";
+import { EditRate } from "./EditRate";
+import { Leaderboard } from "./Leaderboard";
+import { ReplyMatrix } from "./ReplyMatrix";
+import { ResponseTime } from "./ResponseTime";
+import { PanelSection } from "./Sections";
+import { WhoWrites } from "./WhoWrites";
 
 /**
  * jsdom has no canvas, so zrender cannot paint and a real chart instance throws
@@ -133,7 +133,7 @@ describe("the date-less People cards", () => {
 
   it("names the date-less cards once in the section note, not on every card", () => {
     const filters = withFilters({ years: [2024] });
-    render(<PeopleSection payload={payload} filters={filters} />);
+    render(<PanelSection section="people" payload={payload} filters={filters} />);
     // Reply pairs ×3 (network, matrix, balance), response and starter are the
     // five cards a date filter cannot move.
     expect(screen.queryAllByText("global only")).toHaveLength(0);
@@ -223,7 +223,7 @@ describe("filter semantics", () => {
 
 describe("empty and degenerate payloads", () => {
   it("renders eleven empty states and no NaN when there are no rows at all", () => {
-    render(<PeopleSection payload={nothing} filters={EMPTY_FILTERS} />);
+    render(<PanelSection section="people" payload={nothing} filters={EMPTY_FILTERS} />);
     for (const title of TITLES) expect(screen.getByText(title)).toBeInTheDocument();
     expect(screen.getAllByText(/^No /)).toHaveLength(11);
     expect(document.body.textContent).not.toContain("NaN");
@@ -232,13 +232,13 @@ describe("empty and degenerate payloads", () => {
 
   it("does the same when every author is switched off", () => {
     const off = payload.authors.map(() => false);
-    render(<PeopleSection payload={payload} filters={withFilters({ active: off })} />);
+    render(<PanelSection section="people" payload={payload} filters={withFilters({ active: off })} />);
     expect(screen.getAllByText(/^No /)).toHaveLength(11);
     expect(document.body.textContent).not.toContain("NaN");
   });
 
   it("renders a single day without dividing by zero", () => {
-    render(<PeopleSection payload={singleDay} filters={initialFilters(singleDay)} />);
+    render(<PanelSection section="people" payload={singleDay} filters={initialFilters(singleDay)} />);
     expect(screen.getByText(/2 authors · 4 cells/)).toBeInTheDocument();
     expect(document.body.textContent).not.toContain("NaN");
     expect(options().length).toBeGreaterThan(0); // the check below is not vacuous
@@ -247,7 +247,7 @@ describe("empty and degenerate payloads", () => {
 
   it("survives one author who never replied to anyone", () => {
     const lonely = { ...payload, edges: [], response: [], starters: [], editSpeed: [] } as unknown as Payload;
-    render(<PeopleSection payload={lonely} filters={initialFilters(lonely)} />);
+    render(<PanelSection section="people" payload={lonely} filters={initialFilters(lonely)} />);
     expect(document.body.textContent).not.toContain("NaN");
     expect(options().length).toBeGreaterThan(0);
     expect(options().flatMap((option) => nonFinite(option))).toEqual([]);

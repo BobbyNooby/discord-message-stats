@@ -4,8 +4,7 @@ import type { EChartsOption } from "echarts";
 
 import { useMedia } from "../api/queries";
 import type { MediaRow, Payload } from "../api/types";
-import { CARD_COLUMNS, EmptyState, Panel, SectionHeading } from "../components/Panel";
-import { SectionScopeNote } from "../components/SectionScopeNote";
+import { EmptyState, Panel } from "../components/Panel";
 import { readMediaOpen, writeMediaState } from "../filters/persist";
 import type { Filters } from "../filters/reducer";
 import { axisLabel, axisLine, splitLine, tooltip } from "../lib/chartStyle";
@@ -250,18 +249,5 @@ export function EmbedsByProvider({ payload }: { panelId?: string; payload: Paylo
         <EChart option={option} height={260} />
       )}
     </Panel>
-  );
-}
-
-export function RichMediaSection({ payload, filters }: { payload: Payload; filters?: Filters }) {
-  return (
-    <section aria-labelledby="sec-media-rich" className="space-y-4">
-      <SectionHeading id="sec-media-rich">Rich media</SectionHeading>
-      <SectionScopeNote section="rich-media" />
-      <div className={CARD_COLUMNS}>
-        <MostReposted payload={payload} filters={filters} />
-        <EmbedsByProvider payload={payload} filters={filters} />
-      </div>
-    </section>
   );
 }

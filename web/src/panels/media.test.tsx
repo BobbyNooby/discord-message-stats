@@ -11,11 +11,11 @@ import { testMeta, testPayload } from "../test/payload";
 import { Attachments } from "./Attachments";
 import { ChatHealth } from "./ChatHealth";
 import { Emoji } from "./Emoji";
-import { MediaSection } from "./MediaSection";
 import { MessageTypes } from "./MessageTypes";
 import type { PanelProps } from "./panelScope";
 import { Reactions } from "./Reactions";
 import { RepliesVsStandalone } from "./RepliesVsStandalone";
+import { PanelSection } from "./Sections";
 import { TextVsMedia } from "./TextVsMedia";
 
 type DoughnutOption = { series: { data: { value: number; name?: string }[] }[] };
@@ -152,7 +152,7 @@ describe("Media & reactions", () => {
 
   it("explains the date-less cards once, at the section, naming all four", () => {
     const payload = fixture();
-    render(<MediaSection payload={payload} filters={initialFilters(payload)} />);
+    render(<PanelSection section="media" payload={payload} filters={initialFilters(payload)} />);
     const note = screen.getByText(/4 of these 7 cards/);
     expect(note).toHaveTextContent("Message types");
     expect(note).toHaveTextContent("What gets attached");
@@ -185,7 +185,7 @@ describe("Media & reactions", () => {
 
   it("renders an empty state for every panel when the database has no cells", () => {
     const payload = fixture({ cells: [] });
-    render(<MediaSection payload={payload} filters={initialFilters(payload)} />);
+    render(<PanelSection section="media" payload={payload} filters={initialFilters(payload)} />);
 
     expect(screen.getAllByText("No messages yet — ingest, or upload a database from the Admin board.")).toHaveLength(7);
     expect(charts.setOption).not.toHaveBeenCalled();
@@ -195,7 +195,7 @@ describe("Media & reactions", () => {
   it("says no authors are selected for every panel when every author is switched off", () => {
     const payload = fixture();
     const filters = { ...initialFilters(payload), active: [false, false] };
-    render(<MediaSection payload={payload} filters={filters} />);
+    render(<PanelSection section="media" payload={payload} filters={filters} />);
 
     expect(screen.getAllByText("No authors selected — switch one back on in the filters.")).toHaveLength(7);
     expect(charts.setOption).not.toHaveBeenCalled();
@@ -229,7 +229,7 @@ describe("Media & reactions", () => {
 
   it("gives every panel in the section a heading", () => {
     const payload = fixture();
-    render(<MediaSection payload={payload} filters={initialFilters(payload)} />);
+    render(<PanelSection section="media" payload={payload} filters={initialFilters(payload)} />);
     expect(screen.getByRole("heading", { name: "Media & reactions" })).toBeInTheDocument();
     for (const title of [
       "Text vs media",

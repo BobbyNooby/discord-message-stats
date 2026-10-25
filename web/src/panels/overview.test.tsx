@@ -3,11 +3,11 @@ import { describe, expect, it } from "vitest";
 
 import type { Cell } from "../api/types";
 import { initialFilters } from "../filters/reducer";
+import { emptyFourDayPayload, fourDayPayload } from "../test/payload";
 import { MessagesPerYear } from "./MessagesPerYear";
-import { OverviewSection } from "./OverviewSection";
+import { PanelSection } from "./Sections";
 import { ShareOfVoice } from "./ShareOfVoice";
 import { StatCards } from "./StatCards";
-import { emptyFourDayPayload, fourDayPayload } from "../test/payload";
 
 /** The card a label sits in, so two cards with the same figure cannot be confused. */
 function card(label: string): HTMLElement {
@@ -116,7 +116,7 @@ describe("messages per year", () => {
 describe("the overview section", () => {
   it("lays out all four panels and keeps them honest under a year filter", () => {
     const payload = fourDayPayload();
-    render(<OverviewSection payload={payload} filters={{ ...initialFilters(payload), years: [2023] }} />);
+    render(<PanelSection section="overview" payload={payload} filters={{ ...initialFilters(payload), years: [2023] }} />);
 
     expect(screen.getByRole("heading", { name: "Overview" })).toBeInTheDocument();
     for (const title of [
@@ -134,7 +134,7 @@ describe("the overview section", () => {
 
   it("renders an empty state for a payload with zero cells", () => {
     const payload = emptyFourDayPayload();
-    render(<OverviewSection payload={payload} filters={initialFilters(payload)} />);
+    render(<PanelSection section="overview" payload={payload} filters={initialFilters(payload)} />);
 
     expect(screen.getAllByText("No messages yet — ingest, or upload a database from the Admin board.")).toHaveLength(4);
     expect(screen.queryByText(/NaN/)).toBeNull();
@@ -143,7 +143,7 @@ describe("the overview section", () => {
   it("renders an empty state when every author is switched off", () => {
     const payload = fourDayPayload();
     render(
-      <OverviewSection
+      <PanelSection section="overview"
         payload={payload}
         filters={{ ...initialFilters(payload), active: [false, false] }}
       />,

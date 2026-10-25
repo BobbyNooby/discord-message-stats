@@ -204,6 +204,9 @@ export const SPECS = [...builtInSpecs, ...customPanels];
 
 export type PanelId = (typeof SPECS)[number]["id"];
 
+/** A card upstream renders itself, in one of the built-in sections. */
+export type BuiltInPanelId = (typeof builtInSpecs)[number]["id"];
+
 /** One spec, with its id narrowed to the literal the registry declared. */
 export type PanelSpecLiteral = (typeof SPECS)[number];
 
@@ -243,7 +246,7 @@ const SECTION_ORDER: readonly { id: SectionId; label: string }[] = [
   { id: "media", label: "Media & reactions" },
 ];
 
-export const SECTIONS: readonly { id: SectionId; label: string; panels: readonly PanelId[] }[] =
+export const SECTIONS: readonly { id: SectionId; label: string; panels: readonly BuiltInPanelId[] }[] =
   SECTION_ORDER.map((section) => ({
     ...section,
     panels: builtInSpecs.filter((spec) => spec.section === section.id).map((spec) => spec.id),

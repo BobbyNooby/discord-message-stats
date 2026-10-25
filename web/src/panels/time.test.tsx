@@ -4,17 +4,17 @@ import { describe, expect, it } from "vitest";
 
 import type { Payload } from "../api/types";
 import { initialFilters } from "../filters/reducer";
-import { Activity } from "./Activity";
-import { Cumulative } from "./Cumulative";
-import { Conversational } from "./Conversational";
-import { Heat } from "./Heat";
-import { Season } from "./Season";
-import { Stream } from "./Stream";
-import { TimeOfDay } from "./TimeOfDay";
-import { TimeSection } from "./TimeSection";
 import { bucketSeries } from "../selectors/time";
 import { charts } from "../test/echarts";
 import { emptyFourDayPayload, fourDayPayload } from "../test/payload";
+import { Activity } from "./Activity";
+import { Conversational } from "./Conversational";
+import { Cumulative } from "./Cumulative";
+import { Heat } from "./Heat";
+import { Season } from "./Season";
+import { PanelSection } from "./Sections";
+import { Stream } from "./Stream";
+import { TimeOfDay } from "./TimeOfDay";
 
 /** The option the most recently mounted chart was last given. */
 function lastOption(): any {
@@ -187,14 +187,15 @@ describe("who was talking, when", () => {
 });
 
 describe("the time and rhythm section", () => {
-  it("renders all seven panels", () => {
+  it("renders all eight panels, the calendar among them", () => {
     const payload = fourDayPayload();
-    render(<TimeSection payload={payload} filters={all(payload)} />);
+    render(<PanelSection section="time" payload={payload} filters={all(payload)} />);
 
     for (const title of [
       "Messages over time",
       "Cumulative growth",
       "How conversational",
+      "Every day, six years",
       "When the chat comes alive",
       "What time of day",
       "Which month of the year",
@@ -206,7 +207,7 @@ describe("the time and rhythm section", () => {
 
   it("renders an empty state in every panel for a payload with zero cells", () => {
     const payload = emptyFourDayPayload();
-    render(<TimeSection payload={payload} filters={all(payload)} />);
+    render(<PanelSection section="time" payload={payload} filters={all(payload)} />);
 
     expect(screen.getAllByText("No messages yet — ingest, or upload a database from the Admin board.")).toHaveLength(7);
     expect(screen.queryByText(/NaN/)).toBeNull();
@@ -214,7 +215,7 @@ describe("the time and rhythm section", () => {
 
   it("renders an empty state in every panel when every author is switched off", () => {
     const payload = fourDayPayload();
-    render(<TimeSection payload={payload} filters={none(payload)} />);
+    render(<PanelSection section="time" payload={payload} filters={none(payload)} />);
 
     expect(screen.getAllByText("No authors selected — switch one back on in the filters.")).toHaveLength(7);
     expect(screen.queryByText(/NaN/)).toBeNull();

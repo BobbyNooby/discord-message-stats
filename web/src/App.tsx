@@ -38,15 +38,8 @@ import { PANELS, specFor, type ChartKind, type PanelId } from "./panels/registry
 import { useKeyboardShortcuts } from "./lib/shortcuts";
 import { schemaWarning } from "./lib/schemaWarning";
 import { stampLabel, timeFormatOf } from "./lib/timeFormat";
-import { Calendar } from "./panels/Calendar";
 import { CustomSection } from "./panels/CustomSection";
-import { LinksSection } from "./panels/LinksSection";
-import { MediaSection } from "./panels/MediaSection";
-import { RichMediaSection } from "./panels/RichMedia";
-import { OverviewSection } from "./panels/OverviewSection";
-import { PeopleSection } from "./panels/PeopleSection";
-import { TimeSection } from "./panels/TimeSection";
-import { WordsSection } from "./panels/WordsSection";
+import { PanelSections } from "./panels/Sections";
 import { Admin } from "./routes/Admin";
 import { Login } from "./routes/Login";
 
@@ -200,9 +193,9 @@ function DashboardBody({
   // memo every card handed its chart a new option and redrew all of them.
   const cards = useMemo(
     () => (
-      // Six sections in the spec's order; the calendar sits inside Time & rhythm
-      // where §11.1 puts it. Every card inside can hand its id to the sidebar,
-      // which is how a card's "…" swaps what the sidebar edits.
+      // The sections in the spec's order, each card where its registry entry
+      // puts it. Every card inside can hand its id to the sidebar, which is how
+      // a card's "…" swaps what the sidebar edits.
       <PanelScopeProvider
         filters={filters}
         scopes={scopes}
@@ -210,13 +203,7 @@ function DashboardBody({
         charts={charts}
         onShapeChange={setShape}
       >
-        <OverviewSection payload={payload} filters={filters} />
-        <TimeSection payload={payload} filters={filters} calendar={<Calendar payload={payload} filters={filters} />} />
-        <PeopleSection payload={payload} filters={filters} />
-        <WordsSection payload={payload} filters={filters} dispatch={dispatch} />
-        <LinksSection payload={payload} filters={filters} />
-        <RichMediaSection payload={payload} filters={filters} />
-        <MediaSection payload={payload} filters={filters} />
+        <PanelSections payload={payload} filters={filters} dispatch={dispatch} />
         {/* Fork panels, rendered last. Upstream ships none, so this is silent. */}
         <CustomSection payload={payload} filters={filters} />
       </PanelScopeProvider>

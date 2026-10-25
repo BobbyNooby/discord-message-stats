@@ -7,8 +7,8 @@ import { charts } from "../test/echarts";
 import { testPayload } from "../test/payload";
 import { EmbedTypes } from "./EmbedTypes";
 import { LinkDomains } from "./LinkDomains";
-import { LinksSection } from "./LinksSection";
 import { Providers } from "./Providers";
+import { PanelSection } from "./Sections";
 import { TopLinks } from "./TopLinks";
 
 /**
@@ -183,7 +183,7 @@ describe("Links & embeds section", () => {
   });
 
   it("explains the date-less Links cards once, at the section", () => {
-    render(<LinksSection payload={makePayload()} filters={allOn} />);
+    render(<PanelSection section="links" payload={makePayload()} filters={allOn} />);
     const note = screen.getByText(/3 of these 4 cards/);
     // The domains card filters its daily cells by date, so the note must not list it.
     expect(note).not.toHaveTextContent("Where the chat lives");

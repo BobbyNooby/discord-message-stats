@@ -1,22 +1,14 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, render } from "@testing-library/react";
-import type { ComponentType } from "react";
 import { describe, expect, it } from "vitest";
 
-import type { Payload } from "./api/types";
 import { AppShell } from "./components/AppShell";
 import { CARD_COLUMNS } from "./components/Panel";
 import { JumpNav } from "./components/JumpNav";
 import { MediaTile } from "./panels/MediaTile";
 import { initialFilters } from "./filters/reducer";
-import { OverviewSection } from "./panels/OverviewSection";
-import { TimeSection } from "./panels/TimeSection";
-import { PeopleSection } from "./panels/PeopleSection";
-import { WordsSection } from "./panels/WordsSection";
-import { LinksSection } from "./panels/LinksSection";
-import { RichMediaSection } from "./panels/RichMedia";
-import { MediaSection } from "./panels/MediaSection";
-import type { Action, Filters } from "./filters/reducer";
+import type { SectionId } from "./panels/registry";
+import { PanelSection } from "./panels/Sections";
 import type { MediaRow } from "./api/types";
 import { oneOfEach } from "./test/payload";
 
@@ -45,22 +37,20 @@ const SOURCES = import.meta.glob("./**/*.{ts,tsx}", {
 
 const payload = oneOfEach;
 
-type SectionProps = { payload: Payload; filters: Filters; dispatch: (action: Action) => void };
-
-const SECTIONS: [string, ComponentType<SectionProps>][] = [
-  ["sec-overview", OverviewSection],
-  ["sec-time", TimeSection],
-  ["sec-people", PeopleSection],
-  ["sec-words", WordsSection],
-  ["sec-links", LinksSection],
-  ["sec-media-rich", RichMediaSection],
-  ["sec-media", MediaSection],
+const SECTIONS: [string, SectionId][] = [
+  ["sec-overview", "overview"],
+  ["sec-time", "time"],
+  ["sec-people", "people"],
+  ["sec-words", "words"],
+  ["sec-links", "links"],
+  ["sec-media-rich", "rich-media"],
+  ["sec-media", "media"],
 ];
 
-const renderSection = (Component: ComponentType<SectionProps>) =>
+const renderSection = (section: SectionId) =>
   render(
     <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-      <Component payload={payload} filters={initialFilters(payload)} dispatch={() => {}} />
+      <PanelSection section={section} payload={payload} filters={initialFilters(payload)} />
     </QueryClientProvider>,
   );
 
@@ -123,8 +113,8 @@ describe("layout guards the browser used to be the only witness to", () => {
     // column and cards pack beside it. sections.test.tsx proves the parent is
     // the section; this proves the heading is not inside the container the
     // cards flow through, and comes before it in document order.
-    for (const [id, Component] of SECTIONS) {
-      const { container, unmount } = renderSection(Component);
+    for (const [id, sectionId] of SECTIONS) {
+      const { container, unmount } = renderSection(sectionId);
       const section = container.querySelector(`section[aria-labelledby="${id}"]`)!;
       const heading = container.querySelector(`#${id}`)!;
       const flow = cardsContainer(section);
@@ -144,8 +134,8 @@ describe("layout guards the browser used to be the only witness to", () => {
     // `columns` sets the column gap but not the space *between* stacked cards:
     // that is each card's own `mb-4`. `break-inside-avoid` is what stops a card
     // being cut in half across two columns. Both are one attribute each.
-    for (const [id, Component] of SECTIONS) {
-      const { container, unmount } = renderSection(Component);
+    for (const [id, sectionId] of SECTIONS) {
+      const { container, unmount } = renderSection(sectionId);
       const cards = [...container.querySelectorAll('section[id][tabindex="-1"]')];
       expect(cards.length, `${id} rendered no cards`).toBeGreaterThan(0);
       for (const card of cards) {
@@ -170,7 +160,7 @@ describe("layout guards the browser used to be the only witness to", () => {
       >
         <AppShell sidebar={<p>filters</p>} header={null}>
           <JumpNav />
-          <OverviewSection payload={payload} filters={initialFilters(payload)} />
+          <PanelSection section="overview" payload={payload} filters={initialFilters(payload)} />
         </AppShell>
       </QueryClientProvider>,
     );

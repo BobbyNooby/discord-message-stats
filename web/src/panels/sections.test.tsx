@@ -1,22 +1,16 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, render, screen } from "@testing-library/react";
-import type { ComponentType } from "react";
 import { describe, expect, it } from "vitest";
 
-import type { Action, Filters } from "../filters/reducer";
+import type { Action } from "../filters/reducer";
 import { initialFilters } from "../filters/reducer";
 
 import type { Payload } from "../api/types";
 import { Leaderboard } from "./Leaderboard";
 import { PanelScopeProvider } from "./panelScope";
 import { ReplyMatrix } from "./ReplyMatrix";
-import { LinksSection } from "./LinksSection";
-import { MediaSection } from "./MediaSection";
-import { OverviewSection } from "./OverviewSection";
-import { PeopleSection } from "./PeopleSection";
-import { RichMediaSection } from "./RichMedia";
-import { TimeSection } from "./TimeSection";
-import { WordsSection } from "./WordsSection";
+import { SECTIONS as REGISTRY_SECTIONS, type SectionId } from "./registry";
+import { PanelSection } from "./Sections";
 import { oneOfEach } from "../test/payload";
 
 const payload = oneOfEach;
@@ -27,32 +21,30 @@ const payload = oneOfEach;
  * heading at all, which the panel tests could not see because they render each
  * panel, never the section.
  */
-type SectionProps = { payload: Payload; filters: Filters; dispatch: (action: Action) => void };
-
 // The word index queries the API on a miss, so the wrapper is the one the app
 // itself uses.
-const renderSection = (Component: ComponentType<SectionProps>) =>
+const renderSection = (section: SectionId) =>
   render(
     <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-      <Component payload={payload} filters={initialFilters(payload)} dispatch={noop} />
+      <PanelSection section={section} payload={payload} filters={initialFilters(payload)} dispatch={noop} />
     </QueryClientProvider>,
   );
 
 const noop = (_action: Action) => {};
-const SECTIONS: [string, string, ComponentType<SectionProps>][] = [
-  ["sec-overview", "Overview", OverviewSection],
-  ["sec-time", "Time & rhythm", TimeSection],
-  ["sec-people", "People", PeopleSection],
-  ["sec-words", "Words", WordsSection],
-  ["sec-links", "Links & embeds", LinksSection],
-  ["sec-media-rich", "Rich media", RichMediaSection],
-  ["sec-media", "Media & reactions", MediaSection],
+const SECTIONS: [string, string, SectionId][] = [
+  ["sec-overview", "Overview", "overview"],
+  ["sec-time", "Time & rhythm", "time"],
+  ["sec-people", "People", "people"],
+  ["sec-words", "Words", "words"],
+  ["sec-links", "Links & embeds", "links"],
+  ["sec-media-rich", "Rich media", "rich-media"],
+  ["sec-media", "Media & reactions", "media"],
 ];
 
 describe("the six sections", () => {
-  for (const [id, heading, Component] of SECTIONS) {
+  for (const [id, heading, sectionId] of SECTIONS) {
     it(`${heading} is a labelled section with its own heading`, () => {
-      const { container } = renderSection(Component);
+      const { container } = renderSection(sectionId);
       const section = container.querySelector(`section[aria-labelledby="${id}"]`);
       expect(section, `no section[aria-labelledby=${id}]`).not.toBeNull();
       expect(container.querySelector(`#${id}`)?.textContent?.trim()).toBe(heading);
@@ -63,8 +55,8 @@ describe("the six sections", () => {
     // A heading inside the columns container is laid into the first column and
     // cards pack beside it. The heading is always a direct child of its section,
     // and it carries the border that separates one section from the next.
-    for (const [id, , Component] of SECTIONS) {
-      const { container, unmount } = renderSection(Component);
+    for (const [id, , sectionId] of SECTIONS) {
+      const { container, unmount } = renderSection(sectionId);
       const heading = container.querySelector(`#${id}`)!;
       expect(heading.tagName, `${id} heading`).toBe("H2");
       expect(heading.parentElement?.tagName, `${id} heading parent`).toBe("SECTION");
@@ -74,13 +66,24 @@ describe("the six sections", () => {
     }
   });
 
+  it("renders each card in the section its spec names, in registry order", () => {
+    // The card table and the registry are separate lists keyed by the same id;
+    // a card mounted under the wrong key would carry another card's title here.
+    for (const section of REGISTRY_SECTIONS) {
+      const { container, unmount } = renderSection(section.id);
+      const cards = [...container.querySelectorAll('section[id][tabindex="-1"]')].map((card) => card.id);
+      expect(cards, section.id).toEqual(section.panels);
+      unmount();
+    }
+  });
+
   it("renders every section's panels, not just its heading", () => {
-    const { container } = renderSection(PeopleSection);
+    const { container } = renderSection("people");
     expect(container.querySelectorAll("section").length).toBeGreaterThan(5);
   });
 
   it("offers each chart card an export built from the chart's own rows", () => {
-    renderSection(TimeSection);
+    renderSection("time");
 
     // No panel passes a csv prop: the card reads the table back out of the
     // option its chart drew, so an export cannot drift from the picture.
