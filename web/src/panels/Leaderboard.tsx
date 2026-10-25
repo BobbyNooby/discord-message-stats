@@ -1,3 +1,5 @@
+import { useMemo } from "react";
+
 import type { Payload } from "../api/types";
 import { EmptyState, Panel } from "../components/Panel";
 import type { Filters } from "../filters/reducer";
@@ -11,7 +13,15 @@ import { usePanelFilters } from "./panelScope";
  *  twin, "Who writes the most", ranks the same cells by characters. */
 export function Leaderboard({ payload, filters: fallbackFilters }: { panelId?: string; payload: Payload; filters?: Filters }) {
   const filters = usePanelFilters("who-talks-the-most", fallbackFilters);
-  const rows = leaderRows(payload, filters, "msgs");
+  const rows = useMemo(() => leaderRows(payload, filters, "msgs"), [payload, filters]);
+  const option = useMemo(
+    () =>
+      hbarOption(rows, {
+        axis: kfmt,
+        tooltip: (row) => `${row.name}<br><b>${fmt(row.value)}</b> ${leaderLabel("msgs")}`,
+      }),
+    [rows],
+  );
   const label = `by ${leaderLabel("msgs")}`;
 
   if (!rows.length) {
@@ -28,13 +38,7 @@ export function Leaderboard({ payload, filters: fallbackFilters }: { panelId?: s
       title="Who talks the most"
       subtitle={`${label} · ${fmt(total)} ${leaderLabel("msgs")} across ${rows.length} authors`}
     >
-      <EChart
-        option={hbarOption(rows, {
-          axis: kfmt,
-          tooltip: (row) => `${row.name}<br><b>${fmt(row.value)}</b> ${leaderLabel("msgs")}`,
-        })}
-        height={Math.max(180, rows.length * 26)}
-      />
+      <EChart option={option} height={Math.max(180, rows.length * 26)} />
     </Panel>
   );
 }

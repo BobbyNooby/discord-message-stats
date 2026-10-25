@@ -1,3 +1,5 @@
+import { useMemo } from "react";
+
 import type { Payload } from "../api/types";
 import { EmptyState, Panel } from "../components/Panel";
 import type { Filters } from "../filters/reducer";
@@ -15,7 +17,15 @@ import { usePanelFilters } from "./panelScope";
  */
 export function WhoWrites({ payload, filters: fallbackFilters }: { panelId?: string; payload: Payload; filters?: Filters }) {
   const filters = usePanelFilters("who-writes-the-most", fallbackFilters);
-  const rows = leaderRows(payload, filters, "chars");
+  const rows = useMemo(() => leaderRows(payload, filters, "chars"), [payload, filters]);
+  const option = useMemo(
+    () =>
+      hbarOption(rows, {
+        axis: kfmt,
+        tooltip: (row) => `${row.name}<br><b>${fmt(row.value)}</b> ${leaderLabel("chars")}`,
+      }),
+    [rows],
+  );
   const label = `by ${leaderLabel("chars")}`;
 
   if (!rows.length) {
@@ -32,13 +42,7 @@ export function WhoWrites({ payload, filters: fallbackFilters }: { panelId?: str
       title="Who writes the most"
       subtitle={`${label} · ${fmt(total)} ${leaderLabel("chars")} across ${rows.length} authors`}
     >
-      <EChart
-        option={hbarOption(rows, {
-          axis: kfmt,
-          tooltip: (row) => `${row.name}<br><b>${fmt(row.value)}</b> ${leaderLabel("chars")}`,
-        })}
-        height={Math.max(180, rows.length * 26)}
-      />
+      <EChart option={option} height={Math.max(180, rows.length * 26)} />
     </Panel>
   );
 }

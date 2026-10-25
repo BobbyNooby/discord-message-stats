@@ -1,4 +1,5 @@
 import type { EChartsOption } from "echarts";
+import { useMemo } from "react";
 
 import type { Payload } from "../api/types";
 import { EmptyState, Panel } from "../components/Panel";
@@ -7,28 +8,11 @@ import { tooltip } from "../lib/chartStyle";
 import { EChart } from "../lib/echart";
 import { EMPTY_FILTER } from "../lib/empty";
 import { swatch, token } from "../lib/palette";
-import { RADAR_TRAITS, radarData } from "./people";
+import { RADAR_TRAITS, radarData, type RadarData } from "./people";
 import { usePanelFilters } from "./panelScope";
 
-/**
- * "Author profile" — six traits, each normalised to 100 against the busiest
- * author on that trait. Four of the six come from the filtered cells, so this
- * panel does respond to the time filter; "starts conv" and "vocabulary" are
- * global counts and are read whole.
- */
-export function AuthorRadar({ payload, filters: fallbackFilters }: { panelId?: string; payload: Payload; filters?: Filters }) {
-  const filters = usePanelFilters("author-profile", fallbackFilters);
-  const radar = radarData(payload, filters);
-
-  if (!radar.top.length) {
-    return (
-      <Panel title="Author profile">
-        <EmptyState>{EMPTY_FILTER}</EmptyState>
-      </Panel>
-    );
-  }
-
-  const option: EChartsOption = {
+function radarOption(radar: RadarData): EChartsOption {
+  return {
     tooltip: tooltip(),
     legend: {
       bottom: 3,
@@ -58,6 +42,26 @@ export function AuthorRadar({ payload, filters: fallbackFilters }: { panelId?: s
       data: [{ value: radar.values[index] ?? [] }],
     })),
   };
+}
+
+/**
+ * "Author profile" — six traits, each normalised to 100 against the busiest
+ * author on that trait. Four of the six come from the filtered cells, so this
+ * panel does respond to the time filter; "starts conv" and "vocabulary" are
+ * global counts and are read whole.
+ */
+export function AuthorRadar({ payload, filters: fallbackFilters }: { panelId?: string; payload: Payload; filters?: Filters }) {
+  const filters = usePanelFilters("author-profile", fallbackFilters);
+  const radar = useMemo(() => radarData(payload, filters), [payload, filters]);
+  const option = useMemo(() => radarOption(radar), [radar]);
+
+  if (!radar.top.length) {
+    return (
+      <Panel title="Author profile">
+        <EmptyState>{EMPTY_FILTER}</EmptyState>
+      </Panel>
+    );
+  }
 
   return (
     <Panel

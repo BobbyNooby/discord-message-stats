@@ -1,4 +1,5 @@
 import type { EChartsOption } from "echarts";
+import { useMemo } from "react";
 
 import type { Payload } from "../api/types";
 import { EmptyState, Panel } from "../components/Panel";
@@ -11,15 +12,12 @@ import { swatch, token } from "../lib/palette";
 import { globalTotals, sendRecv } from "./people";
 import { usePanelFilters } from "./panelScope";
 
-/**
- * "Reply balance" — sent versus received from `rollup_reply`. Above the diagonal
- * a person is replied to more than they reply; on it, they are even.
- */
-export function ReplyBalance({ payload, filters: fallbackFilters }: { panelId?: string; payload: Payload; filters?: Filters }) {
-  const filters = usePanelFilters("reply-balance", fallbackFilters);
+type Point = { index: number; name: string; msgs: number; sent: number; received: number };
+
+/** Replies each switched-on author sent and received; authors with no messages are left out. */
+function replyBalance(payload: Payload, filters: Filters): { points: Point[]; total: number } {
   const balance = sendRecv(payload, filters);
   const totals = globalTotals(payload, filters);
-
   const points = payload.authors
     .map((author, index) => ({
       index,
@@ -29,20 +27,15 @@ export function ReplyBalance({ payload, filters: fallbackFilters }: { panelId?: 
       received: balance.received[index] ?? 0,
     }))
     .filter((point) => filters.active[point.index] !== false && point.msgs > 0);
+  return { points, total: balance.total };
+}
 
-  if (!points.length) {
-    return (
-      <Panel title="Reply balance">
-        <EmptyState>{EMPTY_AUTHORS}</EmptyState>
-      </Panel>
-    );
-  }
-
+function balanceOption(points: Point[]): EChartsOption {
   let max = 1;
   for (const point of points) max = Math.max(max, point.sent, point.received);
   const axis = max * 1.12;
 
-  const option: EChartsOption = {
+  return {
     tooltip: {
       ...tooltip(),
       formatter: (params: any) =>
@@ -93,6 +86,25 @@ export function ReplyBalance({ payload, filters: fallbackFilters }: { panelId?: 
       },
     ],
   };
+}
+
+/**
+ * "Reply balance" — sent versus received from `rollup_reply`. Above the diagonal
+ * a person is replied to more than they reply; on it, they are even.
+ */
+export function ReplyBalance({ payload, filters: fallbackFilters }: { panelId?: string; payload: Payload; filters?: Filters }) {
+  const filters = usePanelFilters("reply-balance", fallbackFilters);
+  const balance = useMemo(() => replyBalance(payload, filters), [payload, filters]);
+  const option = useMemo(() => balanceOption(balance.points), [balance]);
+  const { points } = balance;
+
+  if (!points.length) {
+    return (
+      <Panel title="Reply balance">
+        <EmptyState>{EMPTY_AUTHORS}</EmptyState>
+      </Panel>
+    );
+  }
 
   return (
     <Panel

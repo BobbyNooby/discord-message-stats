@@ -1,4 +1,5 @@
 import type { EChartsOption } from "echarts";
+import { useMemo } from "react";
 
 import type { Payload } from "../api/types";
 import { EmptyState, Panel } from "../components/Panel";
@@ -7,26 +8,11 @@ import { tooltip } from "../lib/chartStyle";
 import { EChart } from "../lib/echart";
 import { fmt } from "../lib/format";
 import { swatch, token } from "../lib/palette";
-import { tint, treemapData } from "./people";
+import { tint, treemapData, type TreemapNode } from "./people";
 import { usePanelFilters } from "./panelScope";
 
-/** "Volume by author and year" — activity cells, so both filters apply. */
-export function Treemap({ payload, filters: fallbackFilters }: { panelId?: string; payload: Payload; filters?: Filters }) {
-  const filters = usePanelFilters("volume-by-author-and-year", fallbackFilters);
-  const nodes = treemapData(payload, filters);
-
-  if (!nodes.length) {
-    return (
-      <Panel title="Volume by author and year">
-        <EmptyState>No messages match the current filters.</EmptyState>
-      </Panel>
-    );
-  }
-
-  const total = nodes.reduce((sum, node) => sum + node.total, 0);
-  const years = new Set(nodes.flatMap((node) => node.years.map(([year]) => year)));
-
-  const option: EChartsOption = {
+function treemapOption(nodes: TreemapNode[]): EChartsOption {
+  return {
     tooltip: {
       ...tooltip(),
       // The tiles are labelled by year, so the tooltip is where the author's
@@ -61,6 +47,24 @@ export function Treemap({ payload, filters: fallbackFilters }: { panelId?: strin
       },
     ],
   };
+}
+
+/** "Volume by author and year" — activity cells, so both filters apply. */
+export function Treemap({ payload, filters: fallbackFilters }: { panelId?: string; payload: Payload; filters?: Filters }) {
+  const filters = usePanelFilters("volume-by-author-and-year", fallbackFilters);
+  const nodes = useMemo(() => treemapData(payload, filters), [payload, filters]);
+  const option = useMemo(() => treemapOption(nodes), [nodes]);
+
+  if (!nodes.length) {
+    return (
+      <Panel title="Volume by author and year">
+        <EmptyState>No messages match the current filters.</EmptyState>
+      </Panel>
+    );
+  }
+
+  const total = nodes.reduce((sum, node) => sum + node.total, 0);
+  const years = new Set(nodes.flatMap((node) => node.years.map(([year]) => year)));
 
   return (
     <Panel

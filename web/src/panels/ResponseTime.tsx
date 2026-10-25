@@ -1,3 +1,5 @@
+import { useMemo } from "react";
+
 import type { Payload } from "../api/types";
 import { EmptyState, Panel } from "../components/Panel";
 import type { Filters } from "../filters/reducer";
@@ -11,7 +13,17 @@ import { usePanelFilters } from "./panelScope";
 /** "How fast people reply" — `rollup_response`, so the time filter cannot apply. */
 export function ResponseTime({ payload, filters: fallbackFilters }: { panelId?: string; payload: Payload; filters?: Filters }) {
   const filters = usePanelFilters("how-fast-people-reply", fallbackFilters);
-  const rows = responseRows(payload, filters);
+  const rows = useMemo(() => responseRows(payload, filters), [payload, filters]);
+  const option = useMemo(
+    () =>
+      hbarOption(rows, {
+        axis: dur,
+        label: (row) => dur(row.value),
+        tooltip: (row) =>
+          `${row.name}<br>averages <b>${dur(row.value)}</b> before replying, over ${fmt(row.n)} replies`,
+      }),
+    [rows],
+  );
 
   if (!rows.length) {
     return (
@@ -28,15 +40,7 @@ export function ResponseTime({ payload, filters: fallbackFilters }: { panelId?: 
       subtitle={`${fmt(replies)} replies · ${dur(weightedAverage(rows))} average wait across ${rows.length} authors`}
       help={TERMS.averageWait}
     >
-      <EChart
-        option={hbarOption(rows, {
-          axis: dur,
-          label: (row) => dur(row.value),
-          tooltip: (row) =>
-            `${row.name}<br>averages <b>${dur(row.value)}</b> before replying, over ${fmt(row.n)} replies`,
-        })}
-        height={Math.max(180, rows.length * 26)}
-      />
+      <EChart option={option} height={Math.max(180, rows.length * 26)} />
     </Panel>
   );
 }

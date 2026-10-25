@@ -1,4 +1,5 @@
 import type { EChartsOption } from "echarts";
+import { useMemo } from "react";
 
 import type { Payload } from "../api/types";
 import { EmptyState, Panel } from "../components/Panel";
@@ -11,35 +12,29 @@ import { swatch, token } from "../lib/palette";
 import { activeEdges, authorName, globalTotals } from "./people";
 import { usePanelFilters } from "./panelScope";
 
-/**
- * "Who replies to whom" — `rollup_reply`, which has no date column. Node sizes
- * come from the author-filtered global totals, not from the visible cells, so
- * the picture does not move when the time filter does (§11.2).
- */
-export function ReplyNetwork({ payload, filters: fallbackFilters }: { panelId?: string; payload: Payload; filters?: Filters }) {
-  const filters = usePanelFilters("who-replies-to-whom", fallbackFilters);
+type Network = {
+  nodes: { name: string; index: number; msgs: number }[];
+  links: { source: string; target: string; value: number }[];
+  replies: number;
+};
+
+/** The switched-on authors as nodes, sized by their date-less totals, and every reply pair between them. */
+function replyNetwork(payload: Payload, filters: Filters): Network {
   const edges = activeEdges(payload, filters);
   const totals = globalTotals(payload, filters);
   const nodes = payload.authors
-    .map((author, index) => ({ author, index, msgs: totals[index]?.msgs ?? 0 }))
+    .map((author, index) => ({ name: author.name, index, msgs: totals[index]?.msgs ?? 0 }))
     .filter((node) => filters.active[node.index] !== false);
-
-  if (!nodes.length) {
-    return (
-      <Panel title="Who replies to whom">
-        <EmptyState>{EMPTY_AUTHORS}</EmptyState>
-      </Panel>
-    );
-  }
-
-  const replies = edges.reduce((sum, edge) => sum + edge[2], 0);
   const links = edges.map(([from, to, msgs]) => ({
     source: authorName(payload, from),
     target: authorName(payload, to),
     value: msgs,
   }));
+  return { nodes, links, replies: edges.reduce((sum, edge) => sum + edge[2], 0) };
+}
 
-  const option: EChartsOption = {
+function networkOption({ nodes, links }: Network): EChartsOption {
+  return {
     tooltip: {
       ...tooltip(),
       formatter: (params: any) =>
@@ -54,7 +49,7 @@ export function ReplyNetwork({ payload, filters: fallbackFilters }: { panelId?: 
         roam: true,
         draggable: true,
         data: nodes.map((node) => ({
-          name: node.author.name,
+          name: node.name,
           value: node.msgs,
           symbolSize: Math.max(15, Math.sqrt(node.msgs) / 9),
           itemStyle: { color: swatch(node.index), opacity: 0.92 },
@@ -70,6 +65,26 @@ export function ReplyNetwork({ payload, filters: fallbackFilters }: { panelId?: 
       },
     ],
   };
+}
+
+/**
+ * "Who replies to whom" — `rollup_reply`, which has no date column. Node sizes
+ * come from the author-filtered global totals, not from the visible cells, so
+ * the picture does not move when the time filter does (§11.2).
+ */
+export function ReplyNetwork({ payload, filters: fallbackFilters }: { panelId?: string; payload: Payload; filters?: Filters }) {
+  const filters = usePanelFilters("who-replies-to-whom", fallbackFilters);
+  const network = useMemo(() => replyNetwork(payload, filters), [payload, filters]);
+  const option = useMemo(() => networkOption(network), [network]);
+  const { nodes, links, replies } = network;
+
+  if (!nodes.length) {
+    return (
+      <Panel title="Who replies to whom">
+        <EmptyState>{EMPTY_AUTHORS}</EmptyState>
+      </Panel>
+    );
+  }
 
   return (
     <Panel

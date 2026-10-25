@@ -1,4 +1,5 @@
 import type { EChartsOption } from "echarts";
+import { useMemo } from "react";
 
 import type { Payload } from "../api/types";
 import { EmptyState, Panel } from "../components/Panel";
@@ -8,7 +9,7 @@ import { EChart } from "../lib/echart";
 import { EMPTY_AUTHORS } from "../lib/empty";
 import { fmt } from "../lib/format";
 import { ramp, token } from "../lib/palette";
-import { matrixData } from "./people";
+import { matrixData, type Matrix } from "./people";
 import { usePanelFilters } from "./panelScope";
 
 /** The legend's steps, busiest first; read at draw time so a theme reaches them. */
@@ -24,32 +25,8 @@ function pieces() {
   ];
 }
 
-/**
- * A k×k heatmap over the *visible* authors. `rollup_reply` carries no date, so
- * the axes, the cells and the totals are identical with or without a time
- * filter — the People section note says so once.
- */
-export function ReplyMatrix({
-  payload,
-  filters: fallbackFilters,
-  className,
-}: { panelId?: string;
-  payload: Payload;
-  filters?: Filters;
-  className?: string;
-}) {
-  const filters = usePanelFilters("reply-matrix", fallbackFilters);
-  const matrix = matrixData(payload, filters);
-
-  if (!matrix.k) {
-    return (
-      <Panel title="Reply matrix" className={className}>
-        <EmptyState>{EMPTY_AUTHORS}</EmptyState>
-      </Panel>
-    );
-  }
-
-  const option: EChartsOption = {
+function matrixOption(matrix: Matrix): EChartsOption {
+  return {
     tooltip: {
       ...tooltip(),
       formatter: (params: any) =>
@@ -92,6 +69,33 @@ export function ReplyMatrix({
       },
     ],
   };
+}
+
+/**
+ * A k×k heatmap over the *visible* authors. `rollup_reply` carries no date, so
+ * the axes, the cells and the totals are identical with or without a time
+ * filter — the People section note says so once.
+ */
+export function ReplyMatrix({
+  payload,
+  filters: fallbackFilters,
+  className,
+}: { panelId?: string;
+  payload: Payload;
+  filters?: Filters;
+  className?: string;
+}) {
+  const filters = usePanelFilters("reply-matrix", fallbackFilters);
+  const matrix = useMemo(() => matrixData(payload, filters), [payload, filters]);
+  const option = useMemo(() => matrixOption(matrix), [matrix]);
+
+  if (!matrix.k) {
+    return (
+      <Panel title="Reply matrix" className={className}>
+        <EmptyState>{EMPTY_AUTHORS}</EmptyState>
+      </Panel>
+    );
+  }
 
   return (
     <Panel

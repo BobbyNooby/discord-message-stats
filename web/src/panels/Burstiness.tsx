@@ -1,4 +1,5 @@
 import type { EChartsOption } from "echarts";
+import { useMemo } from "react";
 
 import type { Payload } from "../api/types";
 import { EmptyState, Panel } from "../components/Panel";
@@ -7,35 +8,16 @@ import { axisLabel, axisLine, splitLine, tooltip } from "../lib/chartStyle";
 import { EChart } from "../lib/echart";
 import { fmt, kfmt } from "../lib/format";
 import { token } from "../lib/palette";
-import { burstiness, quantile } from "./people";
+import { burstiness, quantile, type Burst } from "./people";
 import { usePanelFilters } from "./panelScope";
 
-/**
- * "How bursty is everyone" — a boxplot of each author's daily totals. Only days
- * they actually posted count, so a quiet week does not read as a burst of zeros;
- * a single active day gives a flat box, which is the honest answer.
- */
-export function Burstiness({ payload, filters: fallbackFilters }: { panelId?: string; payload: Payload; filters?: Filters }) {
-  const filters = usePanelFilters("how-bursty-is-everyone", fallbackFilters);
-  const bursts = burstiness(payload, filters);
-
-  if (!bursts.length) {
-    return (
-      <Panel title="How bursty is everyone">
-        <EmptyState>No messages match the current filters.</EmptyState>
-      </Panel>
-    );
-  }
-
+function burstOption(bursts: Burst[]): EChartsOption {
   const names = bursts.map((burst) => burst.name);
   const outliers: [number, number][] = [];
   bursts.forEach((burst, position) => {
     for (const value of burst.days) if (value > burst.box[4]) outliers.push([position, value]);
   });
-  const pooled = bursts.flatMap((burst) => burst.days).sort((a, b) => a - b);
-  const median = quantile(pooled, 0.5);
-
-  const option: EChartsOption = {
+  return {
     tooltip: {
       ...tooltip(),
       formatter: (params: any) => {
@@ -80,6 +62,28 @@ export function Burstiness({ payload, filters: fallbackFilters }: { panelId?: st
       },
     ],
   };
+}
+
+/**
+ * "How bursty is everyone" — a boxplot of each author's daily totals. Only days
+ * they actually posted count, so a quiet week does not read as a burst of zeros;
+ * a single active day gives a flat box, which is the honest answer.
+ */
+export function Burstiness({ payload, filters: fallbackFilters }: { panelId?: string; payload: Payload; filters?: Filters }) {
+  const filters = usePanelFilters("how-bursty-is-everyone", fallbackFilters);
+  const bursts = useMemo(() => burstiness(payload, filters), [payload, filters]);
+  const option = useMemo(() => burstOption(bursts), [bursts]);
+
+  if (!bursts.length) {
+    return (
+      <Panel title="How bursty is everyone">
+        <EmptyState>No messages match the current filters.</EmptyState>
+      </Panel>
+    );
+  }
+
+  const pooled = bursts.flatMap((burst) => burst.days).sort((a, b) => a - b);
+  const median = quantile(pooled, 0.5);
 
   return (
     <Panel
