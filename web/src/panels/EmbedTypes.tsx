@@ -1,3 +1,5 @@
+import { useMemo } from "react";
+
 import { EmptyState, Panel } from "../components/Panel";
 import { EChart } from "../lib/echart";
 import { emptyFor } from "../lib/empty";
@@ -20,7 +22,11 @@ import { useChartShape } from "./panelScope";
  */
 export function EmbedTypes({ payload, }: { panelId?: string; payload: Payload; filters?: Filters }) {
   const shape = useChartShape("embed-types");
-  const rows = allPairRows(payload.embedTypes);
+  const rows = useMemo(() => allPairRows(payload.embedTypes), [payload]);
+  const option = useMemo(
+    () => (shape === "pie" ? pieOption(foldPie(rows), "embeds") : horizontalBarsOption(rows, swatch(5), 11)),
+    [rows, shape],
+  );
   const total = sumRows(rows);
 
   return (
@@ -34,10 +40,8 @@ export function EmbedTypes({ payload, }: { panelId?: string; payload: Payload; f
     >
       {!rows.length ? (
         <EmptyState>{emptyFor("embeds")}</EmptyState>
-      ) : shape === "pie" ? (
-        <EChart option={pieOption(foldPie(rows), "embeds")} height={340} />
       ) : (
-        <EChart option={horizontalBarsOption(rows, swatch(5), 11)} height={340} />
+        <EChart option={option} height={340} />
       )}
     </Panel>
   );

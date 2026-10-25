@@ -79,8 +79,9 @@ export function WhoSaysIt({
   // word, and the breakdown too when the slice has none.
   const remote = useWords(word ?? "", Boolean(word));
   // Under a time filter the all-time payload slice is the wrong count, so
-  // every number comes from the word's own months, cut to the period.
-  const found = answerFor(remote.data, period);
+  // every number comes from the word's own months, cut to the period. Memoised
+  // because the cut is a new object, which would redraw both charts on every render.
+  const found = useMemo(() => answerFor(remote.data, period), [remote.data, period]);
   const inSlice = !period && Boolean(word && payload.wordAuthors[word]);
   const waiting = Boolean(period && word && !remote.data);
   const unbuilt = Boolean(period && remote.data && !remote.data.months);

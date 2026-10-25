@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { EChartsOption } from "echarts";
 
@@ -78,6 +78,50 @@ function useMediaViewState(): { viewOpen: boolean; onViewOpenChange: (open: bool
   return { viewOpen, onViewOpenChange };
 }
 
+/**
+ * Raw provider totals, with Discord's unnamed bucket split by host: an
+ * `cdn.discordapp.com` attachment is somebody's own upload, not a mystery.
+ */
+function providerTotals(payload: Payload): [string, number][] {
+  return Object.values(
+    (payload.providers ?? []).reduce<Record<string, [string, number]>>((acc, [name, count]) => {
+      const key = providerLabel(name, name);
+      acc[key] = [key, (acc[key]?.[1] ?? 0) + count];
+      return acc;
+    }, {}),
+  ).sort((a, b) => b[1] - a[1]);
+}
+
+function providerBars(providers: [string, number][]): EChartsOption {
+  return {
+    tooltip: {
+      trigger: "item",
+      ...tooltip(),
+    },
+    grid: { left: 6, right: 46, top: 4, bottom: 4, containLabel: true },
+    xAxis: {
+      type: "value",
+      splitLine: splitLine(),
+      axisLabel: axisLabel(10.5),
+    },
+    yAxis: {
+      type: "category",
+      data: providers.slice(0, 12).map(([name]) => name).reverse(),
+      axisLabel: { ...axisLabel(10.5), interval: 0, width: 96, overflow: "truncate" },
+      axisLine: axisLine(),
+      axisTick: { show: false },
+    },
+    series: [
+      {
+        type: "bar",
+        barWidth: "100%",
+        data: providers.slice(0, 12).map(([, count]) => count).reverse(),
+        itemStyle: { color: token("--chart-provider") },
+      },
+    ],
+  };
+}
+
 export function RichMedia({ payload, filters }: { panelId?: string; payload: Payload; filters?: Filters }) {
   // The card's own scope, composed over the global filters. With a provider or
   // kind scope it asks the server for that slice's top rows — the payload only
@@ -113,43 +157,8 @@ export function RichMedia({ payload, filters }: { panelId?: string; payload: Pay
     .filter(Boolean)
     .join(" ");
 
-  // Raw provider totals, with Discord's unnamed bucket split by host: an
-  // `cdn.discordapp.com` attachment is somebody's own upload, not a mystery.
-  const providers: [string, number][] = Object.values(
-    (payload.providers ?? []).reduce<Record<string, [string, number]>>((acc, [name, count]) => {
-      const key = providerLabel(name, name);
-      acc[key] = [key, (acc[key]?.[1] ?? 0) + count];
-      return acc;
-    }, {}),
-  ).sort((a, b) => b[1] - a[1]);
-
-  const option: EChartsOption = {
-    tooltip: {
-      trigger: "item",
-      ...tooltip(),
-    },
-    grid: { left: 6, right: 46, top: 4, bottom: 4, containLabel: true },
-    xAxis: {
-      type: "value",
-      splitLine: splitLine(),
-      axisLabel: axisLabel(10.5),
-    },
-    yAxis: {
-      type: "category",
-      data: providers.slice(0, 12).map(([name]) => name).reverse(),
-      axisLabel: { ...axisLabel(10.5), interval: 0, width: 96, overflow: "truncate" },
-      axisLine: axisLine(),
-      axisTick: { show: false },
-    },
-    series: [
-      {
-        type: "bar",
-        barWidth: "100%",
-        data: providers.slice(0, 12).map(([, count]) => count).reverse(),
-        itemStyle: { color: token("--chart-provider") },
-      },
-    ],
-  };
+  const providers = useMemo(() => providerTotals(payload), [payload]);
+  const option = useMemo(() => providerBars(providers), [providers]);
 
   return (
     <div className={CARD_COLUMNS}>

@@ -1,3 +1,5 @@
+import { useMemo } from "react";
+
 import { EmptyState, Panel } from "../components/Panel";
 import { EChart } from "../lib/echart";
 import { emptyFor } from "../lib/empty";
@@ -29,17 +31,20 @@ const MAX_BARS = 12;
 export function Providers({ payload, filters }: { panelId?: string; payload: Payload; filters?: Filters }) {
   const scoped = usePanelFilters("embed-providers", filters);
   const provider = scoped.provider ?? null;
-  const source = provider
-    ? (payload.providers ?? []).filter(([name]) => name === provider)
-    : payload.providers;
-  const all = allPairRows(source).map((row) => ({
-    ...row,
-    // Discord's `unprovidenced` is a bucket, not a provider name (§UI/UX rule 1).
-    // This list has no URL to split CDN uploads from unnamed links, so both read
-    // "No provider".
-    name: providerLabel(row.name, row.name),
-  }));
-  const rows = all.slice(0, MAX_BARS);
+  const all = useMemo(() => {
+    const source = provider
+      ? (payload.providers ?? []).filter(([name]) => name === provider)
+      : payload.providers;
+    return allPairRows(source).map((row) => ({
+      ...row,
+      // Discord's `unprovidenced` is a bucket, not a provider name (§UI/UX rule 1).
+      // This list has no URL to split CDN uploads from unnamed links, so both read
+      // "No provider".
+      name: providerLabel(row.name, row.name),
+    }));
+  }, [payload, provider]);
+  const rows = useMemo(() => all.slice(0, MAX_BARS), [all]);
+  const option = useMemo(() => horizontalBarsOption(rows, swatch(0), 11), [rows]);
   const total = sumRows(rows);
   const scope = provider
     ? `only ${providerLabel(provider, provider)}`
@@ -55,7 +60,7 @@ export function Providers({ payload, filters }: { panelId?: string; payload: Pay
       {!rows.length ? (
         <EmptyState>{emptyFor("embeds")}</EmptyState>
       ) : (
-        <EChart option={horizontalBarsOption(rows, swatch(0), 11)} height={340} />
+        <EChart option={option} height={340} />
       )}
     </Panel>
   );
