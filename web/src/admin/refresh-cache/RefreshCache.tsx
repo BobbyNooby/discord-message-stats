@@ -15,6 +15,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
 
 import { recalculate, type AdminConfig, type AdminStatus, type ConfigPatch } from "../api";
+import { Diagnostics } from "./Diagnostics";
 import { FamiliesTable } from "./FamiliesTable";
 import { JobHistory, JobRunner } from "./Jobs";
 import { FreshnessLine, LiveLog, NowLine, mergeFamilies } from "./ProgressView";
@@ -192,6 +193,10 @@ export function RefreshCache({
         <JobRunner onDirty={onDirty} />
 
         <JobHistory />
+      </SubSection>
+
+      <SubSection id="refresh-diagnostics" title="Diagnostics">
+        <Diagnostics />
       </SubSection>
     </Section>
   );

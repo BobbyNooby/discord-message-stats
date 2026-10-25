@@ -152,6 +152,22 @@ function renderCache(status: AdminStatus = STATUS) {
   );
 }
 
+// The screen's diagnostics card reads this; the progress tests only need it quiet.
+const DIAGNOSTICS = {
+  checked_at: "2026-01-01T00:00:00+00:00",
+  version: "0.0.0",
+  commit: null,
+  config: { digest: "d", channel_id: "c1", timezone: "UTC", timezone_source: "file",
+            channel_id_source: "file", app_name: "Stats" },
+  database: { path: "/data/messages.db", size_bytes: 0 },
+  counts: { messages: 0, media_messages: 0, media_urls: 0, link_messages: 0, authors: 0 },
+  families: { stale: false, stale_count: 0, items: [] },
+  worker: { last_seen_at: null, running_job: null, consecutive_failures: null, last_error: null },
+  disk: null,
+  orphans: { count: 0, bytes: 0 },
+  failures: [],
+};
+
 beforeEach(() => {
   progressCalls = [];
   jobsCalls = 0;
@@ -172,6 +188,9 @@ beforeEach(() => {
       }
       if (method === "POST" && url === "/api/admin/recalculate") {
         return response(202, { id: 7, channel_id: "c1", kind: "rebuild_rollups", status: "queued" });
+      }
+      if (method === "GET" && url === "/api/admin/diagnostics") {
+        return response(200, DIAGNOSTICS);
       }
       throw new Error(`unexpected request: ${method} ${url}`);
     }),

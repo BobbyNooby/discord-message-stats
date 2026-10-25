@@ -328,6 +328,35 @@ export const cancelJob = (id: number) =>
     { method: "POST" },
   );
 
+/** The one screen to open when something looks wrong: aggregates only, never message text. */
+export type Diagnostics = {
+  checked_at: string;
+  version: string;
+  commit: string | null;
+  config: {
+    digest: string;
+    channel_id: string;
+    timezone: string;
+    timezone_source: "override" | "file";
+    channel_id_source: "override" | "file";
+    app_name: string;
+  };
+  database: { path: string; size_bytes: number };
+  counts: Record<"messages" | "media_messages" | "media_urls" | "link_messages" | "authors", number | null>;
+  families: { stale: boolean; stale_count: number; items: { family: string; stale: boolean; computed_at: string | null }[] };
+  worker: {
+    last_seen_at: string | null;
+    running_job: { id: number; kind: string; started_at: string | null; phase: string | null } | null;
+    consecutive_failures: string | null;
+    last_error: string | null;
+  };
+  disk: { path: string; free_bytes: number; total_bytes: number; used_bytes: number } | null;
+  orphans: { count: number; bytes: number };
+  failures: { source: "job" | "rebuild"; id: number; kind: string; at: string | null; error: string | null }[];
+};
+
+export const getDiagnostics = () => request<Diagnostics>("/api/admin/diagnostics");
+
 /** Where the token in use comes from: saved from this board, the environment, or nowhere. */
 export type TokenSource = "saved" | "environment" | "none";
 
