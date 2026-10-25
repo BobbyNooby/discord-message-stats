@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 
 import type { Payload } from "../api/types";
 import { initialFilters } from "../filters/reducer";
-import { selectTotals, selectVisibleCells } from "../filters/selectors";
+import { selectTotals, selectVisibleCells } from "../selectors/cells";
 import { Attachments } from "./Attachments";
 import { ChatHealth } from "./ChatHealth";
 import { Emoji } from "./Emoji";

@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import type { Payload } from "../api/types";
 import { EmptyState, Panel } from "../components/Panel";
 import type { Filters } from "../filters/reducer";
-import { inRange } from "../filters/selectors";
+import { inRange } from "../selectors/cells";
 import { axisLabel, axisLine, splitLine, tooltip } from "../lib/chartStyle";
 import { EChart } from "../lib/echart";
 import { EMPTY_AUTHORS, noAuthorsSelected } from "../lib/empty";

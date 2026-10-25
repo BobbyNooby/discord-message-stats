@@ -21,7 +21,7 @@ import {
   type TypeRow,
 } from "../api/types";
 import type { Filters } from "../filters/reducer";
-import { selectVisibleCells } from "../filters/selectors";
+import { selectVisibleCells } from "../selectors/cells";
 import { axisLabel, axisLine, splitLine, tooltip } from "../lib/chartStyle";
 import { emptyLabel } from "../lib/empty";
 import { fmt, kfmt } from "../lib/format";

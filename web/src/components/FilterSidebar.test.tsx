@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 
 import type { Payload } from "../api/types";
 import { dashboardReducer, initialDashboardState } from "../filters/reducer";
-import { effective } from "../filters/selectors";
+import { effective } from "../selectors/cells";
 import type { PanelId } from "../panels/registry";
 import { PANELS, panelsHonouring } from "../panels/registry";
 import { FilterSidebar } from "./FilterSidebar";

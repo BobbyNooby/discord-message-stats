@@ -3,7 +3,7 @@ import { createContext, useContext, useMemo, type ReactNode } from "react";
 import { EMPTY_FILTERS, type Filters, type Scopes } from "../filters/reducer";
 import type { Charts } from "../filters/persist";
 import { isPanelId, specFor, type ChartKind, type PanelId } from "./registry";
-import { effective } from "../filters/selectors";
+import { effective } from "../selectors/cells";
 
 /**
  * What the cards sit inside: the global filters they all start from, the patches

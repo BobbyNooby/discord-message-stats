@@ -1,6 +1,6 @@
 import { EmptyState, Panel } from "../components/Panel";
 import { StatCard } from "../components/StatCard";
-import { selectTotals, selectVisibleCells } from "../filters/selectors";
+import { selectTotals, selectVisibleCells } from "../selectors/cells";
 import { type PanelProps } from "./timeAggregates";
 import type { WithPanelId } from "./panelScope";
 import { usePanelFilters } from "./panelScope";

@@ -1,6 +1,6 @@
 import { C_DAY, C_MSGS, type Payload } from "../api/types";
 import type { Filters } from "../filters/reducer";
-import { selectVisibleCells } from "../filters/selectors";
+import { selectVisibleCells } from "../selectors/cells";
 
 /** Default visible weeks, and the smallest window worth drawing (§11.3). */
 export const DEFAULT_WEEKS = 60;

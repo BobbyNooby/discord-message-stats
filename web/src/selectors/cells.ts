@@ -10,7 +10,7 @@ import {
   type Cell,
   type Payload,
 } from "../api/types";
-import type { FilterPatch, Filters } from "./reducer";
+import type { FilterPatch, Filters } from "../filters/reducer";
 
 /**
  * The one resolver every card calls: the global filters with a card's own patch

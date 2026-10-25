@@ -24,7 +24,7 @@ import {
   type Payload,
 } from "../api/types";
 import type { Filters } from "../filters/reducer";
-import { bucketOf, selectAuthors, selectVisibleCells } from "../filters/selectors";
+import { bucketOf, selectAuthors, selectVisibleCells } from "../selectors/cells";
 import { axisLabel, axisLine, splitLine, tooltip } from "../lib/chartStyle";
 import { kfmt } from "../lib/format";
 import { swatch, token } from "../lib/palette";

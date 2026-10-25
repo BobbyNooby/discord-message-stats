@@ -4,7 +4,7 @@ import type { Payload } from "../api/types";
 import { useMediaKinds } from "../api/queries";
 import type { Charts } from "../filters/persist";
 import type { DashboardAction, FilterPatch, Filters, Scopes, SidebarMode } from "../filters/reducer";
-import { effective } from "../filters/selectors";
+import { effective } from "../selectors/cells";
 import { kindLabel, providerChoices } from "../lib/mediaLabels";
 import { specFor, type Dimension, type PanelId } from "../panels/registry";
 import { offeredDimensions, reachLabel } from "../panels/registry";

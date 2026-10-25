@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { Payload } from "../api/types";
 import { EMPTY_FILTERS, filtersReducer, initialFilters } from "./reducer";
-import { selectAuthors, selectTotals, selectVisibleCells } from "./selectors";
+import { selectAuthors, selectTotals, selectVisibleCells } from "../selectors/cells";
 
 const payload = {
   authors: [

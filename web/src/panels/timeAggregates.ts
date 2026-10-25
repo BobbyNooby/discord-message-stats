@@ -1,6 +1,6 @@
 import { C_AUTHOR, C_DAY, C_MSGS, type Payload } from "../api/types";
 import type { Filters } from "../filters/reducer";
-import { bucketOf, selectVisibleCells } from "../filters/selectors";
+import { bucketOf, selectVisibleCells } from "../selectors/cells";
 import { swatch } from "../lib/palette";
 
 /**

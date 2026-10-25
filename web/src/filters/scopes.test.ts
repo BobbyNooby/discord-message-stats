@@ -10,7 +10,7 @@ import {
   scopesReducer,
   type Filters,
 } from "./reducer";
-import { effective } from "./selectors";
+import { effective } from "../selectors/cells";
 
 const payload = {
   authors: [{ id: "u1", name: "Alice", msgs: 10 }, { id: "u2", name: "Bob", msgs: 4 }],
