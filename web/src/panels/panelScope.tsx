@@ -56,12 +56,15 @@ export function PanelScopeProvider({
 export function usePanelFilters(panelId: PanelId | string, fallback?: Filters): Filters {
   const value = useContext(PanelScope);
   const filters = value?.filters ?? fallback;
-  const scopes = value?.scopes;
+  // Keyed on this card's own patch, not the whole scopes map: the reducer keeps
+  // every other card's patch as it was, so applying one card's scope hands the
+  // rest the very same filters and their memoised charts stay as drawn.
+  const patch = value?.scopes[panelId];
   return useMemo(
     // A card with no shell at all still renders: it simply sees the filters it
     // was handed, or the pre-payload defaults.
-    () => effective(filters ?? fallback ?? EMPTY_FILTERS, scopes?.[panelId]),
-    [filters, fallback, scopes, panelId],
+    () => effective(filters ?? fallback ?? EMPTY_FILTERS, patch),
+    [filters, fallback, patch],
   );
 }
 
