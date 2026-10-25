@@ -77,6 +77,16 @@ export function Notice({
   );
 }
 
+/** What a write confirmed, then what went wrong — the pair `useAction` keeps. */
+export function ActionNotices({ notice, error }: { notice: string | null; error: string | null }) {
+  return (
+    <>
+      {notice ? <Notice tone="ok">{notice}</Notice> : null}
+      {error ? <Notice tone="error">{error}</Notice> : null}
+    </>
+  );
+}
+
 /**
  * Both save buttons, always together. `onSave` receives which one was pressed;
  * the caller writes the config, and only `recalculate` enqueues a rebuild.

@@ -8,10 +8,9 @@
  */
 
 import { useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
-
 import { recalculate } from "./api";
-import { Notice } from "./shared";
+import { ActionNotices } from "./shared";
+import { useAction } from "./useAction";
 
 export function RebuildRequired({
   what,
@@ -22,25 +21,15 @@ export function RebuildRequired({
   onDirty?: () => void;
 }) {
   const queryClient = useQueryClient();
-  const [busy, setBusy] = useState(false);
-  const [notice, setNotice] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const { busy, notice, error, run, setNotice } = useAction();
 
-  async function run() {
-    setBusy(true);
-    setError(null);
-    setNotice(null);
-    try {
+  const rebuild = () =>
+    run(async () => {
       const job = await recalculate();
       onDirty?.();
       setNotice(`Rebuild queued as job #${job.id} (${job.status}).`);
       await queryClient.invalidateQueries({ queryKey: ["admin"] });
-    } catch (failure) {
-      setError((failure as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  }
+    });
 
   return (
     <div className="space-y-2 rounded border border-amber-500/40 bg-amber-500/10 p-3">
@@ -49,14 +38,13 @@ export function RebuildRequired({
       </p>
       <button
         type="button"
-        onClick={run}
+        onClick={rebuild}
         disabled={busy}
         className="rounded bg-[var(--color-accent)] px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
       >
         {busy ? "Queueing…" : "Recalculate all"}
       </button>
-      {notice ? <Notice tone="ok">{notice}</Notice> : null}
-      {error ? <Notice tone="error">{error}</Notice> : null}
+      <ActionNotices notice={notice} error={error} />
     </div>
   );
 }

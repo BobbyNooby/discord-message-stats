@@ -1,8 +1,8 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
 
 import { listJobs, recalculate } from "../admin/api";
-import { Notice } from "../admin/shared";
+import { ActionNotices } from "../admin/shared";
+import { useAction } from "../admin/useAction";
 
 /**
  * The one control an end-user screen offers for a stale build: queue the
@@ -22,15 +22,10 @@ const inFlight = (status: string) => status === "queued" || status === "running"
 
 export function RecalculateNow({ label = "Recalculate now" }: { label?: string }) {
   const queryClient = useQueryClient();
-  const [busy, setBusy] = useState(false);
-  const [notice, setNotice] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const { busy, notice, error, run, setNotice, setError } = useAction();
 
-  async function run() {
-    setBusy(true);
-    setError(null);
-    setNotice(null);
-    try {
+  const rebuild = () =>
+    run(async () => {
       const job = await recalculate();
       // The API answers with `already` when this click landed on a rebuild that
       // was queued or running, so the operator is told what really happened.
@@ -49,25 +44,19 @@ export function RecalculateNow({ label = "Recalculate now" }: { label?: string }
       } else if (status === "failed") {
         setError("The rebuild failed. Check the rebuild log in the admin board.");
       }
-    } catch (failure) {
-      setError((failure as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  }
+    });
 
   return (
     <div className="space-y-2">
       <button
         type="button"
-        onClick={run}
+        onClick={rebuild}
         disabled={busy}
         className="rounded bg-[var(--color-accent)] px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
       >
         {busy ? "Rebuilding…" : label}
       </button>
-      {notice ? <Notice tone="ok">{notice}</Notice> : null}
-      {error ? <Notice tone="error">{error}</Notice> : null}
+      <ActionNotices notice={notice} error={error} />
     </div>
   );
 }

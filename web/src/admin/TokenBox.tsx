@@ -12,7 +12,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, type CSSProperties } from "react";
 
 import { forgetToken, getTokenCheck, saveToken, type TokenSource } from "./api";
-import { Notice } from "./shared";
+import { ActionNotices } from "./shared";
+import { useAction } from "./useAction";
 
 const SOURCE_LABEL: Record<TokenSource, string> = {
   saved: "saved from this board",
@@ -24,9 +25,7 @@ export function TokenBox() {
   const queryClient = useQueryClient();
   const check = useQuery({ queryKey: ["admin", "token"], queryFn: getTokenCheck });
   const [value, setValue] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [notice, setNotice] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const { busy, notice, error, run, setNotice } = useAction();
 
   const refresh = async () => {
     await queryClient.invalidateQueries({ queryKey: ["admin", "token"] });
@@ -37,40 +36,28 @@ export function TokenBox() {
   const save = async () => {
     const token = value.trim();
     if (!token) return;
-    setBusy(true);
-    setNotice(null);
-    setError(null);
-    try {
-      const result = await saveToken(token);
-      const who = result.bot?.global_name || result.bot?.username || "the account";
-      const channel = result.channel?.ok
-        ? ` and can read ${result.channel.name ? `#${result.channel.name}` : "the channel"}`
-        : " but cannot read the channel — check the channel id";
-      setNotice(`Saved. It signs in as ${who}${channel}. The worker uses it from its next job.`);
-      await refresh();
-    } catch (cause) {
-      setError((cause as Error).message);
-    } finally {
-      // Whatever happened, the value does not linger in the page.
-      setValue("");
-      setBusy(false);
-    }
+    await run(async () => {
+      try {
+        const result = await saveToken(token);
+        const who = result.bot?.global_name || result.bot?.username || "the account";
+        const channel = result.channel?.ok
+          ? ` and can read ${result.channel.name ? `#${result.channel.name}` : "the channel"}`
+          : " but cannot read the channel — check the channel id";
+        setNotice(`Saved. It signs in as ${who}${channel}. The worker uses it from its next job.`);
+        await refresh();
+      } finally {
+        // Whatever happened, the value does not linger in the page.
+        setValue("");
+      }
+    });
   };
 
-  const forget = async () => {
-    setBusy(true);
-    setNotice(null);
-    setError(null);
-    try {
+  const forget = () =>
+    run(async () => {
       await forgetToken();
       setNotice("Saved token removed. The worker falls back to DISCORD_TOKEN, if there is one.");
       await refresh();
-    } catch (cause) {
-      setError((cause as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  };
+    });
 
   const source = check.data?.source;
   return (
@@ -132,8 +119,7 @@ export function TokenBox() {
       <p className="mt-2 text-[11px] text-[var(--color-muted)]">
         Discord is asked first; a token it refuses is not saved. The token is never sent back to this page.
       </p>
-      {notice ? <Notice tone="ok">{notice}</Notice> : null}
-      {error ? <Notice tone="error">{error}</Notice> : null}
+      <ActionNotices notice={notice} error={error} />
     </div>
   );
 }
