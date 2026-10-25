@@ -128,11 +128,29 @@ export function Def({ label, children }: { label: string; children: ReactNode })
   );
 }
 
+const pad = (n: number) => String(n).padStart(2, "0");
+
+/** The zone the board's times are shown in: the viewer's own, said once in the header. */
+export const LOCAL_ZONE = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+/**
+ * "2026-10-15 13:37" in the viewer's local time. The stamps carry their offset;
+ * printing them as UTC with no label read as a local clock that was hours off.
+ */
 export function formatStamp(stamp: string | null | undefined): string {
   if (!stamp) return "never";
   const parsed = Date.parse(stamp);
   if (Number.isNaN(parsed)) return stamp;
-  return new Date(parsed).toISOString().slice(0, 16).replace("T", " ");
+  const at = new Date(parsed);
+  return `${at.getFullYear()}-${pad(at.getMonth() + 1)}-${pad(at.getDate())} ${pad(at.getHours())}:${pad(at.getMinutes())}`;
+}
+
+/** Just the "13:37" of `formatStamp`, for log lines. */
+export function formatClock(stamp: string | null | undefined): string {
+  if (!stamp) return "—";
+  const parsed = Date.parse(stamp);
+  if (Number.isNaN(parsed)) return stamp;
+  return formatStamp(stamp).slice(11);
 }
 
 export function formatBytes(bytes: number | null | undefined): string {

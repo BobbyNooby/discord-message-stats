@@ -26,7 +26,7 @@ import { FixData } from "../admin/FixData";
 import { RefreshCache } from "../admin/RefreshCache";
 import { ReplaceDatabase } from "../admin/ReplaceDatabase";
 import { getConfig, getStatus, putConfig, recalculate, type ConfigPatch } from "../admin/api";
-import { Notice, type SaveMode } from "../admin/shared";
+import { LOCAL_ZONE, Notice, type SaveMode } from "../admin/shared";
 import {
   DashboardSkeleton,
   Forbidden as ForbiddenScreen,
@@ -140,7 +140,7 @@ export function Admin() {
         <div>
           <h1 className="text-lg font-semibold">Admin</h1>
           <p className="text-xs text-[var(--color-muted)]">
-            {data.app} · channel {data.channel_id} · {data.timezone}
+            {data.app} · channel {data.channel_id} · {data.timezone} · times in your local time ({LOCAL_ZONE})
           </p>
         </div>
         <div className="flex items-center gap-3 text-xs">

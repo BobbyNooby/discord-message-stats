@@ -13,15 +13,9 @@
  */
 
 import type { ProgressFamily, ProgressLast, ProgressLogEntry } from "./api";
-import { Notice } from "./shared";
+import { formatClock, Notice } from "./shared";
 
 /** "05:37" — the clock half of a freshness answer, in the stamp's own wall time. */
-export function formatClock(stamp: string | null | undefined): string {
-  if (!stamp) return "—";
-  const parsed = Date.parse(stamp);
-  if (Number.isNaN(parsed)) return stamp;
-  return new Date(parsed).toISOString().slice(11, 16);
-}
 
 /** "164.2s" / "42s" — seconds as the build reports them, not rounded away. */
 export function formatSeconds(value: number | null | undefined): string {
