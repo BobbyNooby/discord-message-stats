@@ -50,54 +50,9 @@ vi.mock("../api/client", () => ({
 }));
 
 import App from "../App";
-import type { Payload } from "../api/types";
+import { dashboardPayload } from "../test/payload";
 
-const payload = {
-  meta: {
-    total: 2490,
-    source_count: 2490,
-    stale: false,
-    can_admin: false,
-    timezone: "UTC",
-    computed_at: "2026-10-17T00:00:00Z",
-    authors: 1,
-    cells: 1,
-    heat_cells: 0,
-    active_days: 1,
-    firstLocal: "2024-01-01",
-    lastLocal: "2024-01-01",
-    stopwords: 0,
-    kept_words: 0,
-    payload_kb: 1,
-    payload_gzip_kb: 1,
-    types: [[0, "Default", 2490]],
-  },
-  authors: [{ id: "u1", name: "Ada", msgs: 2490 }],
-  days: ["2024-01-01"],
-  cells: [[0, 0, 2490, 100, 10, 5, 0]],
-  heat: [],
-  edges: [],
-  response: [],
-  editSpeed: [],
-  starters: [],
-  attachments: [["image/png", 40]],
-  words: [],
-  wordAuthors: {},
-  authorWordTotals: [],
-  authorDistinct: [],
-  identities: [],
-  linkDomains: [],
-  linkCells: [],
-  topLinks: [],
-  providers: [],
-  embedTypes: [["video", 10]],
-  linkStats: { msgs: 0, domains: 0, both: 0 },
-  emoji: [],
-  reactions: [],
-  types: [[0, "default", 2490]],
-  tz: { name: "UTC", label: "UTC" },
-  channel_hint: "c1",
-} as unknown as Payload;
+const payload = dashboardPayload([[0, "Default", 2490]]);
 
 beforeEach(() => {
   localStorage.clear();

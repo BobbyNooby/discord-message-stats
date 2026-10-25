@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Payload } from "../api/types";
 import { EMPTY_FILTERS, type Filters } from "../filters/reducer";
 import { charts } from "../test/echarts";
+import { testPayload } from "../test/payload";
 import { PanelScopeProvider } from "./panelScope";
 import { WhoSaysIt } from "./WhoSaysIt";
 import { WordCloud } from "./WordCloud";
@@ -32,40 +33,12 @@ vi.mock("../api/queries", () => ({
 type LastOption = { yAxis: { data: string[] }; series: { data: { name?: string; value?: number }[] }[] };
 const lastOption = () => charts.lastOption() as LastOption;
 
-const meta: Payload["meta"] = {
-  total: 400,
-  source_count: 400,
-  stale: false, can_admin: false,
-  timezone: "Europe/London",
-  timezone_mismatch: false,
-  configured_timezone: "Europe/London",
-  timezone_message: null,
-  schema_version: null,
-  schema_expected: 1,
-  schema_message: null,
-  week_start: "monday",
-  time_format: "24h",
-  computed_at: "2026-10-15T20:00:00Z",
-  authors: 2,
-  cells: 6,
-  heat_cells: 0,
-  active_days: 3,
-  firstLocal: "2024-01-01",
-  lastLocal: "2024-01-03",
-  stopwords: 0,
-  kept_words: 3,
-  payload_kb: 1,
-  payload_gzip_kb: 1,
-  types: [],
-};
-
 /**
  * Two authors, three days, three words — and only two of the three words carry a
  * per-author breakdown, which is the shape the real 420-of-500 slice has.
  */
 function makePayload(overrides: Partial<Payload> = {}): Payload {
-  return {
-    meta,
+  return testPayload({
     authors: [
       { id: "u1", name: "Ada", msgs: 300 },
       { id: "u2", name: "Bo", msgs: 100 },
@@ -79,12 +52,6 @@ function makePayload(overrides: Partial<Payload> = {}): Payload {
       [2, 0, 80, 400, 8, 1, 0],
       [2, 1, 30, 100, 2, 0, 0],
     ],
-    heat: [],
-    edges: [],
-    response: [],
-    editSpeed: [],
-    starters: [],
-    attachments: [],
     words: [
       ["car", 42],
       ["care", 12],
@@ -93,20 +60,8 @@ function makePayload(overrides: Partial<Payload> = {}): Payload {
     wordAuthors: { car: [[0, 40], [1, 2]], care: [[0, 12]] },
     authorWordTotals: [200, 100],
     authorDistinct: [2, 1],
-    identities: [],
-    linkDomains: [],
-    linkCells: [],
-    topLinks: [],
-    providers: [],
-    embedTypes: [],
-    linkStats: { msgs: 0, domains: 0, both: 0 },
-    emoji: [],
-    reactions: [],
-    types: [],
-    tz: { name: "Europe/London", label: "Europe/London (UTC+0)" },
-    channel_hint: "#general",
     ...overrides,
-  };
+  });
 }
 
 const allOn: Filters = { ...EMPTY_FILTERS, active: [true, true] };

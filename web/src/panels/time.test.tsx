@@ -14,6 +14,7 @@ import { TimeOfDay } from "./TimeOfDay";
 import { TimeSection } from "./TimeSection";
 import { bucketSeries } from "./timeAggregates";
 import { charts } from "../test/echarts";
+import { emptyFourDayPayload, fourDayPayload } from "../test/payload";
 
 /** The option the most recently mounted chart was last given. */
 function lastOption(): any {
@@ -22,90 +23,12 @@ function lastOption(): any {
   return instance.options[instance.options.length - 1];
 }
 
-function makePayload(over: Partial<Payload> = {}): Payload {
-  const base: Payload = {
-    meta: {
-      total: 6,
-      source_count: 4,
-      stale: false, can_admin: false,
-      timezone: "Europe/London",
-      timezone_mismatch: false,
-      configured_timezone: "Europe/London",
-      timezone_message: null,
-      schema_version: null,
-      schema_expected: 1,
-      schema_message: null,
-      week_start: "monday",
-      time_format: "24h",
-      computed_at: "2024-01-02T00:00:00Z",
-      authors: 2,
-      cells: 4,
-      heat_cells: 3,
-      active_days: 4,
-      firstLocal: "2023-01-01",
-      lastLocal: "2024-01-01",
-      stopwords: 12,
-      kept_words: 500,
-      payload_kb: 12,
-      payload_gzip_kb: 3,
-      types: [],
-    },
-    authors: [
-      { id: "u1", name: "Alice", msgs: 3 },
-      { id: "u2", name: "Bob", msgs: 3 },
-    ],
-    days: ["2023-01-01", "2023-01-15", "2023-06-01", "2024-01-01"],
-    cells: [
-      [0, 0, 2, 10, 1, 0, 0],
-      [1, 0, 1, 5, 0, 1, 0],
-      [2, 1, 2, 8, 0, 0, 1],
-      [3, 1, 1, 4, 1, 0, 0],
-    ],
-    heat: [
-      [0, 9, 0, 2023, 4],
-      [1, 10, 1, 2024, 2],
-      [3, 20, 0, 2023, 1],
-    ],
-    edges: [],
-    response: [],
-    editSpeed: [],
-    starters: [],
-    attachments: [],
-    words: [],
-    wordAuthors: {},
-    authorWordTotals: [],
-    authorDistinct: [],
-    identities: [],
-    linkDomains: [],
-    linkCells: [],
-    topLinks: [],
-    providers: [],
-    embedTypes: [],
-    linkStats: { msgs: 0, domains: 0, both: 0 },
-    emoji: [],
-    reactions: [],
-    types: [],
-    tz: { name: "Europe/London", label: "Europe/London (UTC+0)" },
-    channel_hint: "#general",
-  };
-  return { ...base, ...over };
-}
-
-function emptyPayload(): Payload {
-  return makePayload({
-    days: [],
-    cells: [],
-    heat: [],
-    meta: { ...makePayload().meta, cells: 0, heat_cells: 0, firstLocal: null, lastLocal: null },
-  });
-}
-
 const all = (payload: Payload) => initialFilters(payload);
 const none = (payload: Payload) => ({ ...initialFilters(payload), active: payload.authors.map(() => false) });
 
 describe("the bucket selector", () => {
   it("changes the x-axis cardinality, day to month to year", () => {
-    const payload = makePayload();
+    const payload = fourDayPayload();
 
     // Four days, but two of them share a month, so the three charts differ.
     expect(bucketSeries(payload, { ...all(payload), bucket: "day" }).order).toEqual([
@@ -126,7 +49,7 @@ describe("the bucket selector", () => {
   });
 
   it("reshapes the chart's x axis and says so in the subtitle", () => {
-    const payload = makePayload();
+    const payload = fourDayPayload();
     const { rerender } = render(
       <Activity payload={payload} filters={{ ...all(payload), bucket: "day" }} />,
     );
@@ -145,7 +68,7 @@ describe("the bucket selector", () => {
 
 describe("the author filter", () => {
   it("changes the number of series a trend panel draws", () => {
-    const payload = makePayload();
+    const payload = fourDayPayload();
     const { rerender } = render(<Activity payload={payload} filters={all(payload)} />);
     expect(lastOption().series).toHaveLength(3); // Alice + Bob + TOTAL
     expect(lastOption().series.map((series: any) => series.name)).toEqual([
@@ -163,7 +86,7 @@ describe("the author filter", () => {
 
 describe("messages over time", () => {
   it("toggles stacked area, multi-line and total-only", async () => {
-    const payload = makePayload();
+    const payload = fourDayPayload();
     render(<Activity payload={payload} filters={all(payload)} />);
 
     expect(lastOption().series[0].stack).toBe("t");
@@ -186,7 +109,7 @@ describe("messages over time", () => {
 
 describe("cumulative growth", () => {
   it("stacks every author and draws the running total on top", () => {
-    const payload = makePayload();
+    const payload = fourDayPayload();
     render(<Cumulative payload={payload} filters={{ ...all(payload), bucket: "month" }} />);
 
     const series = lastOption().series;
@@ -199,7 +122,7 @@ describe("cumulative growth", () => {
 
 describe("how conversational", () => {
   it("plots replies as a percentage of messages", () => {
-    const payload = makePayload();
+    const payload = fourDayPayload();
     render(<Conversational payload={payload} filters={{ ...all(payload), bucket: "month" }} />);
 
     // 2023-01: 1 reply of 3 messages; 2023-06: 0 of 2; 2024-01: 1 of 1.
@@ -210,7 +133,7 @@ describe("how conversational", () => {
 
 describe("when the chat comes alive", () => {
   it("reads rollup_heat and honours the year filter", () => {
-    const payload = makePayload();
+    const payload = fourDayPayload();
     const { rerender } = render(<Heat payload={payload} filters={all(payload)} />);
     expect(screen.getByText(/^7 messages · Europe\/London \(UTC\+0\)/)).toBeInTheDocument();
     expect(lastOption().series[0].data).toHaveLength(7 * 24);
@@ -220,7 +143,7 @@ describe("when the chat comes alive", () => {
   });
 
   it("marks the busiest hour on the map", () => {
-    const payload = makePayload();
+    const payload = fourDayPayload();
     render(<Heat payload={payload} filters={all(payload)} />);
     expect(screen.getByText(/busiest Sun 09:00/)).toBeInTheDocument();
   });
@@ -228,7 +151,7 @@ describe("when the chat comes alive", () => {
 
 describe("what time of day", () => {
   it("toggles the bar chart and the polar rose", async () => {
-    const payload = makePayload();
+    const payload = fourDayPayload();
     render(<TimeOfDay payload={payload} filters={all(payload)} />);
 
     expect(lastOption().series[0].coordinateSystem).toBeUndefined();
@@ -244,7 +167,7 @@ describe("what time of day", () => {
 
 describe("which month of the year", () => {
   it("pools every year into twelve bars", () => {
-    const payload = makePayload();
+    const payload = fourDayPayload();
     render(<Season payload={payload} filters={all(payload)} />);
     expect(lastOption().series[0].data).toHaveLength(12);
     expect(screen.getByText("6 messages pooled over 2 years · peak Jan")).toBeInTheDocument();
@@ -253,7 +176,7 @@ describe("which month of the year", () => {
 
 describe("who was talking, when", () => {
   it("stacks the authors into a streamgraph", () => {
-    const payload = makePayload();
+    const payload = fourDayPayload();
     render(<Stream payload={payload} filters={{ ...all(payload), bucket: "year" }} />);
     const series = lastOption().series;
     expect(series.map((entry: any) => entry.name)).toEqual(["Alice", "Bob"]);
@@ -265,7 +188,7 @@ describe("who was talking, when", () => {
 
 describe("the time and rhythm section", () => {
   it("renders all seven panels", () => {
-    const payload = makePayload();
+    const payload = fourDayPayload();
     render(<TimeSection payload={payload} filters={all(payload)} />);
 
     for (const title of [
@@ -282,7 +205,7 @@ describe("the time and rhythm section", () => {
   });
 
   it("renders an empty state in every panel for a payload with zero cells", () => {
-    const payload = emptyPayload();
+    const payload = emptyFourDayPayload();
     render(<TimeSection payload={payload} filters={all(payload)} />);
 
     expect(screen.getAllByText("No messages yet — ingest, or upload a database from the Admin board.")).toHaveLength(7);
@@ -290,7 +213,7 @@ describe("the time and rhythm section", () => {
   });
 
   it("renders an empty state in every panel when every author is switched off", () => {
-    const payload = makePayload();
+    const payload = fourDayPayload();
     render(<TimeSection payload={payload} filters={none(payload)} />);
 
     expect(screen.getAllByText("No authors selected — switch one back on in the filters.")).toHaveLength(7);
@@ -300,7 +223,7 @@ describe("the time and rhythm section", () => {
 
 describe("the clock the panels write", () => {
   it("follows ui.time_format, so the setting is not dead", () => {
-    const payload = makePayload();
+    const payload = fourDayPayload();
     const { rerender } = render(<TimeOfDay payload={payload} filters={all(payload)} />);
     // The fixture's default is the 24-hour clock every panel drew before.
     expect(screen.getByText(/peak \d{2}:00/)).toBeInTheDocument();

@@ -23,6 +23,7 @@ import { ShareOfVoice } from "./ShareOfVoice";
 import { TextVsMedia } from "./TextVsMedia";
 import { PanelScopeProvider } from "./panelScope";
 import { charts as chartMock } from "../test/echarts";
+import { testMeta, testPayload } from "../test/payload";
 
 /** Twelve message types, so the pie has a tail to fold. */
 const TYPES: [number, string, number][] = [
@@ -41,52 +42,13 @@ const TYPES: [number, string, number][] = [
 ];
 
 function fixture(): Payload {
-  return {
-    meta: {
-      total: 2490,
-      source_count: 0,
-      stale: false,
-      can_admin: false,
-      timezone: "UTC",
-      computed_at: null,
-      authors: 1,
-      cells: 1,
-      heat_cells: 0,
-      active_days: 1,
-      firstLocal: "2024-01-01",
-      lastLocal: "2024-01-01",
-      stopwords: 0,
-      kept_words: 0,
-      payload_kb: 1,
-      payload_gzip_kb: 1,
-      types: TYPES,
-    },
+  return testPayload({
+    meta: testMeta({ types: TYPES }),
     authors: [{ id: "u1", name: "Ada", msgs: 2490 }],
     days: ["2024-01-01"],
     cells: [[0, 0, 2490, 100, 10, 5, 0]],
-    heat: [],
-    edges: [],
-    response: [],
-    editSpeed: [],
-    starters: [],
-    attachments: [],
-    words: [],
-    wordAuthors: {},
-    authorWordTotals: [],
-    authorDistinct: [],
-    identities: [],
-    linkDomains: [],
-    linkCells: [],
-    topLinks: [],
-    providers: [],
-    embedTypes: [],
-    linkStats: { msgs: 0, domains: 0, both: 0 },
-    emoji: [],
-    reactions: [],
     types: TYPES,
-    tz: { name: "UTC", label: "UTC" },
-    channel_hint: "c1",
-  } as unknown as Payload;
+  });
 }
 
 type Option = { series: { type: string; data: (number | { name?: string; value?: number })[] }[] };

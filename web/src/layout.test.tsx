@@ -18,6 +18,7 @@ import { RichMediaSection } from "./panels/RichMedia";
 import { MediaSection } from "./panels/MediaSection";
 import type { Action, Filters } from "./filters/reducer";
 import type { MediaRow } from "./api/types";
+import { oneOfEach } from "./test/payload";
 
 /**
  * The layout class that no behavioural test could see: the owner found three
@@ -42,34 +43,7 @@ const SOURCES = import.meta.glob("./**/*.{ts,tsx}", {
   eager: true,
 }) as Record<string, string>;
 
-const payload = {
-  authors: [{ id: "u1", name: "A", msgs: 2 }],
-  days: ["2023-01-01"],
-  cells: [[0, 0, 2, 10, 1, 0, 0]],
-  heat: [[0, 10, 0, 2023, 2]],
-  edges: [[0, 0, 1]],
-  response: [[0, 30, 1]],
-  editSpeed: [[0, 12, 1]],
-  starters: [[0, 1]],
-  attachments: [["image/png", 1]],
-  words: [["abc", 2]],
-  wordAuthors: { abc: [[0, 2]] },
-  authorWordTotals: [2],
-  authorDistinct: [1],
-  identities: [],
-  linkDomains: ["x.com"],
-  linkCells: [[0, 0, 0, 1]],
-  topLinks: [["x.com/a", 1]],
-  providers: [["YouTube", 1]],
-  embedTypes: [["video", 1]],
-  linkStats: { msgs: 1, domains: 1, both: 1 },
-  emoji: [["😀", 1]],
-  reactions: [["fire", 1]],
-  types: [[0, "default", 2]],
-  tz: { name: "UTC", label: "UTC" },
-  channel_hint: "c1",
-  meta: { types: [[0, "default", 2]], stale: false, can_admin: false, timezone: "UTC", total: 2 },
-} as unknown as Payload;
+const payload = oneOfEach;
 
 type SectionProps = { payload: Payload; filters: Filters; dispatch: (action: Action) => void };
 

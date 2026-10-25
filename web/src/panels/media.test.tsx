@@ -15,6 +15,7 @@ import { RepliesVsStandalone } from "./RepliesVsStandalone";
 import { TextVsMedia } from "./TextVsMedia";
 import { healthGauges, mediaShare, replyShare, type MediaPanelProps } from "./mediaData";
 import { charts } from "../test/echarts";
+import { testMeta, testPayload } from "../test/payload";
 
 type DoughnutOption = { series: { data: { value: number; name?: string }[] }[] };
 
@@ -23,38 +24,14 @@ type DoughnutOption = { series: { data: { value: number; name?: string }[] }[] }
  * media, 18 replies); 2024 holds 30 (21 with media, 3 replies).
  */
 function fixture(overrides: Partial<Payload> = {}): Payload {
-  const base: Payload = {
-    meta: {
-      total: 210,
-      source_count: 0,
-      stale: false, can_admin: false,
-      timezone: "UTC",
-      timezone_mismatch: false,
-      configured_timezone: "UTC",
-      timezone_message: null,
-      schema_version: null,
-      schema_expected: 1,
-      schema_message: null,
-      week_start: "monday",
-      time_format: "24h",
-      computed_at: null,
-      authors: 2,
-      cells: 5,
-      heat_cells: 0,
-      active_days: 4,
-      firstLocal: "2023-01-01",
-      lastLocal: "2024-07-01",
-      stopwords: 0,
-      kept_words: 0,
-      payload_kb: 1,
-      payload_gzip_kb: 1,
-      types: [
-        [0, "Default", 206],
-        [1, "Reply", 5],
-        [2, "Call", 1],
-        [3, "Pin", 0],
-      ],
-    },
+  const types: Payload["types"] = [
+    [0, "Default", 206],
+    [1, "Reply", 5],
+    [2, "Call", 1],
+    [3, "Pin", 0],
+  ];
+  return testPayload({
+    meta: testMeta({ types }),
     authors: [
       { id: "u1", name: "Alice", msgs: 140 },
       { id: "u2", name: "Bob", msgs: 70 },
@@ -67,27 +44,11 @@ function fixture(overrides: Partial<Payload> = {}): Payload {
       [2, 1, 20, 80, 2, 20, 0],
       [3, 0, 10, 40, 1, 1, 0],
     ],
-    heat: [],
-    edges: [],
-    response: [],
-    editSpeed: [],
-    starters: [],
     attachments: [
       ["image/png", 40],
       ["video/mp4", 9],
       ["application/pdf", 0],
     ],
-    words: [],
-    wordAuthors: {},
-    authorWordTotals: [],
-    authorDistinct: [],
-    identities: [],
-    linkDomains: [],
-    linkCells: [],
-    topLinks: [],
-    providers: [],
-    embedTypes: [],
-    linkStats: { msgs: 0, domains: 0, both: 0 },
     emoji: [
       ["😂", 30],
       ["❤️", 12],
@@ -96,16 +57,9 @@ function fixture(overrides: Partial<Payload> = {}): Payload {
       ["👍", 22],
       ["🔥", 7],
     ],
-    types: [
-      [0, "Default", 206],
-      [1, "Reply", 5],
-      [2, "Call", 1],
-      [3, "Pin", 0],
-    ],
-    tz: { name: "UTC", label: "UTC" },
-    channel_hint: "general",
-  };
-  return { ...base, ...overrides };
+    types,
+    ...overrides,
+  });
 }
 
 function lastOption(): DoughnutOption {

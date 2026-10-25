@@ -1,95 +1,13 @@
 import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
-import type { Cell, Payload } from "../api/types";
+import type { Cell } from "../api/types";
 import { initialFilters } from "../filters/reducer";
 import { MessagesPerYear } from "./MessagesPerYear";
 import { OverviewSection } from "./OverviewSection";
 import { ShareOfVoice } from "./ShareOfVoice";
 import { StatCards } from "./StatCards";
-
-/**
- * A four-day, two-author payload. Small on purpose: every expected number below
- * can be checked by hand from `cells`, so a regression is a wrong number rather
- * than a moved one.
- */
-function makePayload(over: Partial<Payload> = {}): Payload {
-  const base: Payload = {
-    meta: {
-      total: 6,
-      source_count: 4,
-      stale: false, can_admin: false,
-      timezone: "Europe/London",
-      timezone_mismatch: false,
-      configured_timezone: "Europe/London",
-      timezone_message: null,
-      schema_version: null,
-      schema_expected: 1,
-      schema_message: null,
-      week_start: "monday",
-      time_format: "24h",
-      computed_at: "2024-01-02T00:00:00Z",
-      authors: 2,
-      cells: 4,
-      heat_cells: 3,
-      active_days: 4,
-      firstLocal: "2023-01-01",
-      lastLocal: "2024-01-01",
-      stopwords: 12,
-      kept_words: 500,
-      payload_kb: 12,
-      payload_gzip_kb: 3,
-      types: [],
-    },
-    authors: [
-      { id: "u1", name: "Alice", msgs: 3 },
-      { id: "u2", name: "Bob", msgs: 3 },
-    ],
-    days: ["2023-01-01", "2023-01-15", "2023-06-01", "2024-01-01"],
-    cells: [
-      [0, 0, 2, 10, 1, 0, 0],
-      [1, 0, 1, 5, 0, 1, 0],
-      [2, 1, 2, 8, 0, 0, 1],
-      [3, 1, 1, 4, 1, 0, 0],
-    ],
-    heat: [
-      [0, 9, 0, 2023, 4],
-      [1, 10, 1, 2024, 2],
-      [3, 20, 0, 2023, 1],
-    ],
-    edges: [],
-    response: [],
-    editSpeed: [],
-    starters: [],
-    attachments: [],
-    words: [],
-    wordAuthors: {},
-    authorWordTotals: [],
-    authorDistinct: [],
-    identities: [],
-    linkDomains: [],
-    linkCells: [],
-    topLinks: [],
-    providers: [],
-    embedTypes: [],
-    linkStats: { msgs: 0, domains: 0, both: 0 },
-    emoji: [],
-    reactions: [],
-    types: [],
-    tz: { name: "Europe/London", label: "Europe/London (UTC+0)" },
-    channel_hint: "#general",
-  };
-  return { ...base, ...over };
-}
-
-function emptyPayload(): Payload {
-  return makePayload({
-    days: [],
-    cells: [],
-    heat: [],
-    meta: { ...makePayload().meta, cells: 0, heat_cells: 0, firstLocal: null, lastLocal: null },
-  });
-}
+import { emptyFourDayPayload, fourDayPayload } from "../test/payload";
 
 /** The card a label sits in, so two cards with the same figure cannot be confused. */
 function card(label: string): HTMLElement {
@@ -101,7 +19,7 @@ function card(label: string): HTMLElement {
 
 describe("stat cards", () => {
   it("prints the six figures the filtered cells add up to", () => {
-    const payload = makePayload();
+    const payload = fourDayPayload();
     render(<StatCards payload={payload} filters={initialFilters(payload)} />);
 
     expect(within(card("Messages")).getByText("6")).toBeInTheDocument();
@@ -115,7 +33,7 @@ describe("stat cards", () => {
   });
 
   it("re-aggregates for the year filter without touching the network", () => {
-    const payload = makePayload();
+    const payload = fourDayPayload();
     const { rerender } = render(
       <StatCards payload={payload} filters={initialFilters(payload)} />,
     );
@@ -132,7 +50,7 @@ describe("stat cards", () => {
   });
 
   it("shows six dashes rather than six zeroes for an empty payload", () => {
-    const payload = emptyPayload();
+    const payload = emptyFourDayPayload();
     render(<StatCards payload={payload} filters={initialFilters(payload)} />);
 
     expect(screen.getAllByText("—")).toHaveLength(6);
@@ -141,7 +59,7 @@ describe("stat cards", () => {
   });
 
   it("never prints NaN when every author is switched off", () => {
-    const payload = makePayload();
+    const payload = fourDayPayload();
     render(
       <StatCards
         payload={payload}
@@ -158,13 +76,13 @@ describe("stat cards", () => {
 
 describe("share of voice", () => {
   it("states the filtered total and the author count it drew", () => {
-    const payload = makePayload();
+    const payload = fourDayPayload();
     render(<ShareOfVoice payload={payload} filters={initialFilters(payload)} />);
     expect(screen.getByText("6 messages · 2 authors")).toBeInTheDocument();
   });
 
   it("folds an author tail into one Others wedge so the doughnut keeps few categories", () => {
-    const payload = makePayload({
+    const payload = fourDayPayload({
       authors: Array.from({ length: 8 }, (_, index) => ({
         id: `u${index}`,
         name: `A${index}`,
@@ -181,7 +99,7 @@ describe("share of voice", () => {
   });
 
   it("renders an empty state rather than a chart with no data", () => {
-    const payload = emptyPayload();
+    const payload = emptyFourDayPayload();
     render(<ShareOfVoice payload={payload} filters={initialFilters(payload)} />);
     expect(screen.getByText("No messages yet — ingest, or upload a database from the Admin board.")).toBeInTheDocument();
   });
@@ -189,7 +107,7 @@ describe("share of voice", () => {
 
 describe("messages per year", () => {
   it("bars the same filtered cells the doughnuts read", () => {
-    const payload = makePayload();
+    const payload = fourDayPayload();
     render(<MessagesPerYear payload={payload} filters={initialFilters(payload)} />);
     expect(screen.getByText("6 messages · 2 years · peak 2023")).toBeInTheDocument();
   });
@@ -197,7 +115,7 @@ describe("messages per year", () => {
 
 describe("the overview section", () => {
   it("lays out all four panels and keeps them honest under a year filter", () => {
-    const payload = makePayload();
+    const payload = fourDayPayload();
     render(<OverviewSection payload={payload} filters={{ ...initialFilters(payload), years: [2023] }} />);
 
     expect(screen.getByRole("heading", { name: "Overview" })).toBeInTheDocument();
@@ -215,7 +133,7 @@ describe("the overview section", () => {
   });
 
   it("renders an empty state for a payload with zero cells", () => {
-    const payload = emptyPayload();
+    const payload = emptyFourDayPayload();
     render(<OverviewSection payload={payload} filters={initialFilters(payload)} />);
 
     expect(screen.getAllByText("No messages yet — ingest, or upload a database from the Admin board.")).toHaveLength(4);
@@ -223,7 +141,7 @@ describe("the overview section", () => {
   });
 
   it("renders an empty state when every author is switched off", () => {
-    const payload = makePayload();
+    const payload = fourDayPayload();
     render(
       <OverviewSection
         payload={payload}
