@@ -90,8 +90,11 @@ def bootstrap(conn: sqlite3.Connection, cfg: Config) -> dict[str, Any]:
     # timezone edit the buckets are still last-zone until a rebuild, and
     # labelling them with the new zone is worse than labelling them old (§7.1).
     built_in = provenance.get("timezone") or cfg.timezone
+    # `cheap`: the newest message id, not a count of every row. The full form
+    # read the whole messages table on each assembly (seconds), and the
+    # endpoint recomputes this flag per request in the same cheap way anyway.
     stale = (not provenance) or is_stale(conn, channel, "activity",
-                                         config_hash=config_digest(cfg, conn))
+                                         config_hash=config_digest(cfg, conn), cheap=True)
     types = query.type_rows(conn, channel)
 
     payload: dict[str, Any] = {
