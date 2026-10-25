@@ -309,3 +309,22 @@ describe("ui.time_format through the dashboard", () => {
     expect(await screen.findByText(/as of 2026-10-17 00:00/)).toBeInTheDocument();
   });
 });
+
+describe("re-rendering the dashboard without a data change", () => {
+  it("does not redraw every chart when a card's scope opens", async () => {
+    // Opening a scope (and each minute's health poll) re-renders the dashboard
+    // body; on the real data that redrew 38 charts and blocked for over a second.
+    const echarts = await import("echarts");
+    const chart = echarts.init(document.createElement("div"));
+    const setOption = vi.mocked(chart.setOption);
+    renderApp();
+    const filter = await screen.findByRole("button", { name: "Filter Stat cards" });
+    await waitFor(() => expect(setOption).toHaveBeenCalled());
+    const drawn = setOption.mock.calls.length;
+    setOption.mockClear();
+
+    await userEvent.click(filter);
+    expect(await screen.findByRole("button", { name: "Back to global" })).toBeInTheDocument();
+    expect(setOption.mock.calls.length).toBeLessThan(drawn / 4);
+  });
+});

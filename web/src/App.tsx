@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useReducer, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
 
 import {
   Forbidden as ForbiddenError,
@@ -195,6 +195,35 @@ function DashboardBody({
     if (id) document.getElementById(id)?.scrollIntoView?.({ block: "start" });
   }, []);
 
+  // Built only when what the cards draw changes. The health poll (every minute)
+  // and the sidebar switching modes re-render this component, and without the
+  // memo every card handed its chart a new option and redrew all of them.
+  const cards = useMemo(
+    () => (
+      // Six sections in the spec's order; the calendar sits inside Time & rhythm
+      // where §11.1 puts it. Every card inside can hand its id to the sidebar,
+      // which is how a card's "…" swaps what the sidebar edits.
+      <PanelScopeProvider
+        filters={filters}
+        scopes={scopes}
+        onOpenScope={openScope}
+        charts={charts}
+        onShapeChange={setShape}
+      >
+        <OverviewSection payload={payload} filters={filters} />
+        <TimeSection payload={payload} filters={filters} calendar={<Calendar payload={payload} filters={filters} />} />
+        <PeopleSection payload={payload} filters={filters} />
+        <WordsSection payload={payload} filters={filters} dispatch={dispatch} />
+        <LinksSection payload={payload} filters={filters} />
+        <RichMediaSection payload={payload} filters={filters} />
+        <MediaSection payload={payload} filters={filters} />
+        {/* Fork panels, rendered last. Upstream ships none, so this is silent. */}
+        <CustomSection payload={payload} filters={filters} />
+      </PanelScopeProvider>
+    ),
+    [payload, filters, scopes, openScope, charts, setShape, dispatch],
+  );
+
   const pruned = describeDropped(saved.dropped, (panelId) =>
     panelId in PANELS ? PANELS[panelId as PanelId].label : panelId,
   );
@@ -252,26 +281,7 @@ function DashboardBody({
       />
       <JumpNav />
       <RecentStrip messages={recent?.messages ?? []} truncated={recent?.truncated} />
-      {/* Six sections in the spec's order; the calendar sits inside Time &
-          rhythm where §11.1 puts it. Every card inside can hand its id to the
-          sidebar, which is how a card's "…" swaps what the sidebar edits. */}
-      <PanelScopeProvider
-        filters={filters}
-        scopes={scopes}
-        onOpenScope={openScope}
-        charts={charts}
-        onShapeChange={setShape}
-      >
-        <OverviewSection payload={payload} filters={filters} />
-        <TimeSection payload={payload} filters={filters} calendar={<Calendar payload={payload} filters={filters} />} />
-        <PeopleSection payload={payload} filters={filters} />
-        <WordsSection payload={payload} filters={filters} dispatch={dispatch} />
-        <LinksSection payload={payload} filters={filters} />
-        <RichMediaSection payload={payload} filters={filters} />
-        <MediaSection payload={payload} filters={filters} />
-        {/* Fork panels, rendered last. Upstream ships none, so this is silent. */}
-        <CustomSection payload={payload} filters={filters} />
-      </PanelScopeProvider>
+      {cards}
       <footer className="pb-8 text-[11px] text-[var(--color-muted)]">
         {payload.meta.payload_kb} KB payload ({payload.meta.payload_gzip_kb} KB gzipped) ·{" "}
         {payload.meta.cells.toLocaleString()} rollup cells instead of{" "}
