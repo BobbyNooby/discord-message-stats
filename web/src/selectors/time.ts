@@ -1,17 +1,13 @@
-import { C_AUTHOR, C_DAY, C_MSGS, type Payload } from "../api/types";
-import type { Filters } from "../filters/reducer";
-import { bucketOf, selectVisibleCells } from "../selectors/cells";
-import { swatch } from "../lib/palette";
-
 /**
- * The shapes the Overview and Time & rhythm panels share.
+ * The numbers the Time & rhythm cards draw.
  *
- * Every panel is a pure function of `(payload, filters)` (§11.2), so the
- * bucketing, the empty-state wording and the chart chrome live here once —
- * otherwise two panels could disagree about what "a month" means.
+ * Every card is a pure function of `(payload, filters)` (§11.2), so the
+ * bucketing lives here once — otherwise two cards could disagree about what "a
+ * month" means.
  */
-
-export type PanelProps = { payload: Payload; filters: Filters };
+import { C_AUTHOR, C_DAY, C_MSGS, C_REPLIES, type Payload } from "../api/types";
+import type { Filters } from "../filters/reducer";
+import { bucketOf, selectVisibleCells } from "./cells";
 
 export const DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
 export const MON = [
@@ -23,14 +19,7 @@ export function pct(part: number, whole: number): number {
   return whole ? (100 * part) / whole : 0;
 }
 
-export function bucketCountLabel(count: number, bucket: Filters["bucket"]): string {
-  const noun = bucket === "day" ? "days" : bucket === "month" ? "months" : "years";
-  return `${count} ${count === 1 ? noun.replace(/s$/, "") : noun}`;
-}
 
-export function yearCountLabel(count: number): string {
-  return `${count} ${count === 1 ? "year" : "years"}`;
-}
 
 /** Author indices the filters leave visible, in payload order. */
 export function activeAuthorIndices(payload: Payload, filters: Filters): number[] {
@@ -118,25 +107,62 @@ export function byHour(grid: Float64Array): number[] {
   return hours;
 }
 
-/** The neutral slice a folded tail gets, so it never looks like a real author.
- * A function so a fork's `--chart-12` reaches it — a constant would freeze the
- * fallback at import time. */
-export const otherColor = () => swatch(11);
+export type RepliesByBucket = {
+  /** The x axis: one sorted entry per bucket with messages. */
+  order: string[];
+  /** Replies as a percentage of each bucket's messages, to two decimals. */
+  series: number[];
+  msgs: number;
+  replies: number;
+};
 
-export type Slice = { name: string; value: number; index: number };
+/** Replies per bucket as a share of that bucket's messages. */
+export function repliesByBucket(payload: Payload, filters: Filters): RepliesByBucket {
+  const sums = new Map<string, number>();
+  const replies = new Map<string, number>();
+  const order: string[] = [];
+  let msgs = 0;
+  let replyCount = 0;
 
-/**
- * §11.5: a doughnut is for a part-of-whole with few categories. Share of voice
- * is a part-of-whole, but a chat can have a dozen authors, so the tail folds
- * into one "Others" slice rather than growing a twelfth indistinguishable
- * wedge. Everything past the fold is still in the total and the tooltip.
- */
-export function foldSlices(rows: Slice[], max = 6): Slice[] {
-  if (rows.length <= max) return rows;
-  const head = rows.slice(0, max - 1);
-  const tail = rows.slice(max - 1);
-  return [
-    ...head,
-    { name: "Others", value: tail.reduce((sum, row) => sum + row.value, 0), index: -1 },
-  ];
+  for (const cell of selectVisibleCells(payload, filters)) {
+    const day = payload.days[cell[C_DAY]];
+    if (day === undefined) continue;
+    const key = bucketOf(day, filters.bucket);
+    if (!sums.has(key)) order.push(key);
+    sums.set(key, (sums.get(key) ?? 0) + cell[C_MSGS]);
+    replies.set(key, (replies.get(key) ?? 0) + cell[C_REPLIES]);
+    msgs += cell[C_MSGS];
+    replyCount += cell[C_REPLIES];
+  }
+  order.sort();
+
+  const series = order.map((key) => {
+    const total = sums.get(key) ?? 0;
+    return total ? Number(pct(replies.get(key) ?? 0, total).toFixed(2)) : 0;
+  });
+  return { order, series, msgs, replies: replyCount };
+}
+
+export type MonthTotals = {
+  /** Messages per calendar month, January first, every year pooled. */
+  months: number[];
+  /** How many distinct years contributed. */
+  years: number;
+  total: number;
+};
+
+export function monthTotals(payload: Payload, filters: Filters): MonthTotals {
+  const months = new Array<number>(12).fill(0);
+  const years = new Set<string>();
+  let total = 0;
+  for (const cell of selectVisibleCells(payload, filters)) {
+    const day = payload.days[cell[C_DAY]];
+    if (day === undefined) continue;
+    const month = Number(day.slice(5, 7)) - 1;
+    if (month < 0 || month > 11) continue;
+    months[month] += cell[C_MSGS];
+    total += cell[C_MSGS];
+    years.add(day.slice(0, 4));
+  }
+  return { months, years: years.size, total };
 }

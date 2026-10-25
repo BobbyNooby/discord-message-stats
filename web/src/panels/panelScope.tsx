@@ -1,5 +1,6 @@
 import { createContext, useContext, useMemo, type ReactNode } from "react";
 
+import type { Payload } from "../api/types";
 import { EMPTY_FILTERS, type Filters, type Scopes } from "../filters/reducer";
 import type { Charts } from "../filters/persist";
 import { isPanelId, specFor, type ChartKind, type PanelId } from "./registry";
@@ -88,6 +89,9 @@ export function useChartShape(panelId: PanelId | string): ChartKind {
 export function useShapeChange(): ((panelId: PanelId, shape: ChartKind) => void) | null {
   return useContext(PanelScope)?.onShapeChange ?? null;
 }
+
+/** What every card is handed: the payload and the global filters it starts from. */
+export type PanelProps = { payload: Payload; filters: Filters };
 
 /** A card may be told its own id; it reads its scope through the context above. */
 export type WithPanelId = { panelId?: PanelId };

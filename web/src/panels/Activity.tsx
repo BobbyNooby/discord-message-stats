@@ -7,17 +7,10 @@ import { EmptyState, Panel } from "../components/Panel";
 import { axis, axisLabel, legend, splitLine, tooltip } from "../lib/chartStyle";
 import { EChart } from "../lib/echart";
 import { emptyLabel } from "../lib/empty";
-import { fmt, kfmt } from "../lib/format";
+import { bucketCountLabel, fmt, kfmt } from "../lib/format";
 import { swatch, token } from "../lib/palette";
-import {
-  activeAuthorIndices,
-  bucketCountLabel,
-  bucketSeries,
-  type BucketSeries,
-  type PanelProps,
-} from "./timeAggregates";
-import type { WithPanelId } from "./panelScope";
-import { usePanelFilters } from "./panelScope";
+import { activeAuthorIndices, bucketSeries, type BucketSeries } from "../selectors/time";
+import { usePanelFilters, type PanelProps, type WithPanelId } from "./panelScope";
 
 type Mode = "stacked" | "lines" | "total";
 

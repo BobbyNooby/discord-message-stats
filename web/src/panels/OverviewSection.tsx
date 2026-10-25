@@ -4,7 +4,7 @@ import { MessagesPerYear } from "./MessagesPerYear";
 import { ShareOfVoice } from "./ShareOfVoice";
 import { ShareOfVoiceByYear } from "./ShareOfVoiceByYear";
 import { StatCards } from "./StatCards";
-import type { PanelProps } from "./timeAggregates";
+import type { PanelProps } from "./panelScope";
 
 /** The four Overview panels of §11.1, laid out on one responsive grid. */
 export function OverviewSection({ payload, filters }: PanelProps) {

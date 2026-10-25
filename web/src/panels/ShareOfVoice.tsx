@@ -8,10 +8,9 @@ import { EChart } from "../lib/echart";
 import { emptyLabel } from "../lib/empty";
 import { fmt } from "../lib/format";
 import { swatch, token } from "../lib/palette";
-import { foldSlices, otherColor, type PanelProps, type Slice } from "./timeAggregates";
 import { colorBarsOption } from "./mediaData";
-import type { WithPanelId } from "./panelScope";
-import { useChartShape, usePanelFilters } from "./panelScope";
+import { useChartShape, usePanelFilters, type PanelProps, type WithPanelId } from "./panelScope";
+import { foldSlices, otherColor, type Slice } from "./chartShape";
 
 function doughnut(slices: Slice[]): EChartsOption {
   return {

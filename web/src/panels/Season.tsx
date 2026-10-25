@@ -1,42 +1,14 @@
 import type { EChartsOption } from "echarts";
 import { useMemo } from "react";
 
-import { C_DAY, C_MSGS, type Payload } from "../api/types";
 import { EmptyState, Panel } from "../components/Panel";
-import type { Filters } from "../filters/reducer";
-import { selectVisibleCells } from "../selectors/cells";
 import { axisLabel, axisLine, splitLine, tooltip } from "../lib/chartStyle";
 import { EChart } from "../lib/echart";
 import { emptyLabel } from "../lib/empty";
 import { fmt, kfmt } from "../lib/format";
 import { swatch } from "../lib/palette";
-import { MON, type PanelProps } from "./timeAggregates";
-import type { WithPanelId } from "./panelScope";
-import { usePanelFilters } from "./panelScope";
-
-type MonthTotals = {
-  /** Messages per calendar month, January first, every year pooled. */
-  months: number[];
-  /** How many distinct years contributed. */
-  years: number;
-  total: number;
-};
-
-function monthTotals(payload: Payload, filters: Filters): MonthTotals {
-  const months = new Array<number>(12).fill(0);
-  const years = new Set<string>();
-  let total = 0;
-  for (const cell of selectVisibleCells(payload, filters)) {
-    const day = payload.days[cell[C_DAY]];
-    if (day === undefined) continue;
-    const month = Number(day.slice(5, 7)) - 1;
-    if (month < 0 || month > 11) continue;
-    months[month] += cell[C_MSGS];
-    total += cell[C_MSGS];
-    years.add(day.slice(0, 4));
-  }
-  return { months, years: years.size, total };
-}
+import { MON, monthTotals } from "../selectors/time";
+import { usePanelFilters, type PanelProps, type WithPanelId } from "./panelScope";
 
 function monthBars(months: number[]): EChartsOption {
   const peak = Math.max(...months);

@@ -25,6 +25,25 @@ export const otherColor = () => swatch(11);
 
 export type ShapeRow = { name: string; value: number };
 
+/** One author's wedge; `index` is the author's palette slot, -1 for the folded tail. */
+export type Slice = { name: string; value: number; index: number };
+
+/**
+ * §11.5: a doughnut is for a part-of-whole with few categories. Share of voice
+ * is a part-of-whole, but a chat can have a dozen authors, so the tail folds
+ * into one "Others" slice rather than growing a twelfth indistinguishable
+ * wedge. Everything past the fold is still in the total and the tooltip.
+ */
+export function foldSlices(rows: Slice[], max = 6): Slice[] {
+  if (rows.length <= max) return rows;
+  const head = rows.slice(0, max - 1);
+  const tail = rows.slice(max - 1);
+  return [
+    ...head,
+    { name: "Others", value: tail.reduce((sum, row) => sum + row.value, 0), index: -1 },
+  ];
+}
+
 /**
  * Sorted desc, the top `max` named, the rest summed into one "Other" slice.
  * Rows with nothing in them are dropped first: a zero slice is a colour with no

@@ -10,7 +10,7 @@ import { Heat } from "./Heat";
 import { Season } from "./Season";
 import { Stream } from "./Stream";
 import { TimeOfDay } from "./TimeOfDay";
-import type { PanelProps } from "./timeAggregates";
+import type { PanelProps } from "./panelScope";
 
 /**
  * The Time & rhythm panels of §11.1.

@@ -8,9 +8,8 @@ import { emptyLabel } from "../lib/empty";
 import { fmt } from "../lib/format";
 import { ramp, token } from "../lib/palette";
 import { hourLabel, timeFormatOf, type TimeFormat } from "../lib/timeFormat";
-import { DOW, heatGrid, type HeatGrid, type PanelProps } from "./timeAggregates";
-import type { WithPanelId } from "./panelScope";
-import { usePanelFilters } from "./panelScope";
+import { DOW, heatGrid, type HeatGrid } from "../selectors/time";
+import { usePanelFilters, type PanelProps, type WithPanelId } from "./panelScope";
 
 const HOURS = Array.from({ length: 24 }, (_, hour) => hour);
 

@@ -6,11 +6,9 @@ import { yearTotals, type YearTotals } from "../selectors/overview";
 import { axis, axisLabel, splitLine, tooltip } from "../lib/chartStyle";
 import { EChart } from "../lib/echart";
 import { emptyLabel } from "../lib/empty";
-import { fmt, kfmt } from "../lib/format";
+import { fmt, kfmt, yearCountLabel } from "../lib/format";
 import { swatch, token } from "../lib/palette";
-import { yearCountLabel, type PanelProps } from "./timeAggregates";
-import type { WithPanelId } from "./panelScope";
-import { usePanelFilters } from "./panelScope";
+import { usePanelFilters, type PanelProps, type WithPanelId } from "./panelScope";
 
 function yearBars({ years, values }: YearTotals): EChartsOption {
   const peak = Math.max(...values);

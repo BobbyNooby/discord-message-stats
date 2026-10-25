@@ -12,7 +12,7 @@ import { Season } from "./Season";
 import { Stream } from "./Stream";
 import { TimeOfDay } from "./TimeOfDay";
 import { TimeSection } from "./TimeSection";
-import { bucketSeries } from "./timeAggregates";
+import { bucketSeries } from "../selectors/time";
 import { charts } from "../test/echarts";
 import { emptyFourDayPayload, fourDayPayload } from "../test/payload";
 

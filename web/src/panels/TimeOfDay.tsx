@@ -9,9 +9,8 @@ import { emptyLabel } from "../lib/empty";
 import { fmt, kfmt } from "../lib/format";
 import { swatch, token } from "../lib/palette";
 import { hourLabel, timeFormatOf, type TimeFormat } from "../lib/timeFormat";
-import { byHour, heatGrid, type PanelProps } from "./timeAggregates";
-import type { WithPanelId } from "./panelScope";
-import { usePanelFilters } from "./panelScope";
+import { byHour, heatGrid } from "../selectors/time";
+import { usePanelFilters, type PanelProps, type WithPanelId } from "./panelScope";
 
 type Style = "bar" | "rose";
 

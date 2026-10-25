@@ -1,7 +1,7 @@
 import { CARD_COLUMNS, EmptyState, Panel, SectionHeading } from "../components/Panel";
 import { customComponents } from "./custom";
-import { SPECS, sectionOf } from "./registry";
-import type { PanelProps } from "./timeAggregates";
+import { sectionOf, SPECS } from "./registry";
+import type { PanelProps } from "./panelScope";
 
 /**
  * The fork's cards. A spec no built-in section claims lands here, so a fork

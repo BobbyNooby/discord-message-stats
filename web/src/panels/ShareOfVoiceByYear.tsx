@@ -7,17 +7,10 @@ import { yearMix, type YearMix } from "../selectors/overview";
 import { tooltip } from "../lib/chartStyle";
 import { EChart } from "../lib/echart";
 import { emptyLabel } from "../lib/empty";
-import { fmt } from "../lib/format";
+import { fmt, yearCountLabel } from "../lib/format";
 import { swatch, token } from "../lib/palette";
-import {
-  foldSlices,
-  otherColor,
-  yearCountLabel,
-  type PanelProps,
-  type Slice,
-} from "./timeAggregates";
-import type { WithPanelId } from "./panelScope";
-import { usePanelFilters } from "./panelScope";
+import { usePanelFilters, type PanelProps, type WithPanelId } from "./panelScope";
+import { foldSlices, otherColor, type Slice } from "./chartShape";
 
 /** Radius that keeps seven doughnuts legible on one row without a width probe. */
 function radiusFor(count: number): number {

@@ -5,6 +5,8 @@
  * browser rather than following the reader's locale.
  */
 
+import type { Filters } from "../filters/reducer";
+
 /** A whole number with thousands separators: "17,135". */
 export function fmt(value: number): string {
   return Math.round(value).toLocaleString("en-US");
@@ -33,4 +35,14 @@ export function dur(seconds: number): string {
 /** A share as a subtitle prints it: one decimal, and 0 rather than NaN. */
 export function pctOf(part: number, whole: number): string {
   return whole > 0 ? ((100 * part) / whole).toFixed(1) : "0.0";
+}
+
+/** "1 month", "14 days": how many buckets an x axis spans, in words. */
+export function bucketCountLabel(count: number, bucket: Filters["bucket"]): string {
+  const noun = bucket === "day" ? "days" : bucket === "month" ? "months" : "years";
+  return `${count} ${count === 1 ? noun.replace(/s$/, "") : noun}`;
+}
+
+export function yearCountLabel(count: number): string {
+  return `${count} ${count === 1 ? "year" : "years"}`;
 }
