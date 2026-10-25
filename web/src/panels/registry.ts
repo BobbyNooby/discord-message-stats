@@ -52,124 +52,152 @@ const NONE: readonly Dimension[] = [];
 const BAR = ["bar"] as const;
 const BAR_PIE = ["bar", "pie"] as const;
 
+/**
+ * The rendered sections, in page order. A built-in card names its section on
+ * its own spec (below), so the sections and the cards in them are read off the
+ * registry rather than kept in a second list that could drift.
+ */
+export type SectionId = "overview" | "time" | "people" | "words" | "links" | "rich-media" | "media";
+
+/** Every spec in one section's list, stamped with that section. */
+function inSection<const T extends readonly PanelSpec[]>(section: SectionId, specs: T) {
+  return specs.map((spec) => ({ ...spec, section })) as unknown as {
+    readonly [K in keyof T]: T[K] & { readonly section: SectionId };
+  };
+}
+
 const builtInSpecs = [
   // Overview
-  { id: "stat-cards", label: "Stat cards", honours: TA, shapes: BAR, defaultShape: "bar" },
-  { id: "share-of-voice", label: "Share of voice", honours: TA, shapes: BAR_PIE, defaultShape: "pie" },
-  { id: "messages-per-year", label: "Messages per year", honours: TA, shapes: BAR, defaultShape: "bar" },
-  {
-    id: "share-of-voice-year-by-year",
-    label: "Share of voice, year by year",
-    honours: TA,
-    shapes: BAR,
-    defaultShape: "bar",
-  },
+  ...inSection("overview", [
+    { id: "stat-cards", label: "Stat cards", honours: TA, shapes: BAR, defaultShape: "bar" },
+    { id: "share-of-voice", label: "Share of voice", honours: TA, shapes: BAR_PIE, defaultShape: "pie" },
+    { id: "messages-per-year", label: "Messages per year", honours: TA, shapes: BAR, defaultShape: "bar" },
+    {
+      id: "share-of-voice-year-by-year",
+      label: "Share of voice, year by year",
+      honours: TA,
+      shapes: BAR,
+      defaultShape: "bar",
+    },
+  ]),
 
   // Time & rhythm
-  { id: "messages-over-time", label: "Messages over time", honours: TA, shapes: BAR, defaultShape: "bar" },
-  { id: "cumulative-growth", label: "Cumulative growth", honours: TA, shapes: BAR, defaultShape: "bar" },
-  { id: "how-conversational", label: "How conversational", honours: TA, shapes: BAR, defaultShape: "bar" },
-  { id: "every-day-six-years", label: "Every day, six years", honours: TA, shapes: BAR, defaultShape: "bar" },
-  {
-    id: "when-the-chat-comes-alive",
-    label: "When the chat comes alive",
-    honours: TA,
-    shapes: BAR,
-    defaultShape: "bar",
-  },
-  { id: "what-time-of-day", label: "What time of day", honours: TA, shapes: BAR, defaultShape: "bar" },
-  {
-    id: "which-month-of-the-year",
-    label: "Which month of the year",
-    honours: TA,
-    shapes: BAR,
-    defaultShape: "bar",
-  },
-  { id: "who-was-talking-when", label: "Who was talking, when", honours: TA, shapes: BAR, defaultShape: "bar" },
+  ...inSection("time", [
+    { id: "messages-over-time", label: "Messages over time", honours: TA, shapes: BAR, defaultShape: "bar" },
+    { id: "cumulative-growth", label: "Cumulative growth", honours: TA, shapes: BAR, defaultShape: "bar" },
+    { id: "how-conversational", label: "How conversational", honours: TA, shapes: BAR, defaultShape: "bar" },
+    { id: "every-day-six-years", label: "Every day, six years", honours: TA, shapes: BAR, defaultShape: "bar" },
+    {
+      id: "when-the-chat-comes-alive",
+      label: "When the chat comes alive",
+      honours: TA,
+      shapes: BAR,
+      defaultShape: "bar",
+    },
+    { id: "what-time-of-day", label: "What time of day", honours: TA, shapes: BAR, defaultShape: "bar" },
+    {
+      id: "which-month-of-the-year",
+      label: "Which month of the year",
+      honours: TA,
+      shapes: BAR,
+      defaultShape: "bar",
+    },
+    { id: "who-was-talking-when", label: "Who was talking, when", honours: TA, shapes: BAR, defaultShape: "bar" },
+  ]),
 
   // People
-  { id: "who-talks-the-most", label: "Who talks the most", honours: TA, shapes: BAR, defaultShape: "bar" },
-  {
-    id: "who-writes-the-most",
-    label: "Who writes the most",
-    honours: TA,
-    shapes: BAR,
-    defaultShape: "bar",
-  },
-  {
-    id: "how-fast-people-reply",
-    label: "How fast people reply",
-    honours: A,
-    shapes: BAR,
-    defaultShape: "bar",
-  },
-  { id: "who-replies-to-whom", label: "Who replies to whom", honours: A, shapes: BAR, defaultShape: "bar" },
-  { id: "reply-balance", label: "Reply balance", honours: A, shapes: BAR, defaultShape: "bar" },
-  {
-    id: "who-starts-conversations",
-    label: "Who starts conversations",
-    honours: A,
-    shapes: BAR,
-    defaultShape: "bar",
-  },
-  { id: "author-profile", label: "Author profile", honours: TA, shapes: BAR, defaultShape: "bar" },
-  { id: "reply-matrix", label: "Reply matrix", honours: A, shapes: BAR, defaultShape: "bar" },
-  {
-    id: "volume-by-author-and-year",
-    label: "Volume by author and year",
-    honours: TA,
-    shapes: BAR,
-    defaultShape: "bar",
-  },
-  {
-    id: "how-bursty-is-everyone",
-    label: "How bursty is everyone",
-    honours: TA,
-    shapes: BAR,
-    defaultShape: "bar",
-  },
-  { id: "who-proofreads", label: "Who proofreads", honours: TA, shapes: BAR, defaultShape: "bar" },
+  ...inSection("people", [
+    { id: "who-talks-the-most", label: "Who talks the most", honours: TA, shapes: BAR, defaultShape: "bar" },
+    {
+      id: "who-writes-the-most",
+      label: "Who writes the most",
+      honours: TA,
+      shapes: BAR,
+      defaultShape: "bar",
+    },
+    {
+      id: "how-fast-people-reply",
+      label: "How fast people reply",
+      honours: A,
+      shapes: BAR,
+      defaultShape: "bar",
+    },
+    { id: "who-replies-to-whom", label: "Who replies to whom", honours: A, shapes: BAR, defaultShape: "bar" },
+    { id: "reply-balance", label: "Reply balance", honours: A, shapes: BAR, defaultShape: "bar" },
+    {
+      id: "who-starts-conversations",
+      label: "Who starts conversations",
+      honours: A,
+      shapes: BAR,
+      defaultShape: "bar",
+    },
+    { id: "author-profile", label: "Author profile", honours: TA, shapes: BAR, defaultShape: "bar" },
+    { id: "reply-matrix", label: "Reply matrix", honours: A, shapes: BAR, defaultShape: "bar" },
+    {
+      id: "volume-by-author-and-year",
+      label: "Volume by author and year",
+      honours: TA,
+      shapes: BAR,
+      defaultShape: "bar",
+    },
+    {
+      id: "how-bursty-is-everyone",
+      label: "How bursty is everyone",
+      honours: TA,
+      shapes: BAR,
+      defaultShape: "bar",
+    },
+    { id: "who-proofreads", label: "Who proofreads", honours: TA, shapes: BAR, defaultShape: "bar" },
+  ]),
 
   // Words: under a time filter they read `rollup_word_month` through
   // `/api/words/period`, so years are exact and a day range is whole months.
-  { id: "word-lift", label: "Whose word is it", honours: TA, shapes: BAR, defaultShape: "bar" },
-  { id: "word-index", label: "Word index", honours: WT, shapes: BAR, defaultShape: "bar" },
-  { id: "who-says-it", label: "Who says it", honours: WTA, shapes: BAR, defaultShape: "bar" },
-  { id: "word-cloud", label: "Word cloud", honours: TA, shapes: BAR, defaultShape: "bar" },
+  ...inSection("words", [
+    { id: "word-lift", label: "Whose word is it", honours: TA, shapes: BAR, defaultShape: "bar" },
+    { id: "word-index", label: "Word index", honours: WT, shapes: BAR, defaultShape: "bar" },
+    { id: "who-says-it", label: "Who says it", honours: WTA, shapes: BAR, defaultShape: "bar" },
+    { id: "word-cloud", label: "Word cloud", honours: TA, shapes: BAR, defaultShape: "bar" },
+  ]),
 
   // Links & embeds
   // `rollup_link` is keyed by day, and the card filters its cells with
   // `inRange`; listing it author-only told the section note it ignored dates.
-  { id: "where-the-chat-lives", label: "Where the chat lives", honours: TA, shapes: BAR, defaultShape: "bar" },
-  { id: "embed-providers", label: "Embed providers", honours: NONE, shapes: BAR, defaultShape: "bar" },
-  { id: "most-reposted-links", label: "Most reposted links", honours: NONE, shapes: BAR, defaultShape: "bar" },
-  { id: "embed-types", label: "Embed types", honours: NONE, shapes: BAR_PIE, defaultShape: "bar" },
+  ...inSection("links", [
+    { id: "where-the-chat-lives", label: "Where the chat lives", honours: TA, shapes: BAR, defaultShape: "bar" },
+    { id: "embed-providers", label: "Embed providers", honours: NONE, shapes: BAR, defaultShape: "bar" },
+    { id: "most-reposted-links", label: "Most reposted links", honours: NONE, shapes: BAR, defaultShape: "bar" },
+    { id: "embed-types", label: "Embed types", honours: NONE, shapes: BAR_PIE, defaultShape: "bar" },
+  ]),
 
   // Media & reactions (the rollups have no date or author dimension)
-  { id: "text-vs-media", label: "Text vs media", honours: TA, shapes: BAR_PIE, defaultShape: "pie" },
-  {
-    id: "replies-vs-standalone",
-    label: "Replies vs standalone",
-    honours: TA,
-    shapes: BAR_PIE,
-    defaultShape: "pie",
-  },
-  { id: "message-types", label: "Message types", honours: NONE, shapes: BAR_PIE, defaultShape: "bar" },
-  { id: "what-gets-attached", label: "What gets attached", honours: NONE, shapes: BAR, defaultShape: "bar" },
-  { id: "emoji-in-text", label: "Emoji in text", honours: NONE, shapes: BAR, defaultShape: "bar" },
-  { id: "reactions", label: "Reactions", honours: NONE, shapes: BAR, defaultShape: "bar" },
-  { id: "chat-health", label: "Chat health", honours: TA, shapes: BAR, defaultShape: "bar" },
+  ...inSection("media", [
+    { id: "text-vs-media", label: "Text vs media", honours: TA, shapes: BAR_PIE, defaultShape: "pie" },
+    {
+      id: "replies-vs-standalone",
+      label: "Replies vs standalone",
+      honours: TA,
+      shapes: BAR_PIE,
+      defaultShape: "pie",
+    },
+    { id: "message-types", label: "Message types", honours: NONE, shapes: BAR_PIE, defaultShape: "bar" },
+    { id: "what-gets-attached", label: "What gets attached", honours: NONE, shapes: BAR, defaultShape: "bar" },
+    { id: "emoji-in-text", label: "Emoji in text", honours: NONE, shapes: BAR, defaultShape: "bar" },
+    { id: "reactions", label: "Reactions", honours: NONE, shapes: BAR, defaultShape: "bar" },
+    { id: "chat-health", label: "Chat health", honours: TA, shapes: BAR, defaultShape: "bar" },
+  ]),
 
   // Rich media: its ranking and its provider chart are payload rollups.
-  { id: "most-reposted", label: "Most reposted", honours: RICH, shapes: BAR, defaultShape: "bar" },
-  {
-    id: "embeds-by-provider",
-    label: "Embeds by provider",
-    honours: ["provider"] as const,
-    shapes: BAR,
-    defaultShape: "bar",
-  },
-] as const satisfies readonly PanelSpec[];
+  ...inSection("rich-media", [
+    { id: "most-reposted", label: "Most reposted", honours: RICH, shapes: BAR, defaultShape: "bar" },
+    {
+      id: "embeds-by-provider",
+      label: "Embeds by provider",
+      honours: ["provider"] as const,
+      shapes: BAR,
+      defaultShape: "bar",
+    },
+  ]),
+] as const;
 
 /** The built-ins first, then whatever the fork's `panels/custom` exports. */
 export const SPECS = [...builtInSpecs, ...customPanels];
@@ -200,73 +228,26 @@ export function specForLabel(label: string): PanelSpecLiteral | undefined {
 }
 
 /**
- * The six rendered sections, each card accounted for once. The section note
- * reads this so a card cannot fall out of its section's explanation.
+ * The rendered sections in page order, each with the cards whose spec names it,
+ * in registry order. The section note and the page both read this, so a card
+ * cannot fall out of its section's explanation. A fork's spec names no section,
+ * so it lands in the Custom section instead.
  */
-export type SectionId = "overview" | "time" | "people" | "words" | "links" | "rich-media" | "media";
-
-export const SECTIONS: readonly { id: SectionId; label: string; panels: readonly PanelId[] }[] = [
-  {
-    id: "overview",
-    label: "Overview",
-    panels: ["stat-cards", "share-of-voice", "messages-per-year", "share-of-voice-year-by-year"],
-  },
-  {
-    id: "time",
-    label: "Time & rhythm",
-    panels: [
-      "messages-over-time",
-      "cumulative-growth",
-      "how-conversational",
-      "every-day-six-years",
-      "when-the-chat-comes-alive",
-      "what-time-of-day",
-      "which-month-of-the-year",
-      "who-was-talking-when",
-    ],
-  },
-  {
-    id: "people",
-    label: "People",
-    panels: [
-      "who-talks-the-most",
-      "who-writes-the-most",
-      "how-fast-people-reply",
-      "who-replies-to-whom",
-      "reply-balance",
-      "who-starts-conversations",
-      "author-profile",
-      "reply-matrix",
-      "volume-by-author-and-year",
-      "how-bursty-is-everyone",
-      "who-proofreads",
-    ],
-  },
-  {
-    id: "words",
-    label: "Words",
-    panels: ["word-lift", "word-index", "who-says-it", "word-cloud"],
-  },
-  {
-    id: "links",
-    label: "Links & embeds",
-    panels: ["where-the-chat-lives", "embed-providers", "most-reposted-links", "embed-types"],
-  },
-  { id: "rich-media", label: "Rich media", panels: ["most-reposted", "embeds-by-provider"] },
-  {
-    id: "media",
-    label: "Media & reactions",
-    panels: [
-      "text-vs-media",
-      "replies-vs-standalone",
-      "message-types",
-      "what-gets-attached",
-      "emoji-in-text",
-      "reactions",
-      "chat-health",
-    ],
-  },
+const SECTION_ORDER: readonly { id: SectionId; label: string }[] = [
+  { id: "overview", label: "Overview" },
+  { id: "time", label: "Time & rhythm" },
+  { id: "people", label: "People" },
+  { id: "words", label: "Words" },
+  { id: "links", label: "Links & embeds" },
+  { id: "rich-media", label: "Rich media" },
+  { id: "media", label: "Media & reactions" },
 ];
+
+export const SECTIONS: readonly { id: SectionId; label: string; panels: readonly PanelId[] }[] =
+  SECTION_ORDER.map((section) => ({
+    ...section,
+    panels: builtInSpecs.filter((spec) => spec.section === section.id).map((spec) => spec.id),
+  }));
 
 export function sectionOf(id: PanelId): SectionId | undefined {
   return SECTIONS.find((section) => (section.panels as readonly PanelId[]).includes(id))?.id;
