@@ -53,7 +53,11 @@ export function truncate(name: string, max: number): string {
 
 /* ---------- cells: the two shares and the gauges ---------- */
 
-export function mediaShare(cells: Cell[]): { media: number; textOnly: number; total: number } {
+export function mediaShare(cells: readonly Cell[]): {
+  media: number;
+  textOnly: number;
+  total: number;
+} {
   let media = 0;
   let total = 0;
   for (const cell of cells) {
@@ -63,7 +67,7 @@ export function mediaShare(cells: Cell[]): { media: number; textOnly: number; to
   return { media, textOnly: total - media, total };
 }
 
-export function replyShare(cells: Cell[]): {
+export function replyShare(cells: readonly Cell[]): {
   replies: number;
   standalone: number;
   total: number;
@@ -77,12 +81,12 @@ export function replyShare(cells: Cell[]): {
   return { replies, standalone: total - replies, total };
 }
 
-export function totalMessages(cells: Cell[]): number {
+export function totalMessages(cells: readonly Cell[]): number {
   return cells.reduce((sum, cell) => sum + cell[C_MSGS], 0);
 }
 
 /** Replies, media and active days as percentages of the filtered window. */
-export function healthGauges(cells: Cell[]): Gauge[] {
+export function healthGauges(cells: readonly Cell[]): Gauge[] {
   let msgs = 0;
   let replies = 0;
   let media = 0;
@@ -118,7 +122,7 @@ export function healthGauges(cells: Cell[]): Gauge[] {
 export function mediaCells(
   payload: Payload,
   filters: Filters,
-): { cells: Cell[]; empty: string | null } {
+): { cells: readonly Cell[]; empty: string | null } {
   const cells = payload.cells?.length ? selectVisibleCells(payload, filters) : [];
   return cells.length ? { cells, empty: null } : { cells: [], empty: emptyLabel(payload, filters) };
 }

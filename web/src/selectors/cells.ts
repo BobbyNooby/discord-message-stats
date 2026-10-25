@@ -64,14 +64,35 @@ export function inRange(payload: Payload, filters: Filters, dayIndex: number): b
 }
 
 /**
- * The cells every panel reads. One function, so no panel can invent its own
- * idea of what a filter means.
+ * Each answer, per payload and per filters object. A dozen cards filter every
+ * daily cell under the same filters, so they share one pass. Both keys are
+ * immutable — the reducer hands out a new object for every change — so the same
+ * pair always means the same cells, and the weak maps let an old payload go.
  */
-export function selectVisibleCells(payload: Payload, filters: Filters): Cell[] {
-  const active = filters.active;
-  return payload.cells.filter(
-    (cell) => active[cell[C_AUTHOR]] !== false && inRange(payload, filters, cell[C_DAY]),
-  );
+const visibleCells = new WeakMap<Payload, WeakMap<Filters, readonly Cell[]>>();
+
+/**
+ * The cells every panel reads. One function, so no panel can invent its own
+ * idea of what a filter means. The array is shared between callers, so it is
+ * frozen: a caller that tried to sort it in place would fail loudly.
+ */
+export function selectVisibleCells(payload: Payload, filters: Filters): readonly Cell[] {
+  let byFilters = visibleCells.get(payload);
+  if (!byFilters) {
+    byFilters = new WeakMap();
+    visibleCells.set(payload, byFilters);
+  }
+  let cells = byFilters.get(filters);
+  if (!cells) {
+    const active = filters.active;
+    cells = Object.freeze(
+      payload.cells.filter(
+        (cell) => active[cell[C_AUTHOR]] !== false && inRange(payload, filters, cell[C_DAY]),
+      ),
+    );
+    byFilters.set(filters, cells);
+  }
+  return cells;
 }
 
 export function selectTotals(payload: Payload, filters: Filters): Totals {
