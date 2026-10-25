@@ -109,7 +109,7 @@ function providerBars(providers: [string, number][]): EChartsOption {
   };
 }
 
-export function RichMedia({ payload, filters }: { panelId?: string; payload: Payload; filters?: Filters }) {
+export function MostReposted({ payload, filters }: { panelId?: string; payload: Payload; filters?: Filters }) {
   // The card's own scope, composed over the global filters. With a provider or
   // kind scope it asks the server for that slice's top rows — the payload only
   // ships the twenty-four biggest overall, where GIFs win every slot.
@@ -144,108 +144,112 @@ export function RichMedia({ payload, filters }: { panelId?: string; payload: Pay
     .filter(Boolean)
     .join(" ");
 
+  return (
+    <div>
+      <Panel
+        title="Most reposted"
+        subtitle={
+          hasScope
+            ? `the same link posted again and again · top ${fmt(shown.length)} for ${scopeName}`
+            : items.length > IN_CARD
+              ? `the same link posted again and again · top ${IN_CARD} of ${fmt(items.length)}`
+              : `the same link posted again and again · ${fmt(items.length)} links`
+        }
+        badge={
+          <button
+            type="button"
+            onClick={() => openView(null)}
+            className="rounded border border-[var(--color-line)] px-2 py-0.5 text-[10px] uppercase tracking-wider text-[var(--color-muted)] hover:text-[var(--color-text)]"
+          >
+            {totalEmbeds ? `Browse all ${fmt(totalEmbeds)}` : "Browse all"}
+          </button>
+        }
+        csv={{
+          name: "Most reposted",
+          rows: [
+            ["url", "provider", "kind", "title", "uses"],
+            ...items.map((row) => [row[0], row[1], row[2], row[3], row[6]]),
+          ],
+        }}
+      >
+        {/* The switch the owner could not find: one chip per top provider,
+            opening the full ranking already narrowed to it. The options come
+            from the same helper the sidebar uses. */}
+        {topProviders.length ? (
+          <div
+            role="group"
+            aria-label="Browse the ranking by provider"
+            className="mb-3 flex flex-wrap gap-1"
+          >
+            {topProviders.map((choice) => (
+              <button
+                key={choice.value}
+                type="button"
+                aria-label={`Browse ${choice.label}`}
+                onClick={() => openView(choice.value)}
+                className="rounded border border-[var(--color-line)] px-2 py-0.5 text-[11px] text-[var(--color-muted)] hover:text-[var(--color-text)]"
+              >
+                {choice.label}
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={() => openView(null)}
+              className="rounded border border-[var(--color-line)] px-2 py-0.5 text-[11px] text-[var(--color-muted)] hover:text-[var(--color-text)]"
+            >
+              More
+            </button>
+          </div>
+        ) : null}
+        {hasScope && scopedQuery.isError ? (
+          <p className="text-xs text-red-300">
+            Could not load this scope: {(scopedQuery.error as Error).message}
+          </p>
+        ) : hasScope && scopedQuery.isLoading ? (
+          <p className="text-xs text-[var(--color-muted)]">Loading…</p>
+        ) : shown.length === 0 ? (
+          <EmptyState>
+            {hasScope
+              ? "No embeds in this filter — widen it, or browse them all."
+              : emptyFor("embeds")}
+          </EmptyState>
+        ) : (
+          <ol className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            {shown.map((row, index) => (
+              <MediaTile key={row[0]} row={row} mode={mode} rank={index + 1} onOpen={() => setDetail(row)} />
+            ))}
+          </ol>
+        )}
+        <MediaDetailDialog row={detail} payload={payload} mode={mode} onClose={() => setDetail(null)} />
+      </Panel>
+      {viewOpen ? (
+        <MediaView
+          open={viewOpen}
+          onOpenChange={onViewOpenChange}
+          payload={payload}
+          initialProvider={viewProvider}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+/** "Embeds by provider": every embed the payload counts, by the provider a reader would name. */
+export function EmbedsByProvider({ payload }: { panelId?: string; payload: Payload; filters?: Filters }) {
   const providers = useMemo(() => providerTotals(payload), [payload]);
   const option = useMemo(() => providerBars(providers), [providers]);
 
   return (
-    <div className={CARD_COLUMNS}>
-      <div>
-        <Panel
-          title="Most reposted"
-          subtitle={
-            hasScope
-              ? `the same link posted again and again · top ${fmt(shown.length)} for ${scopeName}`
-              : items.length > IN_CARD
-                ? `the same link posted again and again · top ${IN_CARD} of ${fmt(items.length)}`
-                : `the same link posted again and again · ${fmt(items.length)} links`
-          }
-          badge={
-            <button
-              type="button"
-              onClick={() => openView(null)}
-              className="rounded border border-[var(--color-line)] px-2 py-0.5 text-[10px] uppercase tracking-wider text-[var(--color-muted)] hover:text-[var(--color-text)]"
-            >
-              {totalEmbeds ? `Browse all ${fmt(totalEmbeds)}` : "Browse all"}
-            </button>
-          }
-          csv={{
-            name: "Most reposted",
-            rows: [
-              ["url", "provider", "kind", "title", "uses"],
-              ...items.map((row) => [row[0], row[1], row[2], row[3], row[6]]),
-            ],
-          }}
-        >
-          {/* The switch the owner could not find: one chip per top provider,
-              opening the full ranking already narrowed to it. The options come
-              from the same helper the sidebar uses. */}
-          {topProviders.length ? (
-            <div
-              role="group"
-              aria-label="Browse the ranking by provider"
-              className="mb-3 flex flex-wrap gap-1"
-            >
-              {topProviders.map((choice) => (
-                <button
-                  key={choice.value}
-                  type="button"
-                  aria-label={`Browse ${choice.label}`}
-                  onClick={() => openView(choice.value)}
-                  className="rounded border border-[var(--color-line)] px-2 py-0.5 text-[11px] text-[var(--color-muted)] hover:text-[var(--color-text)]"
-                >
-                  {choice.label}
-                </button>
-              ))}
-              <button
-                type="button"
-                onClick={() => openView(null)}
-                className="rounded border border-[var(--color-line)] px-2 py-0.5 text-[11px] text-[var(--color-muted)] hover:text-[var(--color-text)]"
-              >
-                More
-              </button>
-            </div>
-          ) : null}
-          {hasScope && scopedQuery.isError ? (
-            <p className="text-xs text-red-300">
-              Could not load this scope: {(scopedQuery.error as Error).message}
-            </p>
-          ) : hasScope && scopedQuery.isLoading ? (
-            <p className="text-xs text-[var(--color-muted)]">Loading…</p>
-          ) : shown.length === 0 ? (
-            <EmptyState>
-              {hasScope
-                ? "No embeds in this filter — widen it, or browse them all."
-                : emptyFor("embeds")}
-            </EmptyState>
-          ) : (
-            <ol className="grid grid-cols-1 gap-3 md:grid-cols-2">
-              {shown.map((row, index) => (
-                <MediaTile key={row[0]} row={row} mode={mode} rank={index + 1} onOpen={() => setDetail(row)} />
-              ))}
-            </ol>
-          )}
-          <MediaDetailDialog row={detail} payload={payload} mode={mode} onClose={() => setDetail(null)} />
-        </Panel>
-        {viewOpen ? (
-          <MediaView
-            open={viewOpen}
-            onOpenChange={onViewOpenChange}
-            payload={payload}
-            initialProvider={viewProvider}
-          />
-        ) : null}
-      </div>
-      <Panel
-        title="Embeds by provider"
-        subtitle="Klipy and Tenor both appear because Discord switched"
-      >
-        {providers.length === 0 ? (
-          <EmptyState>{emptyFor("embeds")}</EmptyState>
-        ) : (
-          <EChart option={option} height={260} />
-        )}
-      </Panel>
-    </div>
+    <Panel
+      title="Embeds by provider"
+      subtitle="Klipy and Tenor both appear because Discord switched"
+    >
+      {providers.length === 0 ? (
+        <EmptyState>{emptyFor("embeds")}</EmptyState>
+      ) : (
+        <EChart option={option} height={260} />
+      )}
+    </Panel>
   );
 }
 
@@ -254,7 +258,10 @@ export function RichMediaSection({ payload, filters }: { payload: Payload; filte
     <section aria-labelledby="sec-media-rich" className="space-y-4">
       <SectionHeading id="sec-media-rich">Rich media</SectionHeading>
       <SectionScopeNote section="rich-media" />
-      <RichMedia payload={payload} filters={filters} />
+      <div className={CARD_COLUMNS}>
+        <MostReposted payload={payload} filters={filters} />
+        <EmbedsByProvider payload={payload} filters={filters} />
+      </div>
     </section>
   );
 }

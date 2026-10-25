@@ -24,7 +24,7 @@ vi.mock("../api/client", () => ({
 
 import type { MediaRow, Payload } from "../api/types";
 import { initialFilters, type Filters } from "../filters/reducer";
-import { RichMedia } from "./RichMedia";
+import { EmbedsByProvider, MostReposted } from "./RichMedia";
 
 const cat: MediaRow = [
   "https://tenor.com/view/zesty-cat",
@@ -52,7 +52,8 @@ function renderCard(payload: Payload = base, filters?: Filters) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
-      <RichMedia payload={payload} filters={filters ?? initialFilters(payload)} />
+      <MostReposted payload={payload} filters={filters ?? initialFilters(payload)} />
+      <EmbedsByProvider payload={payload} />
     </QueryClientProvider>,
   );
 }
@@ -83,7 +84,7 @@ afterEach(() => {
   delete (window as { matchMedia?: unknown }).matchMedia;
 });
 
-describe("<RichMedia>", () => {
+describe("<MostReposted>", () => {
   it("says the repost count in words, with the provider and the kind", () => {
     renderCard();
     // "63× Tenor gifv" is a convention, not a sentence (§UI/UX rule 1).
