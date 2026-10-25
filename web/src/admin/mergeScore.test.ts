@@ -8,7 +8,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { SUGGESTION_THRESHOLD, mergeScore, suggestsSamePerson } from "./IdentityMerge";
+import { SUGGESTION_THRESHOLD, mergeScore, suggestsSamePerson } from "./merges";
 
 describe("mergeScore", () => {
   it("scores a containment above a mere shared run", () => {
