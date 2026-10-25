@@ -4,9 +4,10 @@ import { useEffect, useMemo, useState } from "react";
 import type { Payload } from "../api/types";
 import { EmptyState, Panel } from "../components/Panel";
 import type { Filters } from "../filters/reducer";
+import { tooltip } from "../lib/chartStyle";
 import { EChart } from "../lib/echart";
 import { fmt } from "../lib/format";
-import { swatch } from "../lib/palette";
+import { swatch, token } from "../lib/palette";
 import { usePanelFilters } from "./panelScope";
 import { periodNote, periodPrefix, useWordView } from "./wordPeriod";
 
@@ -86,9 +87,7 @@ export function WordCloud({
     () =>
       ({
         tooltip: {
-          backgroundColor: "#171b25",
-          borderColor: "#2b3244",
-          textStyle: { color: "#e7eaf2", fontSize: 12 },
+          ...tooltip(),
           formatter: (p: any) => `“${p.name}”<br><b>${fmt(p.value as number)}</b> uses`,
         },
         series: [
@@ -105,7 +104,7 @@ export function WordCloud({
             gridSize: 7,
             drawOutOfBound: false,
             textStyle: { fontFamily: "-apple-system, Segoe UI, Inter, sans-serif", fontWeight: 600 },
-            emphasis: { textStyle: { color: "#e7eaf2", textShadowBlur: 9, textShadowColor: swatch(0) } },
+            emphasis: { textStyle: { color: token("--color-text"), textShadowBlur: 9, textShadowColor: swatch(0) } },
             data: rows.map(([word, uses], index) => ({
               name: word,
               value: uses,

@@ -5,10 +5,11 @@ import { useWords } from "../api/queries";
 import type { Payload } from "../api/types";
 import { EmptyState, Panel } from "../components/Panel";
 import type { Filters } from "../filters/reducer";
+import { axisLabel, axisLine, splitLine, tooltip } from "../lib/chartStyle";
 import { EChart } from "../lib/echart";
 import { EMPTY_AUTHORS, noAuthorsSelected } from "../lib/empty";
 import { fmt } from "../lib/format";
-import { swatch } from "../lib/palette";
+import { swatch, token } from "../lib/palette";
 import { authorIndexById, monthLabel, MonthlyBars, monthlyStacks } from "./MonthlyBars";
 import { usePanelFilters } from "./panelScope";
 import { answerFor, inPeriod, periodLabel, periodOf } from "./wordPeriod";
@@ -104,22 +105,20 @@ export function WhoSaysIt({
   const option = useMemo<EChartsOption>(
     () => ({
       tooltip: {
-        backgroundColor: "#171b25",
-        borderColor: "#2b3244",
-        textStyle: { color: "#e7eaf2", fontSize: 12 },
+        ...tooltip(),
         formatter: (p: any) => `${p.name}<br><b>${fmt(p.value as number)}</b> uses of “${word}”`,
       },
       grid: { left: 6, right: 52, top: 8, bottom: 8, containLabel: true },
       xAxis: {
         type: "value",
-        axisLabel: { color: "#8a93a8", fontSize: 10.5, interval: 0, width: 96, overflow: "truncate" },
-        splitLine: { lineStyle: { color: "#1b202c" } },
+        axisLabel: { ...axisLabel(10.5), interval: 0, width: 96, overflow: "truncate" },
+        splitLine: splitLine(),
       },
       yAxis: {
         type: "category",
         data: rows.map((row) => row.name),
-        axisLabel: { color: "#8a93a8", fontSize: 10.5 },
-        axisLine: { lineStyle: { color: "#2b3244" } },
+        axisLabel: axisLabel(10.5),
+        axisLine: axisLine(),
         axisTick: { show: false },
       },
       series: [
@@ -133,7 +132,7 @@ export function WhoSaysIt({
           label: {
             show: true,
             position: "right",
-            color: "#8a93a8",
+            color: token("--color-muted"),
             fontSize: 10,
             formatter: (p: any) => fmt(p.value as number),
           },

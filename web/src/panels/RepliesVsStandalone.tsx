@@ -3,13 +3,13 @@ import { EChart } from "../lib/echart";
 import { EMPTY_FILTER } from "../lib/empty";
 import { fmt, pctOf } from "../lib/format";
 import {
-  REMAINDER_COLOR,
   colorBarsOption,
   doughnutOption,
   mediaCells,
   replyColor,
   replyShare,
   type MediaPanelProps,
+  remainderColor,
 } from "./mediaData";
 import type { WithPanelId } from "./panelScope";
 import { useChartShape, usePanelFilters } from "./panelScope";
@@ -26,7 +26,7 @@ export function RepliesVsStandalone({ payload, filters: fallbackFilters }: Media
   // Two parts that add up to every filtered message: a nameable whole.
   const rows = [
     { name: "replies", value: replies, color: replyColor() },
-    { name: "standalone", value: standalone, color: REMAINDER_COLOR },
+    { name: "standalone", value: standalone, color: remainderColor() },
   ];
 
   return (

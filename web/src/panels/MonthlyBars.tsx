@@ -2,9 +2,10 @@ import type { EChartsOption } from "echarts";
 import { useMemo } from "react";
 
 import type { Author } from "../api/types";
+import { axisLabel, axisLine, splitLine, tooltip } from "../lib/chartStyle";
 import { EChart } from "../lib/echart";
 import { fmt } from "../lib/format";
-import { chartTooltipBg, swatch, token } from "../lib/palette";
+import { swatch } from "../lib/palette";
 
 /**
  * Uses per month, stacked by person — the timeline behind a word or a GIF.
@@ -111,9 +112,7 @@ export function MonthlyBars({
       tooltip: {
         trigger: "axis",
         axisPointer: { type: "shadow" },
-        backgroundColor: chartTooltipBg(),
-        borderColor: token("--color-line"),
-        textStyle: { color: token("--color-text"), fontSize: 12 },
+        ...tooltip(),
         formatter: (params: any) => {
           const items = (Array.isArray(params) ? params : [params]).filter((p: any) => p.value > 0);
           const month = Array.isArray(params) ? params[0]?.axisValue : params.axisValue;
@@ -126,19 +125,18 @@ export function MonthlyBars({
         type: "category",
         data: stacks.months,
         axisLabel: {
-          color: token("--color-muted"),
-          fontSize: 10,
+          ...axisLabel(10),
           formatter: (value: string) => monthLabel(value),
           hideOverlap: true,
         },
-        axisLine: { lineStyle: { color: token("--color-line") } },
+        axisLine: axisLine(),
         axisTick: { show: false },
       },
       yAxis: {
         type: "value",
         minInterval: 1,
-        splitLine: { lineStyle: { color: token("--color-surface-2") } },
-        axisLabel: { color: token("--color-muted"), fontSize: 10 },
+        splitLine: splitLine(),
+        axisLabel: axisLabel(10),
       },
       series: stacks.series.map((series) => ({
         type: "bar",

@@ -3,12 +3,13 @@ import type { EChartsOption } from "echarts";
 
 import { Chip } from "../components/AppShell";
 import { EmptyState, Panel } from "../components/Panel";
+import { axisLabel, axisLine, splitLine, tooltip } from "../lib/chartStyle";
 import { EChart } from "../lib/echart";
 import { emptyLabel } from "../lib/empty";
 import { fmt, kfmt } from "../lib/format";
-import { chartAxisDim, chartPeak, swatch, token } from "../lib/palette";
+import { swatch, token } from "../lib/palette";
 import { hourLabel, timeFormatOf } from "../lib/timeFormat";
-import { TOOLTIP, byHour, heatGrid, type PanelProps } from "./timeAggregates";
+import { byHour, heatGrid, type PanelProps } from "./timeAggregates";
 import type { WithPanelId } from "./panelScope";
 import { usePanelFilters } from "./panelScope";
 
@@ -49,50 +50,50 @@ export function TimeOfDay({ payload, filters: fallbackFilters }: PanelProps & Wi
   const data = hours.map((value) => ({
     value,
     itemStyle: {
-      color: value === peak ? chartPeak() : swatch(0),
+      color: value === peak ? token("--chart-peak") : swatch(0),
       borderRadius: [3, 3, 0, 0] as [number, number, number, number],
     },
   }));
-  const tooltip = {
-    ...TOOLTIP,
+  const hover = {
+    ...tooltip(),
     formatter: (p: any) => `${hourLabel(p.dataIndex, timeFormat)} — <b>${fmt(Number(p.value))}</b> msgs`,
   };
 
   const option: EChartsOption =
     style === "rose"
       ? {
-          tooltip,
+          tooltip: hover,
           polar: { center: ["50%", "52%"], radius: ["14%", "78%"] },
           angleAxis: {
             type: "category",
             data: HOURS,
             startAngle: 90,
-            axisLabel: { color: token("--color-muted"), fontSize: 9, interval: 1 },
-            axisLine: { lineStyle: { color: token("--color-line") } },
+            axisLabel: { ...axisLabel(9), interval: 1 },
+            axisLine: axisLine(),
             axisTick: { show: false },
             splitLine: { show: false },
           },
           radiusAxis: {
-            axisLabel: { color: chartAxisDim(), fontSize: 9, formatter: kfmt },
-            splitLine: { lineStyle: { color: token("--color-surface-2") } },
+            axisLabel: { color: token("--chart-axis-dim"), fontSize: 9, formatter: kfmt },
+            splitLine: splitLine(),
             axisLine: { show: false },
           },
           series: [{ type: "bar", coordinateSystem: "polar", barWidth: "72%", data }],
         }
       : {
-          tooltip,
+          tooltip: hover,
           grid: { left: 44, right: 12, top: 12, bottom: 24 },
           xAxis: {
             type: "category",
             data: HOURS,
-            axisLabel: { color: token("--color-muted"), fontSize: 10, interval: 3 },
-            axisLine: { lineStyle: { color: token("--color-line") } },
+            axisLabel: { ...axisLabel(10), interval: 3 },
+            axisLine: axisLine(),
             axisTick: { show: false },
           },
           yAxis: {
             type: "value",
-            axisLabel: { color: token("--color-muted"), fontSize: 10.5, formatter: kfmt },
-            splitLine: { lineStyle: { color: token("--color-surface-2") } },
+            axisLabel: { ...axisLabel(10.5), formatter: kfmt },
+            splitLine: splitLine(),
           },
           series: [{ type: "bar", barWidth: "74%", data }],
         };

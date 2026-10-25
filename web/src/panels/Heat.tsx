@@ -1,12 +1,13 @@
 import type { EChartsOption } from "echarts";
 
 import { EmptyState, Panel } from "../components/Panel";
+import { axisLabel, axisLine, tooltip } from "../lib/chartStyle";
 import { EChart } from "../lib/echart";
 import { emptyLabel } from "../lib/empty";
 import { fmt } from "../lib/format";
-import { chartHeat, chartHeatEdge, token } from "../lib/palette";
+import { ramp, token } from "../lib/palette";
 import { hourLabel, timeFormatOf } from "../lib/timeFormat";
-import { DOW, TOOLTIP, heatGrid, type PanelProps } from "./timeAggregates";
+import { DOW, heatGrid, type PanelProps } from "./timeAggregates";
 import type { WithPanelId } from "./panelScope";
 import { usePanelFilters } from "./panelScope";
 
@@ -44,7 +45,7 @@ export function Heat({ payload, filters: fallbackFilters }: PanelProps & WithPan
 
   const option: EChartsOption = {
     tooltip: {
-      ...TOOLTIP,
+      ...tooltip(),
       formatter: (p: any) =>
         `${DOW[p.value[1]]} ${hourLabel(p.value[0], timeFormat)} — <b>${fmt(p.value[2])}</b> msgs`,
     },
@@ -52,15 +53,15 @@ export function Heat({ payload, filters: fallbackFilters }: PanelProps & WithPan
     xAxis: {
       type: "category",
       data: HOURS,
-      axisLabel: { color: token("--color-muted"), fontSize: 10, interval: 2 },
-      axisLine: { lineStyle: { color: token("--color-line") } },
+      axisLabel: { ...axisLabel(10), interval: 2 },
+      axisLine: axisLine(),
       axisTick: { show: false },
     },
     yAxis: {
       type: "category",
       data: [...DOW],
-      axisLabel: { color: token("--color-muted"), fontSize: 10.5, interval: 0 },
-      axisLine: { lineStyle: { color: token("--color-line") } },
+      axisLabel: { ...axisLabel(10.5), interval: 0 },
+      axisLine: axisLine(),
       axisTick: { show: false },
     },
     visualMap: {
@@ -72,14 +73,14 @@ export function Heat({ payload, filters: fallbackFilters }: PanelProps & WithPan
       itemWidth: 120,
       itemHeight: 10,
       textStyle: { color: token("--color-muted"), fontSize: 10 },
-      inRange: { color: chartHeat() },
+      inRange: { color: ramp("--chart-heat") },
     },
     series: [
       {
         type: "heatmap",
         data,
         progressive: 2000,
-        itemStyle: { borderColor: chartHeatEdge(), borderWidth: 1 },
+        itemStyle: { borderColor: token("--chart-heat-edge"), borderWidth: 1 },
       },
     ],
   };

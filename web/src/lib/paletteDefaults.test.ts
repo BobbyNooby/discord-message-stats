@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
 
-import { CHART_DEFAULTS, PALETTE } from "./palette";
+import { PALETTE, THEME_DEFAULTS } from "./palette";
 
 /** The real stylesheet, so the declared defaults and the fallbacks cannot drift. */
 const STYLES = new URL("../styles.css", import.meta.url);
@@ -21,12 +21,13 @@ describe("the chart palette defaults", () => {
         `--chart-${index + 1}: ${colour}`,
       );
     });
-    expect(source).toContain(`--chart-peak: ${CHART_DEFAULTS.peak}`);
-    CHART_DEFAULTS.heat.forEach((colour, index) => {
-      expect(source).toContain(`--chart-heat-${index + 1}: ${colour}`);
-    });
-    expect(source).toContain(`--chart-heat-edge: ${CHART_DEFAULTS.heatEdge}`);
-    expect(source).toContain(`--chart-tooltip-bg: ${CHART_DEFAULTS.tooltipBg}`);
-    expect(source).toContain(`--chart-axis-dim: ${CHART_DEFAULTS.axisDim}`);
+  });
+
+  it("match every other theme colour styles.css declares", async () => {
+    const source = await stylesheet();
+
+    for (const [name, colour] of Object.entries(THEME_DEFAULTS)) {
+      expect(source, `${name} drifted from its fallback`).toContain(`${name}: ${colour};`);
+    }
   });
 });

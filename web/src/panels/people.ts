@@ -25,19 +25,9 @@ import {
 } from "../api/types";
 import type { Filters } from "../filters/reducer";
 import { bucketOf, selectAuthors, selectVisibleCells } from "../filters/selectors";
+import { axisLabel, axisLine, splitLine, tooltip } from "../lib/chartStyle";
 import { kfmt } from "../lib/format";
-import { swatch } from "../lib/palette";
-
-/* ---------- shared chart styling ---------- */
-
-export const AXIS_TEXT = "#8a93a8";
-export const AXIS_LINE = "#2b3244";
-export const SPLIT_LINE = "#1b202c";
-export const TOOLTIP = {
-  backgroundColor: "#171b25",
-  borderColor: "#2b3244",
-  textStyle: { color: "#e7eaf2", fontSize: 12 },
-};
+import { swatch, token } from "../lib/palette";
 
 export type Row = { index: number; name: string; value: number; n: number };
 
@@ -397,7 +387,7 @@ export function hbarOption(rows: Row[], options: BarOptions = {}): EChartsOption
   const label = options.label ?? ((row: Row) => axis(row.value));
   return {
     tooltip: {
-      ...TOOLTIP,
+      ...tooltip(),
       formatter: (params: any) => {
         const row = sorted[params.dataIndex];
         return options.tooltip ? options.tooltip(row) : `${row.name}<br><b>${axis(row.value)}</b>`;
@@ -406,14 +396,14 @@ export function hbarOption(rows: Row[], options: BarOptions = {}): EChartsOption
     grid: { left: 6, right: 56, top: 8, bottom: 8, containLabel: true },
     xAxis: {
       type: "value",
-      axisLabel: { color: AXIS_TEXT, fontSize: 10.5, formatter: (value: number) => axis(value) },
-      splitLine: { lineStyle: { color: SPLIT_LINE } },
+      axisLabel: { ...axisLabel(10.5), formatter: (value: number) => axis(value) },
+      splitLine: splitLine(),
     },
     yAxis: {
       type: "category",
       data: sorted.map((row) => row.name),
-      axisLabel: { color: AXIS_TEXT, fontSize: 10.5 },
-      axisLine: { lineStyle: { color: AXIS_LINE } },
+      axisLabel: axisLabel(10.5),
+      axisLine: axisLine(),
       axisTick: { show: false },
     },
     series: [
@@ -427,7 +417,7 @@ export function hbarOption(rows: Row[], options: BarOptions = {}): EChartsOption
         label: {
           show: true,
           position: "right",
-          color: AXIS_TEXT,
+          color: token("--color-muted"),
           fontSize: 10,
           formatter: (params: any) => label(sorted[params.dataIndex]),
         },

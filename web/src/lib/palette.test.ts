@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { CHART_DEFAULTS, PALETTE, chartHeat, chartPeak, swatch, token } from "./palette";
+import { PALETTE, THEME_DEFAULTS, ramp, swatch, token } from "./palette";
 
 /** jsdom cannot resolve CSS custom properties; stand in for the browser. */
 function cssValues(variables: Record<string, string>): void {
@@ -21,7 +21,13 @@ describe("the chart palette's variable door", () => {
     expect(swatch(3)).toBe(PALETTE[3]);
     expect(swatch(PALETTE.length)).toBe(PALETTE[0]);
     expect(token("--color-muted")).toBe("#8a93a8");
-    expect(chartHeat()).toEqual([...CHART_DEFAULTS.heat]);
+    expect(ramp("--chart-heat")).toEqual([
+      THEME_DEFAULTS["--chart-heat-1"],
+      THEME_DEFAULTS["--chart-heat-2"],
+      THEME_DEFAULTS["--chart-heat-3"],
+      THEME_DEFAULTS["--chart-heat-4"],
+      THEME_DEFAULTS["--chart-heat-5"],
+    ]);
   });
 
   it("reads a --chart-N override off the document root", () => {
@@ -34,9 +40,12 @@ describe("the chart palette's variable door", () => {
   });
 
   it("reads the chart-only tokens through the same door", () => {
-    cssValues({ "--chart-peak": "#123456", "--chart-heat-3": "#abcdef" });
+    cssValues({ "--chart-peak": "#123456", "--chart-heat-3": "#abcdef", "--chart-lift-5": "#fedcba" });
 
-    expect(chartPeak()).toBe("#123456");
-    expect(chartHeat()[2]).toBe("#abcdef");
+    expect(token("--chart-peak")).toBe("#123456");
+    expect(ramp("--chart-heat")[2]).toBe("#abcdef");
+    expect(ramp("--chart-lift")[4]).toBe("#fedcba");
+    // A neighbouring step keeps its default.
+    expect(ramp("--chart-lift")[3]).toBe(THEME_DEFAULTS["--chart-lift-4"]);
   });
 });

@@ -12,8 +12,9 @@
  */
 import type { EChartsOption } from "echarts";
 
+import { tooltip } from "../lib/chartStyle";
 import { fmt } from "../lib/format";
-import { swatch } from "../lib/palette";
+import { swatch, token } from "../lib/palette";
 
 /** Eight named slices + "Other". A ninth colour is already indistinguishable. */
 export const MAX_PIE_SLICES = 8;
@@ -21,8 +22,6 @@ export const OTHER_SLICE = "Other";
 /** A slot past the first eight, so no slice repeats a colour. Read at draw
  * time, so a fork's `--chart-12` reaches the folded tail too. */
 export const otherColor = () => swatch(11);
-
-const MUTED_TEXT = "#8a93a8";
 
 export type ShapeRow = { name: string; value: number };
 
@@ -53,9 +52,7 @@ export function pieNote(rows: readonly ShapeRow[], noun: string, max = MAX_PIE_S
 export function pieOption(slices: readonly ShapeRow[], unit: string): EChartsOption {
   return {
     tooltip: {
-      backgroundColor: "#171b25",
-      borderColor: "#2b3244",
-      textStyle: { color: "#e7eaf2", fontSize: 12 },
+      ...tooltip(),
       formatter: (params: unknown) => {
         const point = params as { name?: string; value?: number; percent?: number };
         const percent = typeof point.percent === "number" ? ` (${point.percent.toFixed(1)}%)` : "";
@@ -68,7 +65,7 @@ export function pieOption(slices: readonly ShapeRow[], unit: string): EChartsOpt
       itemGap: 11,
       itemWidth: 10,
       itemHeight: 8,
-      textStyle: { color: MUTED_TEXT, fontSize: 10 },
+      textStyle: { color: token("--color-muted"), fontSize: 10 },
     },
     series: [
       {
@@ -77,17 +74,17 @@ export function pieOption(slices: readonly ShapeRow[], unit: string): EChartsOpt
         center: ["50%", "43%"],
         avoidLabelOverlap: true,
         padAngle: 1.5,
-        itemStyle: { borderColor: "#11141c", borderWidth: 2 },
+        itemStyle: { borderColor: token("--chart-heat-edge"), borderWidth: 2 },
         label: {
-          color: MUTED_TEXT,
+          color: token("--color-muted"),
           fontSize: 10,
           formatter: (params: unknown) => {
             const percent = (params as { percent?: number }).percent ?? 0;
             return percent >= 4 ? `${percent.toFixed(0)}%` : "";
           },
         },
-        labelLine: { lineStyle: { color: "#3a4257" } },
-        emphasis: { label: { color: "#e7eaf2", fontSize: 12, fontWeight: 600 } },
+        labelLine: { lineStyle: { color: token("--chart-guide") } },
+        emphasis: { label: { color: token("--color-text"), fontSize: 12, fontWeight: 600 } },
         data: slices.map((slice, index) => ({
           name: slice.name,
           value: slice.value,

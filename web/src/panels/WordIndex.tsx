@@ -4,10 +4,11 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { useWords, useWordSuggestions } from "../api/queries";
 import type { Payload } from "../api/types";
 import { EmptyState, Panel } from "../components/Panel";
+import { axisLabel, axisLine, splitLine, tooltip } from "../lib/chartStyle";
 import { EChart } from "../lib/echart";
 import { emptyFor } from "../lib/empty";
 import { fmt, kfmt } from "../lib/format";
-import { chartPeak, chartTooltipBg, swatch, token } from "../lib/palette";
+import { swatch, token } from "../lib/palette";
 import { WORD_SEARCH_ID } from "../lib/shortcuts";
 import { usePanelFilters } from "./panelScope";
 import { answerFor, periodLabel, periodNote, useWordView } from "./wordPeriod";
@@ -78,16 +79,14 @@ export function WordIndex({ payload, selected, onSelect }: WordIndexProps) {
       const rows = shown.slice().reverse();
       return {
         tooltip: {
-          backgroundColor: chartTooltipBg(),
-          borderColor: token("--color-line"),
-          textStyle: { color: token("--color-text"), fontSize: 12 },
+          ...tooltip(),
           formatter: (p: any) => `“${p.name}”<br><b>${fmt(p.value)}</b> uses — click to see who`,
         },
         grid: { left: 6, right: 46, top: 4, bottom: 4, containLabel: true },
         xAxis: {
           type: "value",
-          splitLine: { lineStyle: { color: token("--color-surface-2") } },
-          axisLabel: { color: token("--color-muted"), fontSize: 10.5, formatter: (v: number) => kfmt(v) },
+          splitLine: splitLine(),
+          axisLabel: { ...axisLabel(10.5), formatter: (v: number) => kfmt(v) },
         },
         yAxis: {
           type: "category",
@@ -95,8 +94,7 @@ export function WordIndex({ payload, selected, onSelect }: WordIndexProps) {
           // One label per bar, always: `interval: "auto"` hides every
           // other word, which reads as a broken axis.
           axisLabel: {
-            color: token("--color-muted"),
-            fontSize: 10.5,
+            ...axisLabel(10.5),
             interval: 0,
             width: 74,
             overflow: "truncate",
@@ -105,7 +103,7 @@ export function WordIndex({ payload, selected, onSelect }: WordIndexProps) {
             // and it fills the row.
             triggerEvent: true,
           },
-          axisLine: { lineStyle: { color: token("--color-line") } },
+          axisLine: axisLine(),
           axisTick: { show: false },
         },
         series: [
@@ -115,7 +113,7 @@ export function WordIndex({ payload, selected, onSelect }: WordIndexProps) {
             data: rows.map(([word, uses]) => ({
               value: uses,
               itemStyle: {
-                color: word === shownWord ? swatch(1) : word === shown[cursor]?.[0] ? chartPeak() : swatch(0),
+                color: word === shownWord ? swatch(1) : word === shown[cursor]?.[0] ? token("--chart-peak") : swatch(0),
                 borderRadius: [0, 4, 4, 0] as [number, number, number, number],
               },
             })),

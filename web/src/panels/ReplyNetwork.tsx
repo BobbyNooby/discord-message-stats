@@ -3,11 +3,12 @@ import type { EChartsOption } from "echarts";
 import type { Payload } from "../api/types";
 import { EmptyState, Panel } from "../components/Panel";
 import type { Filters } from "../filters/reducer";
+import { tooltip } from "../lib/chartStyle";
 import { EChart } from "../lib/echart";
 import { EMPTY_AUTHORS } from "../lib/empty";
 import { fmt } from "../lib/format";
-import { swatch } from "../lib/palette";
-import { activeEdges, authorName, globalTotals, TOOLTIP } from "./people";
+import { swatch, token } from "../lib/palette";
+import { activeEdges, authorName, globalTotals } from "./people";
 import { usePanelFilters } from "./panelScope";
 
 /**
@@ -40,7 +41,7 @@ export function ReplyNetwork({ payload, filters: fallbackFilters }: { panelId?: 
 
   const option: EChartsOption = {
     tooltip: {
-      ...TOOLTIP,
+      ...tooltip(),
       formatter: (params: any) =>
         params.dataType === "edge"
           ? `${params.data.source} → ${params.data.target}<br><b>${fmt(params.data.value ?? 0)}</b> replies`
@@ -57,14 +58,14 @@ export function ReplyNetwork({ payload, filters: fallbackFilters }: { panelId?: 
           value: node.msgs,
           symbolSize: Math.max(15, Math.sqrt(node.msgs) / 9),
           itemStyle: { color: swatch(node.index), opacity: 0.92 },
-          label: { show: true, color: "#e7eaf2", fontSize: 10 },
+          label: { show: true, color: token("--color-text"), fontSize: 10 },
         })),
         links,
         force: { repulsion: 210, edgeLength: [44, 130], gravity: 0.09, friction: 0.22 },
-        lineStyle: { color: "#4a5570", curveness: 0.14, opacity: 0.7 },
+        lineStyle: { color: token("--chart-link"), curveness: 0.14, opacity: 0.7 },
         edgeSymbol: ["none", "arrow"],
         edgeSymbolSize: 6,
-        emphasis: { focus: "adjacency", lineStyle: { width: 3, color: "#8ea1ff" } },
+        emphasis: { focus: "adjacency", lineStyle: { width: 3, color: token("--chart-link-emphasis") } },
         label: { position: "right" },
       },
     ],

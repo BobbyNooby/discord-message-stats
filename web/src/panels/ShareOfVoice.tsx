@@ -2,18 +2,12 @@ import type { EChartsOption } from "echarts";
 
 import { EmptyState, Panel } from "../components/Panel";
 import { selectAuthors } from "../filters/selectors";
+import { legend, tooltip } from "../lib/chartStyle";
 import { EChart } from "../lib/echart";
 import { emptyLabel } from "../lib/empty";
 import { fmt } from "../lib/format";
-import { swatch } from "../lib/palette";
-import {
-  LEGEND,
-  TOOLTIP,
-  foldSlices,
-  otherColor,
-  type PanelProps,
-  type Slice,
-} from "./timeAggregates";
+import { swatch, token } from "../lib/palette";
+import { foldSlices, otherColor, type PanelProps, type Slice } from "./timeAggregates";
 import { colorBarsOption } from "./mediaData";
 import type { WithPanelId } from "./panelScope";
 import { useChartShape, usePanelFilters } from "./panelScope";
@@ -49,24 +43,24 @@ export function ShareOfVoice({ payload, filters: fallbackFilters }: PanelProps &
   const option: EChartsOption = {
     tooltip: {
       trigger: "item",
-      ...TOOLTIP,
+      ...tooltip(),
       formatter: (p: any) => `${p.name}<br/><b>${fmt(Number(p.value))}</b> (${p.percent}%)`,
     },
-    legend: { ...LEGEND, bottom: 0 },
+    legend: { ...legend(), bottom: 0 },
     series: [
       {
         type: "pie",
         radius: ["42%", "74%"],
         center: ["50%", "43%"],
         padAngle: 1.5,
-        itemStyle: { borderColor: "#11141c", borderWidth: 2 },
+        itemStyle: { borderColor: token("--chart-heat-edge"), borderWidth: 2 },
         label: {
-          color: "#8a93a8",
+          color: token("--color-muted"),
           fontSize: 10,
           formatter: (p: any) => (p.percent >= 3 ? `${p.percent.toFixed(0)}%` : ""),
         },
-        labelLine: { lineStyle: { color: "#3a4257" } },
-        emphasis: { label: { color: "#e7eaf2", fontSize: 12, fontWeight: 600 } },
+        labelLine: { lineStyle: { color: token("--chart-guide") } },
+        emphasis: { label: { color: token("--color-text"), fontSize: 12, fontWeight: 600 } },
         data: slices.map((slice) => ({
           name: slice.name,
           value: slice.value,

@@ -5,10 +5,11 @@ import type { Payload } from "../api/types";
 import { EmptyState, Panel } from "../components/Panel";
 import type { Filters } from "../filters/reducer";
 import { inRange } from "../filters/selectors";
+import { axisLabel, axisLine, splitLine, tooltip } from "../lib/chartStyle";
 import { EChart } from "../lib/echart";
 import { EMPTY_AUTHORS, noAuthorsSelected } from "../lib/empty";
 import { fmt, kfmt } from "../lib/format";
-import { swatch } from "../lib/palette";
+import { swatch, token } from "../lib/palette";
 import { usePanelFilters } from "./panelScope";
 
 /**
@@ -55,22 +56,20 @@ export function LinkDomains({ payload, filters: fallbackFilters }: { panelId?: s
       const sorted = rows.slice().sort((a, b) => a[1] - b[1]);
       return {
         tooltip: {
-          backgroundColor: "#171b25",
-          borderColor: "#2b3244",
-          textStyle: { color: "#e7eaf2", fontSize: 12 },
+          ...tooltip(),
           formatter: (p: any) => `<b>${fmt(p.value as number)}</b> links to ${sorted[p.dataIndex]?.[0] ?? ""}`,
         },
         grid: { left: 6, right: 52, top: 6, bottom: 6, containLabel: true },
         xAxis: {
           type: "value",
-          axisLabel: { color: "#8a93a8", fontSize: 10.5, formatter: (v: number) => kfmt(v) },
-          splitLine: { lineStyle: { color: "#1b202c" } },
+          axisLabel: { ...axisLabel(10.5), formatter: (v: number) => kfmt(v) },
+          splitLine: splitLine(),
         },
         yAxis: {
           type: "category",
           data: sorted.map(([domain]) => domain),
-          axisLabel: { color: "#8a93a8", fontSize: 10, interval: 0, width: 150, overflow: "truncate" },
-          axisLine: { lineStyle: { color: "#2b3244" } },
+          axisLabel: { ...axisLabel(10), interval: 0, width: 150, overflow: "truncate" },
+          axisLine: axisLine(),
           axisTick: { show: false },
         },
         series: [
@@ -82,7 +81,7 @@ export function LinkDomains({ payload, filters: fallbackFilters }: { panelId?: s
             label: {
               show: true,
               position: "right",
-              color: "#8a93a8",
+              color: token("--color-muted"),
               fontSize: 10,
               formatter: (p: any) => kfmt(p.value as number),
             },

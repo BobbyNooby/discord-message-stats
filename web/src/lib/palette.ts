@@ -4,8 +4,8 @@
  *
  * The values are the upstream defaults and double as the fallbacks for the CSS
  * variables in `web/src/styles.css`. A fork overrides `--chart-1`…`--chart-12`
- * (and the chart-only tokens below) in `theme/tokens.css`; reading happens at
- * draw time, so the override wins without any component edit. */
+ * (and every other token below) in `theme/tokens.css`; reading happens at draw
+ * time, so the override wins without any component edit. */
 export const PALETTE = [
   "#5865f2",
   "#eb459e",
@@ -21,26 +21,55 @@ export const PALETTE = [
   "#607d8b",
 ];
 
-/** Chart-only colours that are not one of the twelve series slots. The values
- * mirror the declarations in `web/src/styles.css`. */
-export const CHART_DEFAULTS = {
-  peak: "#c9cdfc",
-  heat: ["#141a2e", "#28386e", "#4155c9", "#7b86f5", "#c3c8fb"],
-  heatEdge: "#11141c",
-  tooltipBg: "#171b25",
-  axisDim: "#5b6478",
-} as const;
-
-/** The chrome tokens a chart draws with, named as the variables they read. */
-const CHROME_DEFAULTS = {
-  "--color-muted": "#8a93a8",
-  "--color-line": "#2b3244",
+/**
+ * Every other colour a chart draws with, named as the variable it reads. The
+ * values mirror the declarations in `web/src/styles.css`, which is where a
+ * chart colour is defined; nothing in a panel spells a colour out.
+ */
+export const THEME_DEFAULTS = {
+  // The base colours the page itself uses.
+  "--color-ink": "#0b0e14",
   "--color-surface": "#141822",
   "--color-surface-2": "#1b202c",
+  "--color-line": "#2b3244",
   "--color-text": "#e7eaf2",
+  "--color-muted": "#8a93a8",
+  // Chart-only colours.
+  "--chart-peak": "#c9cdfc",
+  "--chart-heat-1": "#141a2e",
+  "--chart-heat-2": "#28386e",
+  "--chart-heat-3": "#4155c9",
+  "--chart-heat-4": "#7b86f5",
+  "--chart-heat-5": "#c3c8fb",
+  "--chart-heat-edge": "#11141c",
+  "--chart-tooltip-bg": "#171b25",
+  "--chart-axis-dim": "#5b6478",
+  "--chart-guide": "#3a4257",
+  "--chart-radar-line": "#252c3d",
+  "--chart-radar-band-1": "rgba(255,255,255,.012)",
+  "--chart-radar-band-2": "rgba(255,255,255,.03)",
+  "--chart-matrix-1": "#1c2542",
+  "--chart-matrix-2": "#2a3a78",
+  "--chart-matrix-3": "#3c56c4",
+  "--chart-matrix-4": "#7180f0",
+  "--chart-matrix-5": "#c3c8fb",
+  "--chart-lift-1": "#161c2e",
+  "--chart-lift-2": "#2a3a78",
+  "--chart-lift-3": "#7180f0",
+  "--chart-lift-4": "#c9cdfc",
+  "--chart-lift-5": "#eb459e",
+  "--chart-box-fill": "rgba(88,101,242,.22)",
+  "--chart-box-line": "#7180f0",
+  "--chart-box-emphasis": "#c3c8fb",
+  "--chart-outlier": "rgba(235,69,158,.5)",
+  "--chart-link": "#4a5570",
+  "--chart-link-emphasis": "#8ea1ff",
+  "--chart-provider": "#6c8cff",
+  "--chart-remainder": "#2a3145",
+  "--chart-gauge-track": "#1c2230",
 } as const;
 
-export type ChartChrome = keyof typeof CHROME_DEFAULTS;
+export type ThemeToken = keyof typeof THEME_DEFAULTS;
 
 /**
  * One CSS variable off the document root, with its upstream default when the
@@ -59,31 +88,12 @@ export function swatch(index: number): string {
   return cssVar(`--chart-${slot + 1}`, PALETTE[slot]);
 }
 
-/** The highlight used for a peak bar and for the word index's cursor row. */
-export function chartPeak(): string {
-  return cssVar("--chart-peak", CHART_DEFAULTS.peak);
+/** A theme colour a chart draws with, e.g. `token("--color-muted")`. */
+export function token(name: ThemeToken): string {
+  return cssVar(name, THEME_DEFAULTS[name]);
 }
 
-/** The heat ramp, low to high, read as five variables. */
-export function chartHeat(): string[] {
-  return CHART_DEFAULTS.heat.map((fallback, index) =>
-    cssVar(`--chart-heat-${index + 1}`, fallback),
-  );
-}
-
-export function chartHeatEdge(): string {
-  return cssVar("--chart-heat-edge", CHART_DEFAULTS.heatEdge);
-}
-
-export function chartTooltipBg(): string {
-  return cssVar("--chart-tooltip-bg", CHART_DEFAULTS.tooltipBg);
-}
-
-export function chartAxisDim(): string {
-  return cssVar("--chart-axis-dim", CHART_DEFAULTS.axisDim);
-}
-
-/** A theme chrome colour a chart draws with, e.g. `token("--color-muted")`. */
-export function token(name: ChartChrome): string {
-  return cssVar(name, CHROME_DEFAULTS[name]);
+/** The numbered steps of one colour ramp, low to high: `ramp("--chart-heat")`. */
+export function ramp(name: "--chart-heat" | "--chart-matrix" | "--chart-lift"): string[] {
+  return [1, 2, 3, 4, 5].map((step) => token(`${name}-${step}` as ThemeToken));
 }

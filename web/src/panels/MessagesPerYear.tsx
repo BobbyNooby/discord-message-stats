@@ -3,11 +3,12 @@ import type { EChartsOption } from "echarts";
 import { C_DAY, C_MSGS } from "../api/types";
 import { EmptyState, Panel } from "../components/Panel";
 import { selectVisibleCells, yearOf } from "../filters/selectors";
+import { axis, axisLabel, splitLine, tooltip } from "../lib/chartStyle";
 import { EChart } from "../lib/echart";
 import { emptyLabel } from "../lib/empty";
 import { fmt, kfmt } from "../lib/format";
-import { chartPeak, swatch, token } from "../lib/palette";
-import { AXIS, TOOLTIP, yearCountLabel, type PanelProps } from "./timeAggregates";
+import { swatch, token } from "../lib/palette";
+import { yearCountLabel, type PanelProps } from "./timeAggregates";
 import type { WithPanelId } from "./panelScope";
 import { usePanelFilters } from "./panelScope";
 
@@ -45,15 +46,15 @@ export function MessagesPerYear({ payload, filters: fallbackFilters }: PanelProp
 
   const option: EChartsOption = {
     tooltip: {
-      ...TOOLTIP,
+      ...tooltip(),
       formatter: (p: any) => `${p.name} — <b>${fmt(Number(p.value))}</b> msgs`,
     },
     grid: { left: 52, right: 16, top: 16, bottom: 24 },
-    xAxis: { ...AXIS, type: "category", data: years.map(String) },
+    xAxis: { ...axis(), type: "category", data: years.map(String) },
     yAxis: {
       type: "value",
-      axisLabel: { color: token("--color-muted"), fontSize: 10.5, formatter: kfmt },
-      splitLine: AXIS.splitLine,
+      axisLabel: { ...axisLabel(10.5), formatter: kfmt },
+      splitLine: splitLine(),
     },
     series: [
       {
@@ -69,7 +70,7 @@ export function MessagesPerYear({ payload, filters: fallbackFilters }: PanelProp
         data: years.map((year) => ({
           value: byYear.get(year) ?? 0,
           itemStyle: {
-            color: (byYear.get(year) ?? 0) === peak ? chartPeak() : swatch(0),
+            color: (byYear.get(year) ?? 0) === peak ? token("--chart-peak") : swatch(0),
             borderRadius: [4, 4, 0, 0],
           },
         })),

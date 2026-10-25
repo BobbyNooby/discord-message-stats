@@ -3,10 +3,11 @@ import type { EChartsOption } from "echarts";
 import type { Payload } from "../api/types";
 import { EmptyState, Panel } from "../components/Panel";
 import type { Filters } from "../filters/reducer";
+import { tooltip } from "../lib/chartStyle";
 import { EChart } from "../lib/echart";
 import { fmt } from "../lib/format";
-import { swatch } from "../lib/palette";
-import { tint, TOOLTIP, treemapData } from "./people";
+import { swatch, token } from "../lib/palette";
+import { tint, treemapData } from "./people";
 import { usePanelFilters } from "./panelScope";
 
 /** "Volume by author and year" — activity cells, so both filters apply. */
@@ -27,7 +28,7 @@ export function Treemap({ payload, filters: fallbackFilters }: { panelId?: strin
 
   const option: EChartsOption = {
     tooltip: {
-      ...TOOLTIP,
+      ...tooltip(),
       // The tiles are labelled by year, so the tooltip is where the author's
       // name has to come from (§11.1 groups this panel by author *and* year).
       formatter: (params: any) => {
@@ -45,8 +46,8 @@ export function Treemap({ payload, filters: fallbackFilters }: { panelId?: strin
         left: 4,
         right: 4,
         bottom: 4,
-        itemStyle: { borderColor: "#11141c", borderWidth: 1.5, gapWidth: 1.5 },
-        label: { show: true, color: "#0b0e14", fontSize: 10.5, fontWeight: 600 },
+        itemStyle: { borderColor: token("--chart-heat-edge"), borderWidth: 1.5, gapWidth: 1.5 },
+        label: { show: true, color: token("--color-ink"), fontSize: 10.5, fontWeight: 600 },
         upperLabel: { show: false },
         data: nodes.map((node) => ({
           name: node.name,

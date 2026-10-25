@@ -3,11 +3,12 @@ import type { EChartsOption } from "echarts";
 import type { Payload } from "../api/types";
 import { EmptyState, Panel } from "../components/Panel";
 import type { Filters } from "../filters/reducer";
+import { axisLabel, splitLine, tooltip } from "../lib/chartStyle";
 import { EChart } from "../lib/echart";
 import { EMPTY_AUTHORS } from "../lib/empty";
 import { fmt, kfmt } from "../lib/format";
-import { swatch } from "../lib/palette";
-import { AXIS_TEXT, globalTotals, sendRecv, SPLIT_LINE, TOOLTIP } from "./people";
+import { swatch, token } from "../lib/palette";
+import { globalTotals, sendRecv } from "./people";
 import { usePanelFilters } from "./panelScope";
 
 /**
@@ -43,7 +44,7 @@ export function ReplyBalance({ payload, filters: fallbackFilters }: { panelId?: 
 
   const option: EChartsOption = {
     tooltip: {
-      ...TOOLTIP,
+      ...tooltip(),
       formatter: (params: any) =>
         `${params.data.name}<br>sent <b>${fmt(params.data.value[0])}</b> · received ` +
         `<b>${fmt(params.data.value[1])}</b>`,
@@ -52,18 +53,18 @@ export function ReplyBalance({ payload, filters: fallbackFilters }: { panelId?: 
     xAxis: {
       type: "value",
       name: "sent",
-      nameTextStyle: { color: "#5b6478", fontSize: 10 },
+      nameTextStyle: { color: token("--chart-axis-dim"), fontSize: 10 },
       max: axis,
-      axisLabel: { color: AXIS_TEXT, fontSize: 10.5, formatter: (value: number) => kfmt(value) },
-      splitLine: { lineStyle: { color: SPLIT_LINE } },
+      axisLabel: { ...axisLabel(10.5), formatter: (value: number) => kfmt(value) },
+      splitLine: splitLine(),
     },
     yAxis: {
       type: "value",
       name: "received",
-      nameTextStyle: { color: "#5b6478", fontSize: 10 },
+      nameTextStyle: { color: token("--chart-axis-dim"), fontSize: 10 },
       max: axis,
-      axisLabel: { color: AXIS_TEXT, fontSize: 10.5, formatter: (value: number) => kfmt(value) },
-      splitLine: { lineStyle: { color: SPLIT_LINE } },
+      axisLabel: { ...axisLabel(10.5), formatter: (value: number) => kfmt(value) },
+      splitLine: splitLine(),
     },
     series: [
       {
@@ -78,14 +79,14 @@ export function ReplyBalance({ payload, filters: fallbackFilters }: { panelId?: 
         label: {
           show: true,
           position: "right",
-          color: AXIS_TEXT,
+          color: token("--color-muted"),
           fontSize: 9.5,
           formatter: (params: any) => params.data.name,
         },
         markLine: {
           silent: true,
           symbol: "none",
-          lineStyle: { color: "#3a4257", type: "dashed", width: 1 },
+          lineStyle: { color: token("--chart-guide"), type: "dashed", width: 1 },
           label: { show: false },
           data: [[{ coord: [0, 0] }, { coord: [max, max] }]],
         },

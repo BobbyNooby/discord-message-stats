@@ -1,14 +1,12 @@
 import type { EChartsOption, LineSeriesOption } from "echarts";
 
 import { EmptyState, Panel } from "../components/Panel";
+import { axis, axisLabel, legend, splitLine, tooltip } from "../lib/chartStyle";
 import { EChart } from "../lib/echart";
 import { emptyLabel } from "../lib/empty";
 import { fmt, kfmt } from "../lib/format";
 import { swatch } from "../lib/palette";
 import {
-  AXIS,
-  LEGEND,
-  TOOLTIP,
   activeAuthorIndices,
   bucketCountLabel,
   bucketSeries,
@@ -42,14 +40,14 @@ export function Stream({ payload, filters: fallbackFilters }: PanelProps & WithP
   }));
 
   const option: EChartsOption = {
-    tooltip: { trigger: "axis", ...TOOLTIP },
-    legend: LEGEND,
+    tooltip: { trigger: "axis", ...tooltip() },
+    legend: legend(),
     grid: { left: 52, right: 16, top: 14, bottom: 52 },
-    xAxis: { ...AXIS, type: "category", boundaryGap: false, data: buckets.order },
+    xAxis: { ...axis(), type: "category", boundaryGap: false, data: buckets.order },
     yAxis: {
       type: "value",
-      axisLabel: { color: "#8a93a8", fontSize: 10.5, formatter: kfmt },
-      splitLine: { lineStyle: { color: "#1b202c" } },
+      axisLabel: { ...axisLabel(10.5), formatter: kfmt },
+      splitLine: splitLine(),
     },
     series,
   };

@@ -3,9 +3,11 @@ import type { EChartsOption } from "echarts";
 import type { Payload } from "../api/types";
 import { EmptyState, Panel } from "../components/Panel";
 import type { Filters } from "../filters/reducer";
+import { axisLabel, axisLine, splitLine, tooltip } from "../lib/chartStyle";
 import { EChart } from "../lib/echart";
 import { fmt, kfmt } from "../lib/format";
-import { AXIS_LINE, AXIS_TEXT, burstiness, quantile, SPLIT_LINE, TOOLTIP } from "./people";
+import { token } from "../lib/palette";
+import { burstiness, quantile } from "./people";
 import { usePanelFilters } from "./panelScope";
 
 /**
@@ -35,7 +37,7 @@ export function Burstiness({ payload, filters: fallbackFilters }: { panelId?: st
 
   const option: EChartsOption = {
     tooltip: {
-      ...TOOLTIP,
+      ...tooltip(),
       formatter: (params: any) => {
         if (params.seriesType === "scatter") {
           return `${names[params.value[0]]} · ${fmt(params.value[1])} in a day`;
@@ -52,29 +54,29 @@ export function Burstiness({ payload, filters: fallbackFilters }: { panelId?: st
     xAxis: {
       type: "category",
       data: names,
-      axisLabel: { color: AXIS_TEXT, fontSize: 10, rotate: 22, interval: 0 },
-      axisLine: { lineStyle: { color: AXIS_LINE } },
+      axisLabel: { ...axisLabel(10), rotate: 22, interval: 0 },
+      axisLine: axisLine(),
       axisTick: { show: false },
     },
     yAxis: {
       type: "value",
-      axisLabel: { color: AXIS_TEXT, fontSize: 10.5, formatter: (value: number) => kfmt(value) },
-      splitLine: { lineStyle: { color: SPLIT_LINE } },
+      axisLabel: { ...axisLabel(10.5), formatter: (value: number) => kfmt(value) },
+      splitLine: splitLine(),
     },
     series: [
       {
         type: "boxplot",
         data: bursts.map((burst) => burst.box),
         boxWidth: ["22%", "44%"],
-        itemStyle: { color: "rgba(88,101,242,.22)", borderColor: "#7180f0", borderWidth: 1.4 },
-        emphasis: { itemStyle: { borderColor: "#c3c8fb" } },
+        itemStyle: { color: token("--chart-box-fill"), borderColor: token("--chart-box-line"), borderWidth: 1.4 },
+        emphasis: { itemStyle: { borderColor: token("--chart-box-emphasis") } },
       },
       {
         type: "scatter",
         data: outliers,
         symbolSize: 4,
         silent: true,
-        itemStyle: { color: "rgba(235,69,158,.5)" },
+        itemStyle: { color: token("--chart-outlier") },
       },
     ],
   };

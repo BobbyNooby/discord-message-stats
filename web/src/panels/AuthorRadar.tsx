@@ -3,10 +3,11 @@ import type { EChartsOption } from "echarts";
 import type { Payload } from "../api/types";
 import { EmptyState, Panel } from "../components/Panel";
 import type { Filters } from "../filters/reducer";
+import { tooltip } from "../lib/chartStyle";
 import { EChart } from "../lib/echart";
 import { EMPTY_FILTER } from "../lib/empty";
-import { swatch } from "../lib/palette";
-import { AXIS_TEXT, RADAR_TRAITS, radarData, TOOLTIP } from "./people";
+import { swatch, token } from "../lib/palette";
+import { RADAR_TRAITS, radarData } from "./people";
 import { usePanelFilters } from "./panelScope";
 
 /**
@@ -28,24 +29,24 @@ export function AuthorRadar({ payload, filters: fallbackFilters }: { panelId?: s
   }
 
   const option: EChartsOption = {
-    tooltip: { ...TOOLTIP },
+    tooltip: tooltip(),
     legend: {
       bottom: 3,
       left: "center",
       itemGap: 9,
       itemWidth: 9,
       itemHeight: 9,
-      textStyle: { color: AXIS_TEXT, fontSize: 9.5 },
+      textStyle: { color: token("--color-muted"), fontSize: 9.5 },
       data: radar.names,
     },
     radar: {
       center: ["50%", "40%"],
       radius: "56%",
       indicator: RADAR_TRAITS.map((name) => ({ name, max: 100 })),
-      axisName: { color: AXIS_TEXT, fontSize: 9.5 },
-      splitLine: { lineStyle: { color: "#252c3d" } },
-      splitArea: { areaStyle: { color: ["rgba(255,255,255,.012)", "rgba(255,255,255,.03)"] } },
-      axisLine: { lineStyle: { color: "#252c3d" } },
+      axisName: { color: token("--color-muted"), fontSize: 9.5 },
+      splitLine: { lineStyle: { color: token("--chart-radar-line") } },
+      splitArea: { areaStyle: { color: [token("--chart-radar-band-1"), token("--chart-radar-band-2")] } },
+      axisLine: { lineStyle: { color: token("--chart-radar-line") } },
     },
     series: radar.top.map((index, position) => ({
       name: radar.names[position],

@@ -3,20 +3,26 @@ import type { EChartsOption } from "echarts";
 import type { Payload } from "../api/types";
 import { EmptyState, Panel } from "../components/Panel";
 import type { Filters } from "../filters/reducer";
+import { axisLabel, axisLine, tooltip } from "../lib/chartStyle";
 import { EChart } from "../lib/echart";
 import { EMPTY_AUTHORS } from "../lib/empty";
 import { fmt } from "../lib/format";
-import { AXIS_LINE, AXIS_TEXT, matrixData, TOOLTIP } from "./people";
+import { ramp, token } from "../lib/palette";
+import { matrixData } from "./people";
 import { usePanelFilters } from "./panelScope";
 
-const PIECES = [
-  { min: 1000, label: "1k+", color: "#c3c8fb" },
-  { min: 200, max: 999, label: "200+", color: "#7180f0" },
-  { min: 50, max: 199, label: "50+", color: "#3c56c4" },
-  { min: 10, max: 49, label: "10+", color: "#2a3a78" },
-  { min: 1, max: 9, label: "1+", color: "#1c2542" },
-  { value: 0, label: "0", color: "#141822" },
-];
+/** The legend's steps, busiest first; read at draw time so a theme reaches them. */
+function pieces() {
+  const [one, ten, fifty, twoHundred, thousand] = ramp("--chart-matrix");
+  return [
+    { min: 1000, label: "1k+", color: thousand },
+    { min: 200, max: 999, label: "200+", color: twoHundred },
+    { min: 50, max: 199, label: "50+", color: fifty },
+    { min: 10, max: 49, label: "10+", color: ten },
+    { min: 1, max: 9, label: "1+", color: one },
+    { value: 0, label: "0", color: token("--color-surface") },
+  ];
+}
 
 /**
  * A k×k heatmap over the *visible* authors. `rollup_reply` carries no date, so
@@ -45,7 +51,7 @@ export function ReplyMatrix({
 
   const option: EChartsOption = {
     tooltip: {
-      ...TOOLTIP,
+      ...tooltip(),
       formatter: (params: any) =>
         `${matrix.names[params.value[0]]} replied to ${matrix.names[params.value[1]]}` +
         `<br><b>${fmt(params.value[2])}</b> times`,
@@ -54,16 +60,16 @@ export function ReplyMatrix({
     xAxis: {
       type: "category",
       data: matrix.names,
-      axisLabel: { color: AXIS_TEXT, fontSize: 9, rotate: 50, interval: 0 },
-      axisLine: { lineStyle: { color: AXIS_LINE } },
+      axisLabel: { ...axisLabel(9), rotate: 50, interval: 0 },
+      axisLine: axisLine(),
       axisTick: { show: false },
     },
     yAxis: {
       type: "category",
       inverse: true,
       data: matrix.names,
-      axisLabel: { color: AXIS_TEXT, fontSize: 9, interval: 0, width: 74, overflow: "truncate" },
-      axisLine: { lineStyle: { color: AXIS_LINE } },
+      axisLabel: { ...axisLabel(9), interval: 0, width: 74, overflow: "truncate" },
+      axisLine: axisLine(),
       axisTick: { show: false },
     },
     visualMap: {
@@ -73,16 +79,16 @@ export function ReplyMatrix({
       bottom: -2,
       itemWidth: 10,
       itemHeight: 10,
-      textStyle: { color: AXIS_TEXT, fontSize: 9.5 },
-      pieces: PIECES,
+      textStyle: { color: token("--color-muted"), fontSize: 9.5 },
+      pieces: pieces(),
     },
     series: [
       {
         type: "heatmap",
         data: matrix.data,
         progressive: 1000,
-        itemStyle: { borderColor: "#11141c", borderWidth: 1 },
-        emphasis: { itemStyle: { borderColor: "#e7eaf2", borderWidth: 1 } },
+        itemStyle: { borderColor: token("--chart-heat-edge"), borderWidth: 1 },
+        emphasis: { itemStyle: { borderColor: token("--color-text"), borderWidth: 1 } },
       },
     ],
   };

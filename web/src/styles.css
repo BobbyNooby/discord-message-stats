@@ -43,9 +43,42 @@
   --chart-heat-3: #4155c9;
   --chart-heat-4: #7b86f5;
   --chart-heat-5: #c3c8fb;
+  /* The gap between marks: heat cells, pie slices, treemap tiles. */
   --chart-heat-edge: #11141c;
   --chart-tooltip-bg: #171b25;
   --chart-axis-dim: #5b6478;
+  /* Label lines, the axis pointer, reference lines, a legend entry switched off. */
+  --chart-guide: #3a4257;
+  /* The author profile's web and its two alternating bands. */
+  --chart-radar-line: #252c3d;
+  --chart-radar-band-1: rgba(255,255,255,.012);
+  --chart-radar-band-2: rgba(255,255,255,.03);
+  /* The reply matrix's steps, fewest replies to most. */
+  --chart-matrix-1: #1c2542;
+  --chart-matrix-2: #2a3a78;
+  --chart-matrix-3: #3c56c4;
+  --chart-matrix-4: #7180f0;
+  --chart-matrix-5: #c3c8fb;
+  /* "Whose word is it", rare to 3×+. */
+  --chart-lift-1: #161c2e;
+  --chart-lift-2: #2a3a78;
+  --chart-lift-3: #7180f0;
+  --chart-lift-4: #c9cdfc;
+  --chart-lift-5: #eb459e;
+  /* The burstiness boxes and the busy days past their whiskers. */
+  --chart-box-fill: rgba(88,101,242,.22);
+  --chart-box-line: #7180f0;
+  --chart-box-emphasis: #c3c8fb;
+  --chart-outlier: rgba(235,69,158,.5);
+  /* The reply network's arrows, at rest and under the pointer. */
+  --chart-link: #4a5570;
+  --chart-link-emphasis: #8ea1ff;
+  /* Embeds by provider's bars. */
+  --chart-provider: #6c8cff;
+  /* The quiet half of a two-part split: "text only", "standalone". */
+  --chart-remainder: #2a3145;
+  /* The unfilled track behind a chat health gauge. */
+  --chart-gauge-track: #1c2230;
 }
 
 html,

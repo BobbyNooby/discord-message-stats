@@ -3,11 +3,12 @@ import type { EChartsOption } from "echarts";
 
 import { EmptyState, Panel } from "../components/Panel";
 import { bucketOf, selectVisibleCells } from "../filters/selectors";
+import { axis, axisLabel, splitLine, tooltip } from "../lib/chartStyle";
 import { EChart } from "../lib/echart";
 import { emptyLabel } from "../lib/empty";
 import { fmt } from "../lib/format";
 import { swatch } from "../lib/palette";
-import { AXIS, TOOLTIP, bucketCountLabel, pct, type PanelProps } from "./timeAggregates";
+import { bucketCountLabel, pct, type PanelProps } from "./timeAggregates";
 import type { WithPanelId } from "./panelScope";
 import { usePanelFilters } from "./panelScope";
 
@@ -53,15 +54,15 @@ export function Conversational({ payload, filters: fallbackFilters }: PanelProps
   const option: EChartsOption = {
     tooltip: {
       trigger: "axis",
-      ...TOOLTIP,
+      ...tooltip(),
       valueFormatter: (value: unknown) => `${value}%`,
     },
     grid: { left: 42, right: 14, top: 14, bottom: 30 },
-    xAxis: { ...AXIS, type: "category", boundaryGap: false, data: order },
+    xAxis: { ...axis(), type: "category", boundaryGap: false, data: order },
     yAxis: {
       type: "value",
-      axisLabel: { color: "#8a93a8", fontSize: 11, formatter: "{value}%" },
-      splitLine: AXIS.splitLine,
+      axisLabel: { ...axisLabel(11), formatter: "{value}%" },
+      splitLine: splitLine(),
     },
     series: [
       {

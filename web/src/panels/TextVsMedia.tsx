@@ -3,13 +3,13 @@ import { EChart } from "../lib/echart";
 import { EMPTY_FILTER } from "../lib/empty";
 import { fmt, pctOf } from "../lib/format";
 import {
-  REMAINDER_COLOR,
   colorBarsOption,
   doughnutOption,
   mediaCells,
   mediaColor,
   mediaShare,
   type MediaPanelProps,
+  remainderColor,
 } from "./mediaData";
 import type { WithPanelId } from "./panelScope";
 import { useChartShape, usePanelFilters } from "./panelScope";
@@ -27,7 +27,7 @@ export function TextVsMedia({ payload, filters: fallbackFilters }: MediaPanelPro
   // the filtered total, which is why this card declares a pie.
   const rows = [
     { name: "with media", value: media, color: mediaColor() },
-    { name: "text only", value: textOnly, color: REMAINDER_COLOR },
+    { name: "text only", value: textOnly, color: remainderColor() },
   ];
 
   return (

@@ -118,30 +118,6 @@ export function byHour(grid: Float64Array): number[] {
   return hours;
 }
 
-/* Chart chrome, ported from the mockup so every panel looks like its neighbour. */
-export const AXIS = {
-  axisLine: { lineStyle: { color: "#2b3244" } },
-  axisLabel: { color: "#8a93a8", fontSize: 11 },
-  splitLine: { lineStyle: { color: "#1b202c" } },
-  axisTick: { show: false },
-} as const;
-
-export const TOOLTIP = {
-  backgroundColor: "#171b25",
-  borderColor: "#2b3244",
-  textStyle: { color: "#e7eaf2", fontSize: 12 },
-} as const;
-
-export const LEGEND = {
-  type: "scroll",
-  bottom: 1,
-  itemGap: 11,
-  textStyle: { color: "#8a93a8", fontSize: 10.5 },
-  inactiveColor: "#3a4257",
-  itemWidth: 10,
-  itemHeight: 8,
-} as const;
-
 /** The neutral slice a folded tail gets, so it never looks like a real author.
  * A function so a fork's `--chart-12` reaches it — a constant would freeze the
  * fallback at import time. */

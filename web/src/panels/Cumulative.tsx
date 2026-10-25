@@ -1,13 +1,12 @@
 import type { EChartsOption, LineSeriesOption } from "echarts";
 
 import { EmptyState, Panel } from "../components/Panel";
+import { axis, axisLabel, splitLine, tooltip } from "../lib/chartStyle";
 import { EChart } from "../lib/echart";
 import { emptyLabel } from "../lib/empty";
 import { fmt, kfmt } from "../lib/format";
-import { swatch } from "../lib/palette";
+import { swatch, token } from "../lib/palette";
 import {
-  AXIS,
-  TOOLTIP,
   activeAuthorIndices,
   bucketCountLabel,
   bucketSeries,
@@ -56,19 +55,19 @@ export function Cumulative({ payload, filters: fallbackFilters }: PanelProps & W
     type: "line",
     showSymbol: false,
     z: 10,
-    lineStyle: { width: 2.4, color: "#e7eaf2" },
-    itemStyle: { color: "#e7eaf2" },
+    lineStyle: { width: 2.4, color: token("--color-text") },
+    itemStyle: { color: token("--color-text") },
     data: runningTotal,
   });
 
   const option: EChartsOption = {
-    tooltip: { trigger: "axis", ...TOOLTIP },
+    tooltip: { trigger: "axis", ...tooltip() },
     grid: { left: 50, right: 16, top: 12, bottom: 30 },
-    xAxis: { ...AXIS, type: "category", boundaryGap: false, data: buckets.order },
+    xAxis: { ...axis(), type: "category", boundaryGap: false, data: buckets.order },
     yAxis: {
       type: "value",
-      axisLabel: { color: "#8a93a8", fontSize: 11, formatter: kfmt },
-      splitLine: AXIS.splitLine,
+      axisLabel: { ...axisLabel(11), formatter: kfmt },
+      splitLine: splitLine(),
     },
     series: lines,
   };

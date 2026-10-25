@@ -3,11 +3,12 @@ import type { EChartsOption } from "echarts";
 
 import { EmptyState, Panel } from "../components/Panel";
 import { selectVisibleCells } from "../filters/selectors";
+import { axisLabel, axisLine, splitLine, tooltip } from "../lib/chartStyle";
 import { EChart } from "../lib/echart";
 import { emptyLabel } from "../lib/empty";
 import { fmt, kfmt } from "../lib/format";
 import { swatch } from "../lib/palette";
-import { AXIS, MON, TOOLTIP, type PanelProps } from "./timeAggregates";
+import { MON, type PanelProps } from "./timeAggregates";
 import type { WithPanelId } from "./panelScope";
 import { usePanelFilters } from "./panelScope";
 
@@ -43,21 +44,21 @@ export function Season({ payload, filters: fallbackFilters }: PanelProps & WithP
 
   const option: EChartsOption = {
     tooltip: {
-      ...TOOLTIP,
+      ...tooltip(),
       formatter: (p: any) => `${MON[p.dataIndex]} — <b>${fmt(Number(p.value))}</b> msgs`,
     },
     grid: { left: 44, right: 12, top: 12, bottom: 24 },
     xAxis: {
       type: "category",
       data: [...MON],
-      axisLabel: { color: "#8a93a8", fontSize: 10, interval: 0 },
-      axisLine: { lineStyle: { color: "#2b3244" } },
+      axisLabel: { ...axisLabel(10), interval: 0 },
+      axisLine: axisLine(),
       axisTick: { show: false },
     },
     yAxis: {
       type: "value",
-      axisLabel: { color: "#8a93a8", fontSize: 10.5, formatter: kfmt },
-      splitLine: AXIS.splitLine,
+      axisLabel: { ...axisLabel(10.5), formatter: kfmt },
+      splitLine: splitLine(),
     },
     series: [
       {

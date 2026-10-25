@@ -6,10 +6,12 @@ import type { MediaRow, Payload } from "../api/types";
 import { useMedia } from "../api/queries";
 import { EmptyState, Panel, CARD_COLUMNS, SectionHeading } from "../components/Panel";
 import { SectionScopeNote } from "../components/SectionScopeNote";
+import { axisLabel, axisLine, splitLine, tooltip } from "../lib/chartStyle";
 import { EChart } from "../lib/echart";
 import { emptyFor } from "../lib/empty";
 import { fmt } from "../lib/format";
 import { kindLabel, providerChoices, providerLabel } from "../lib/mediaLabels";
+import { token } from "../lib/palette";
 import type { Filters } from "../filters/reducer";
 import { readMediaOpen, writeMediaState } from "../filters/persist";
 import { usePanelFilters } from "./panelScope";
@@ -124,21 +126,19 @@ export function RichMedia({ payload, filters }: { panelId?: string; payload: Pay
   const option: EChartsOption = {
     tooltip: {
       trigger: "item",
-      backgroundColor: "#171b25",
-      borderColor: "#2b3244",
-      textStyle: { color: "#e7eaf2", fontSize: 12 },
+      ...tooltip(),
     },
     grid: { left: 6, right: 46, top: 4, bottom: 4, containLabel: true },
     xAxis: {
       type: "value",
-      splitLine: { lineStyle: { color: "#1b202c" } },
-      axisLabel: { color: "#8a93a8", fontSize: 10.5 },
+      splitLine: splitLine(),
+      axisLabel: axisLabel(10.5),
     },
     yAxis: {
       type: "category",
       data: providers.slice(0, 12).map(([name]) => name).reverse(),
-      axisLabel: { color: "#8a93a8", fontSize: 10.5, interval: 0, width: 96, overflow: "truncate" },
-      axisLine: { lineStyle: { color: "#2b3244" } },
+      axisLabel: { ...axisLabel(10.5), interval: 0, width: 96, overflow: "truncate" },
+      axisLine: axisLine(),
       axisTick: { show: false },
     },
     series: [
@@ -146,7 +146,7 @@ export function RichMedia({ payload, filters }: { panelId?: string; payload: Pay
         type: "bar",
         barWidth: "100%",
         data: providers.slice(0, 12).map(([, count]) => count).reverse(),
-        itemStyle: { color: "#6c8cff" },
+        itemStyle: { color: token("--chart-provider") },
       },
     ],
   };

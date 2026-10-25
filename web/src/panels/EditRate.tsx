@@ -4,19 +4,11 @@ import type { Payload } from "../api/types";
 import { Chip } from "../components/AppShell";
 import { EmptyState, GlobalOnlyBadge, Panel } from "../components/Panel";
 import type { Filters } from "../filters/reducer";
+import { axisLabel, splitLine, tooltip } from "../lib/chartStyle";
 import { EChart } from "../lib/echart";
 import { dur, fmt } from "../lib/format";
 import { swatch } from "../lib/palette";
-import {
-  AXIS_TEXT,
-  editRateRows,
-  editTrend,
-  hbarOption,
-  SPLIT_LINE,
-  TOOLTIP,
-  weightedAverage,
-  type EditMetric,
-} from "./people";
+import { editRateRows, editTrend, hbarOption, weightedAverage, type EditMetric } from "./people";
 import { usePanelFilters } from "./panelScope";
 
 const TITLE = "Who proofreads";
@@ -109,7 +101,7 @@ export function EditRate({ payload, filters: fallbackFilters }: { panelId?: stri
         <EChart
           option={{
             tooltip: {
-              ...TOOLTIP,
+              ...tooltip(),
               trigger: "axis",
               valueFormatter: (value: any) => `${value}%`,
             },
@@ -118,16 +110,15 @@ export function EditRate({ payload, filters: fallbackFilters }: { panelId?: stri
               type: "category",
               boundaryGap: false,
               data: trend.order,
-              axisLabel: { color: AXIS_TEXT, fontSize: 10 },
+              axisLabel: axisLabel(10),
             },
             yAxis: {
               type: "value",
               axisLabel: {
-                color: AXIS_TEXT,
-                fontSize: 10.5,
+                ...axisLabel(10.5),
                 formatter: (value: number) => `${value}%`,
               },
-              splitLine: { lineStyle: { color: SPLIT_LINE } },
+              splitLine: splitLine(),
             },
             series: [
               {

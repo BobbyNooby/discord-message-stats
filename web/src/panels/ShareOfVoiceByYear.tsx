@@ -3,12 +3,12 @@ import type { EChartsOption } from "echarts";
 import { C_AUTHOR, C_DAY, C_MSGS } from "../api/types";
 import { EmptyState, Panel } from "../components/Panel";
 import { selectVisibleCells, yearOf } from "../filters/selectors";
+import { tooltip } from "../lib/chartStyle";
 import { EChart } from "../lib/echart";
 import { emptyLabel } from "../lib/empty";
 import { fmt } from "../lib/format";
-import { swatch } from "../lib/palette";
+import { swatch, token } from "../lib/palette";
 import {
-  TOOLTIP,
   foldSlices,
   otherColor,
   yearCountLabel,
@@ -61,7 +61,7 @@ export function ShareOfVoiceByYear({ payload, filters: fallbackFilters }: PanelP
   const option: EChartsOption = {
     tooltip: {
       trigger: "item",
-      ...TOOLTIP,
+      ...tooltip(),
       formatter: (p: any) =>
         `${p.seriesName} · ${p.name}<br/><b>${fmt(Number(p.value))}</b> (${p.percent}%)`,
     },
@@ -77,10 +77,10 @@ export function ShareOfVoiceByYear({ payload, filters: fallbackFilters }: PanelP
         radius,
         center: [`${((yearIndex + 0.5) / years.length) * 100}%`, "52%"],
         padAngle: 1,
-        itemStyle: { borderColor: "#11141c", borderWidth: 1.5 },
+        itemStyle: { borderColor: token("--chart-heat-edge"), borderWidth: 1.5 },
         label: { show: false },
         labelLine: { show: false },
-        emphasis: { scale: true, scaleSize: 5, itemStyle: { borderColor: "#e7eaf2" } },
+        emphasis: { scale: true, scaleSize: 5, itemStyle: { borderColor: token("--color-text") } },
         data: slices.map((slice) => ({
           name: slice.name,
           value: slice.value,
@@ -92,7 +92,7 @@ export function ShareOfVoiceByYear({ payload, filters: fallbackFilters }: PanelP
       type: "text",
       left: `${((yearIndex + 0.5) / years.length) * 100}%`,
       top: "90%",
-      style: { text: String(year), fill: "#8a93a8", fontSize: 11 },
+      style: { text: String(year), fill: token("--color-muted"), fontSize: 11 },
       silent: true,
     })),
   };

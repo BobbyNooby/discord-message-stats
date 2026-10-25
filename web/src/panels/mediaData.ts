@@ -22,9 +22,10 @@ import {
 } from "../api/types";
 import type { Filters } from "../filters/reducer";
 import { selectVisibleCells } from "../filters/selectors";
+import { axisLabel, axisLine, splitLine, tooltip } from "../lib/chartStyle";
 import { emptyLabel } from "../lib/empty";
 import { fmt, kfmt } from "../lib/format";
-import { swatch } from "../lib/palette";
+import { swatch, token } from "../lib/palette";
 
 export type MediaPanelProps = { payload: Payload; filters: Filters };
 export type Row = { name: string; value: number };
@@ -44,16 +45,7 @@ export const attachColor = () => swatch(5);
 export const emojiColor = () => swatch(1);
 export const reactionColor = () => swatch(2);
 export const activeDaysColor = () => swatch(2);
-export const REMAINDER_COLOR = "#2a3145";
-
-const MUTED_TEXT = "#8a93a8";
-const AXIS_LINE = "#2b3244";
-const SPLIT_LINE = "#1b202c";
-const TOOLTIP = {
-  backgroundColor: "#171b25",
-  borderColor: "#2b3244",
-  textStyle: { color: "#e7eaf2", fontSize: 12 },
-};
+export const remainderColor = () => token("--chart-remainder");
 
 export function truncate(name: string, max: number): string {
   return name.length > max ? `${name.slice(0, max - 1)}…` : name;
@@ -171,7 +163,7 @@ export function pairCount(pairs: [string, number][] | undefined): number {
 export function doughnutOption(slices: Slice[], unit: string): EChartsOption {
   return {
     tooltip: {
-      ...TOOLTIP,
+      ...tooltip(),
       formatter: (params: unknown) => {
         const point = params as { name?: string; value?: number; percent?: number };
         const percent = typeof point.percent === "number" ? ` (${point.percent.toFixed(1)}%)` : "";
@@ -183,7 +175,7 @@ export function doughnutOption(slices: Slice[], unit: string): EChartsOption {
       bottom: 0,
       itemWidth: 10,
       itemHeight: 8,
-      textStyle: { color: MUTED_TEXT, fontSize: 10 },
+      textStyle: { color: token("--color-muted"), fontSize: 10 },
     },
     series: [
       {
@@ -192,17 +184,17 @@ export function doughnutOption(slices: Slice[], unit: string): EChartsOption {
         center: ["50%", "43%"],
         avoidLabelOverlap: true,
         padAngle: 1.5,
-        itemStyle: { borderColor: "#11141c", borderWidth: 2 },
+        itemStyle: { borderColor: token("--chart-heat-edge"), borderWidth: 2 },
         label: {
-          color: MUTED_TEXT,
+          color: token("--color-muted"),
           fontSize: 10,
           formatter: (params: unknown) => {
             const percent = (params as { percent?: number }).percent ?? 0;
             return percent >= 4 ? `${percent.toFixed(0)}%` : "";
           },
         },
-        labelLine: { lineStyle: { color: "#3a4257" } },
-        emphasis: { label: { color: "#e7eaf2", fontSize: 12, fontWeight: 600 as const } },
+        labelLine: { lineStyle: { color: token("--chart-guide") } },
+        emphasis: { label: { color: token("--color-text"), fontSize: 12, fontWeight: 600 as const } },
         data: slices.map((slice) => ({
           name: slice.name,
           value: slice.value,
@@ -223,7 +215,7 @@ export function horizontalBarsOption(
   const ordered = rows.slice().reverse();
   return {
     tooltip: {
-      ...TOOLTIP,
+      ...tooltip(),
       formatter: (params: unknown) => {
         const point = params as { dataIndex?: number; value?: number };
         const row = ordered[point.dataIndex ?? 0];
@@ -234,17 +226,16 @@ export function horizontalBarsOption(
     xAxis: {
       type: "value",
       axisLabel: {
-        color: MUTED_TEXT,
-        fontSize: 10.5,
+        ...axisLabel(10.5),
         formatter: (value: unknown) => kfmt(Number(value)),
       },
-      splitLine: { lineStyle: { color: SPLIT_LINE } },
+      splitLine: splitLine(),
     },
     yAxis: {
       type: "category",
       data: ordered.map((row) => truncate(row.name, 30)),
-      axisLabel: { color: MUTED_TEXT, fontSize: axisFontSize },
-      axisLine: { lineStyle: { color: AXIS_LINE } },
+      axisLabel: axisLabel(axisFontSize),
+      axisLine: axisLine(),
       axisTick: { show: false },
     },
     series: [
@@ -256,7 +247,7 @@ export function horizontalBarsOption(
         label: {
           show: true,
           position: "right",
-          color: MUTED_TEXT,
+          color: token("--color-muted"),
           fontSize: 10,
           formatter: (params: unknown) => kfmt(Number((params as { value?: number }).value ?? 0)),
         },
@@ -275,7 +266,7 @@ export function colorBarsOption(rows: Slice[], axisFontSize = 11): EChartsOption
   const ordered = rows.slice().reverse();
   return {
     tooltip: {
-      ...TOOLTIP,
+      ...tooltip(),
       formatter: (params: unknown) => {
         const point = params as { dataIndex?: number; value?: number };
         const row = ordered[point.dataIndex ?? 0];
@@ -285,14 +276,14 @@ export function colorBarsOption(rows: Slice[], axisFontSize = 11): EChartsOption
     grid: { left: 6, right: 46, top: 8, bottom: 8, containLabel: true },
     xAxis: {
       type: "value",
-      axisLabel: { color: MUTED_TEXT, fontSize: 10.5, formatter: (value: unknown) => kfmt(Number(value)) },
-      splitLine: { lineStyle: { color: SPLIT_LINE } },
+      axisLabel: { ...axisLabel(10.5), formatter: (value: unknown) => kfmt(Number(value)) },
+      splitLine: splitLine(),
     },
     yAxis: {
       type: "category",
       data: ordered.map((row) => truncate(row.name, 30)),
-      axisLabel: { color: MUTED_TEXT, fontSize: axisFontSize },
-      axisLine: { lineStyle: { color: AXIS_LINE } },
+      axisLabel: axisLabel(axisFontSize),
+      axisLine: axisLine(),
       axisTick: { show: false },
     },
     series: [
@@ -303,7 +294,7 @@ export function colorBarsOption(rows: Slice[], axisFontSize = 11): EChartsOption
         label: {
           show: true,
           position: "right",
-          color: MUTED_TEXT,
+          color: token("--color-muted"),
           fontSize: 10,
           formatter: (params: unknown) => kfmt(Number((params as { value?: number }).value ?? 0)),
         },
@@ -326,15 +317,15 @@ export function gaugeOption(gauges: Gauge[]): EChartsOption {
       progress: { show: true, width: 9, itemStyle: { color: gauge.color } },
       pointer: { show: false },
       anchor: { show: false },
-      axisLine: { lineStyle: { width: 9, color: [[1, "#1c2230"]] as [number, string][] } },
+      axisLine: { lineStyle: { width: 9, color: [[1, token("--chart-gauge-track")]] as [number, string][] } },
       axisTick: { show: false },
       splitLine: { show: false },
       axisLabel: { show: false },
-      title: { show: true, offsetCenter: [0, "34%"], color: MUTED_TEXT, fontSize: 11 },
+      title: { show: true, offsetCenter: [0, "34%"], color: token("--color-muted"), fontSize: 11 },
       detail: {
         valueAnimation: false,
         offsetCenter: [0, "2%"],
-        color: "#e7eaf2",
+        color: token("--color-text"),
         fontSize: 20,
         fontWeight: 600 as const,
         formatter: (value: number) => `${value.toFixed(0)}%`,
