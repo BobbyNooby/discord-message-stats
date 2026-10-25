@@ -1,3 +1,5 @@
+import { useMemo } from "react";
+
 import { EmptyState, Panel } from "../components/Panel";
 import { EChart } from "../lib/echart";
 import { EMPTY_FILTER } from "../lib/empty";
@@ -20,8 +22,9 @@ const TITLE = "Chat health";
  */
 export function ChatHealth({ payload, filters: fallbackFilters }: MediaPanelProps & WithPanelId) {
   const filters = usePanelFilters("chat-health", fallbackFilters);
-  const { cells, empty } = mediaCells(payload, filters);
-  const gauges = healthGauges(cells);
+  const { cells, empty } = useMemo(() => mediaCells(payload, filters), [payload, filters]);
+  const gauges = useMemo(() => healthGauges(cells), [cells]);
+  const option = useMemo(() => gaugeOption(gauges), [gauges]);
   const msgs = totalMessages(cells);
   const blank = empty ?? (msgs > 0 ? null : EMPTY_FILTER);
 
@@ -32,7 +35,7 @@ export function ChatHealth({ payload, filters: fallbackFilters }: MediaPanelProp
         1,
       )}% · active days ${gauges[2].value.toFixed(1)}%`}
     >
-      {blank ? <EmptyState>{blank}</EmptyState> : <EChart height={330} option={gaugeOption(gauges)} />}
+      {blank ? <EmptyState>{blank}</EmptyState> : <EChart height={330} option={option} />}
     </Panel>
   );
 }

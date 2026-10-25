@@ -1,3 +1,5 @@
+import { useMemo } from "react";
+
 import { EmptyState, Panel } from "../components/Panel";
 import { EChart } from "../lib/echart";
 import { globalEmpty } from "../lib/empty";
@@ -22,7 +24,11 @@ const TITLE = "Message types";
 export function MessageTypes({ payload, filters: fallbackFilters }: MediaPanelProps & WithPanelId) {
   const filters = usePanelFilters("message-types", fallbackFilters);
   const shape = useChartShape("message-types");
-  const rows = allTypeRows(payload);
+  const rows = useMemo(() => allTypeRows(payload), [payload]);
+  const option = useMemo(
+    () => (shape === "pie" ? pieOption(foldPie(rows), "messages") : horizontalBarsOption(rows, swatch(1), 11)),
+    [rows, shape],
+  );
   const total = sumRows(rows);
   const blank =
     globalEmpty(payload, filters) ?? (rows.length ? null : "No message types in this history.");
@@ -38,10 +44,8 @@ export function MessageTypes({ payload, filters: fallbackFilters }: MediaPanelPr
     >
       {blank ? (
         <EmptyState>{blank}</EmptyState>
-      ) : shape === "pie" ? (
-        <EChart height={300} option={pieOption(foldPie(rows), "messages")} />
       ) : (
-        <EChart height={300} option={horizontalBarsOption(rows, swatch(1), 11)} />
+        <EChart height={300} option={option} />
       )}
     </Panel>
   );

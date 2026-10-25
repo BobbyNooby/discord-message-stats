@@ -1,3 +1,5 @@
+import { useMemo } from "react";
+
 import { EmptyState, Panel } from "../components/Panel";
 import { EChart } from "../lib/echart";
 import { EMPTY_FILTER } from "../lib/empty";
@@ -8,8 +10,8 @@ import {
   mediaCells,
   mediaColor,
   mediaShare,
-  type MediaPanelProps,
   remainderColor,
+  type MediaPanelProps,
 } from "./mediaData";
 import type { WithPanelId } from "./panelScope";
 import { useChartShape, usePanelFilters } from "./panelScope";
@@ -20,15 +22,19 @@ const TITLE = "Text vs media";
 export function TextVsMedia({ payload, filters: fallbackFilters }: MediaPanelProps & WithPanelId) {
   const filters = usePanelFilters("text-vs-media", fallbackFilters);
   const shape = useChartShape("text-vs-media");
-  const { cells, empty } = mediaCells(payload, filters);
-  const { media, textOnly, total } = mediaShare(cells);
+  const { cells, empty } = useMemo(() => mediaCells(payload, filters), [payload, filters]);
+  const share = useMemo(() => mediaShare(cells), [cells]);
+  const { media, total } = share;
   const blank = empty ?? (total > 0 ? null : EMPTY_FILTER);
-  // Both shapes read the same two numbers, and together they are the whole of
-  // the filtered total, which is why this card declares a pie.
-  const rows = [
-    { name: "with media", value: media, color: mediaColor() },
-    { name: "text only", value: textOnly, color: remainderColor() },
-  ];
+  const option = useMemo(() => {
+    // Both shapes read the same two numbers, and together they are the whole of
+    // the filtered total, which is why this card declares a pie.
+    const rows = [
+      { name: "with media", value: share.media, color: mediaColor() },
+      { name: "text only", value: share.textOnly, color: remainderColor() },
+    ];
+    return shape === "bar" ? colorBarsOption(rows) : doughnutOption(rows, "messages");
+  }, [share, shape]);
 
   return (
     <Panel
@@ -40,10 +46,8 @@ export function TextVsMedia({ payload, filters: fallbackFilters }: MediaPanelPro
     >
       {blank ? (
         <EmptyState>{blank}</EmptyState>
-      ) : shape === "bar" ? (
-        <EChart height={300} option={colorBarsOption(rows)} />
       ) : (
-        <EChart height={300} option={doughnutOption(rows, "messages")} />
+        <EChart height={300} option={option} />
       )}
     </Panel>
   );

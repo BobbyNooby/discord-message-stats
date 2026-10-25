@@ -1,3 +1,5 @@
+import { useMemo } from "react";
+
 import { EmptyState, Panel } from "../components/Panel";
 import { EChart } from "../lib/echart";
 import { globalEmpty, emptyFor } from "../lib/empty";
@@ -18,7 +20,8 @@ const TITLE = "Reactions";
 /** Reactions from the raw JSON column. Global only: `rollup_reaction` has no date. */
 export function Reactions({ payload, filters: fallbackFilters }: MediaPanelProps & WithPanelId) {
   const filters = usePanelFilters("reactions", fallbackFilters);
-  const rows = pairRows(payload.reactions, 14);
+  const rows = useMemo(() => pairRows(payload.reactions, 14), [payload]);
+  const option = useMemo(() => horizontalBarsOption(rows, reactionColor(), 13), [rows]);
   const blank = globalEmpty(payload, filters) ?? (rows.length ? null : emptyFor("reactions"));
 
   return (
@@ -31,7 +34,7 @@ export function Reactions({ payload, filters: fallbackFilters }: MediaPanelProps
       {blank ? (
         <EmptyState>{blank}</EmptyState>
       ) : (
-        <EChart height={330} option={horizontalBarsOption(rows, reactionColor(), 13)} />
+        <EChart height={330} option={option} />
       )}
     </Panel>
   );

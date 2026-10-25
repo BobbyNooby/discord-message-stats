@@ -1,3 +1,5 @@
+import { useMemo } from "react";
+
 import { EmptyState, Panel } from "../components/Panel";
 import { EChart } from "../lib/echart";
 import { globalEmpty, emptyFor } from "../lib/empty";
@@ -18,7 +20,8 @@ const TITLE = "Emoji in text";
 /** Counted from message bodies. Global only: `rollup_emoji` has no date. */
 export function Emoji({ payload, filters: fallbackFilters }: MediaPanelProps & WithPanelId) {
   const filters = usePanelFilters("emoji-in-text", fallbackFilters);
-  const rows = pairRows(payload.emoji, 14);
+  const rows = useMemo(() => pairRows(payload.emoji, 14), [payload]);
+  const option = useMemo(() => horizontalBarsOption(rows, emojiColor(), 14), [rows]);
   const blank = globalEmpty(payload, filters) ?? (rows.length ? null : emptyFor("emoji"));
 
   return (
@@ -31,7 +34,7 @@ export function Emoji({ payload, filters: fallbackFilters }: MediaPanelProps & W
       {blank ? (
         <EmptyState>{blank}</EmptyState>
       ) : (
-        <EChart height={330} option={horizontalBarsOption(rows, emojiColor(), 14)} />
+        <EChart height={330} option={option} />
       )}
     </Panel>
   );
