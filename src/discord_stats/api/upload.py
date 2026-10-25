@@ -21,7 +21,7 @@ import shutil
 import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, BinaryIO
+from typing import Any, BinaryIO, Iterable
 
 from discord_scraper.rollups.schema import create_control_tables, create_rollup_tables
 
@@ -252,6 +252,10 @@ def commit(staged: Staged) -> Path | None:
     no copy of a 783 MB file; a copy is the fallback. Either way the current
     database is safe before its path is reused.
     """
+    if not staged.path.is_file():
+        # Preparing a missing path would create an empty database and swap it
+        # in; refuse before anything touches the live file.
+        raise FileNotFoundError(f"the staged upload {staged.path.name} is gone")
     _prepare(staged.path)
     backup: Path | None = None
     if staged.target.exists():
@@ -271,7 +275,7 @@ def discard(staged: Staged) -> None:
     staged.path.unlink(missing_ok=True)
 
 
-def sweep_orphans(directory: Path) -> list[Path]:
+def sweep_orphans(directory: Path, keep: Iterable[Path] = ()) -> list[Path]:
     """Delete staging files this process cannot have written.
 
     A staged upload is only meaningful to the process that validated it: the
@@ -279,11 +283,18 @@ def sweep_orphans(directory: Path) -> list[Path]:
     takes it away, so nothing can confirm or discard the file afterwards. At
     boot, with no upload in flight, every ``.upload-*`` beside the database is
     one of those — and it is the size of a database.
+
+    ``keep`` is every upload still waiting for its commit. The on-demand sweep
+    runs while the server is up, and deleting one of those made the commit
+    swap an empty file in over the live database.
     """
     if not directory.is_dir():
         return []
+    pending = {Path(path).resolve() for path in keep}
     removed: list[Path] = []
     for path in sorted(directory.glob(".upload-*")):
+        if path.resolve() in pending:
+            continue
         try:
             path.unlink()
         except OSError:  # pragma: no cover - a file we cannot remove is not fatal

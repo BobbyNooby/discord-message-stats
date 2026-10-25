@@ -705,7 +705,8 @@ def sweep_uploads(request: Request) -> dict:
                 sizes[path.name] = path.stat().st_size
             except OSError:
                 sizes[path.name] = 0
-    removed = staging.sweep_orphans(directory)
+    # Uploads still waiting for their commit are not orphans.
+    removed = staging.sweep_orphans(directory, keep=[staged.path for staged in PENDING_UPLOADS.values()])
     return {
         "removed": [path.name for path in removed],
         "count": len(removed),
@@ -1025,7 +1026,11 @@ def commit_upload(request: Request, upload_id: str) -> dict:
     staged = PENDING_UPLOADS.pop(upload_id, None)
     if staged is None:
         raise HTTPException(status_code=404, detail="no such upload — stage it again")
-    backup = staging.commit(staged)
+    try:
+        backup = staging.commit(staged)
+    except FileNotFoundError:
+        raise HTTPException(status_code=410,
+                            detail="the staged file is gone — upload it again") from None
     job = create_job(request, JobRequest(kind="rebuild_rollups"))
     _log_event(request, scope="upload", phase="committed", rows=staged.rows,
                message=(f"upload committed: {staged.rows} rows, "
