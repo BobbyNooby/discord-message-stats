@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import type { Payload } from "../api/types";
 import { initialFilters } from "../filters/reducer";
@@ -13,53 +13,11 @@ import { Stream } from "./Stream";
 import { TimeOfDay } from "./TimeOfDay";
 import { TimeSection } from "./TimeSection";
 import { bucketSeries } from "./timeAggregates";
-
-/**
- * jsdom cannot paint a canvas and the shared setup already stubs ECharts, so
- * this file swaps in a recording instance: the assertion then reads the option
- * the panel actually asked for — the x axis, the series — rather than a proxy.
- */
-const charts = vi.hoisted(() => {
-  type Recorded = {
-    options: any[];
-    setOption: (option: any) => void;
-    resize: () => void;
-    dispose: () => void;
-    on: () => void;
-    off: () => void;
-    getOption: () => Record<string, never>;
-  };
-  const instances: Recorded[] = [];
-  return {
-    instances,
-    create(): Recorded {
-      const options: any[] = [];
-      const instance: Recorded = {
-        options,
-        setOption(option: any) {
-          options.push(option);
-        },
-        resize() {},
-        dispose() {},
-        on() {},
-        off() {},
-        getOption: () => ({}),
-      };
-      instances.push(instance);
-      return instance;
-    },
-  };
-});
-
-vi.mock("echarts", () => ({
-  init: () => charts.create(),
-  use: () => {},
-  default: { init: () => charts.create(), use: () => {} },
-}));
+import { charts } from "../test/echarts";
 
 /** The option the most recently mounted chart was last given. */
 function lastOption(): any {
-  const instance = charts.instances[charts.instances.length - 1];
+  const instance = charts.latest();
   if (!instance || !instance.options.length) throw new Error("no chart option was recorded");
   return instance.options[instance.options.length - 1];
 }
@@ -144,10 +102,6 @@ function emptyPayload(): Payload {
 
 const all = (payload: Payload) => initialFilters(payload);
 const none = (payload: Payload) => ({ ...initialFilters(payload), active: payload.authors.map(() => false) });
-
-beforeEach(() => {
-  charts.instances.length = 0;
-});
 
 describe("the bucket selector", () => {
   it("changes the x-axis cardinality, day to month to year", () => {

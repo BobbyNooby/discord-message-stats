@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import type { Payload } from "../api/types";
 import { EMPTY_FILTERS, initialFilters, type Filters } from "../filters/reducer";
@@ -11,24 +11,15 @@ import { ReplyMatrix } from "./ReplyMatrix";
 import { ResponseTime } from "./ResponseTime";
 import { WhoWrites } from "./WhoWrites";
 import { matrixData } from "./people";
+import { charts } from "../test/echarts";
 
 /**
  * jsdom has no canvas, so zrender cannot paint and a real chart instance throws
- * on `setOption`. The mock keeps <EChart>'s lifecycle honest and, better, lets
- * these tests read the option the panels actually build — which is where a NaN
- * or a `Math.max()` of an empty array would show up.
+ * on `setOption`. The shared recorder keeps <EChart>'s lifecycle honest and,
+ * better, lets these tests read the option the panels actually build — which
+ * is where a NaN or a `Math.max()` of an empty array would show up.
  */
-const { options } = vi.hoisted(() => ({ options: [] as unknown[] }));
-
-vi.mock("echarts", () => ({
-  init: () => ({
-    setOption: (option: unknown) => {
-      options.push(option);
-    },
-    resize: () => {},
-    dispose: () => {},
-  }),
-}));
+const options = () => charts.options();
 
 /** Only the keys the People panels read. */
 const payload = {
@@ -114,10 +105,6 @@ function nonFinite(value: unknown, path = "$"): string[] {
   }
   return [];
 }
-
-beforeEach(() => {
-  options.length = 0;
-});
 
 describe("the date-less People cards", () => {
   it("holds the reply matrix's cell count still, while the leaderboard moves", () => {
@@ -224,12 +211,12 @@ describe("filter semantics", () => {
     // Alice leads both here, but they are independent cards: one reads `msgs`,
     // the other `chars`, so neither can be reordered by a global switch.
     const talks = render(<Leaderboard payload={payload} filters={withFilters()} />);
-    const byMessages = options.at(-1) as { yAxis: { data: string[] } };
+    const byMessages = options().at(-1) as { yAxis: { data: string[] } };
     expect(byMessages.yAxis.data.at(-1)).toBe("Alice");
     talks.unmount();
 
     render(<WhoWrites payload={payload} filters={withFilters()} />);
-    const byCharacters = options.at(-1) as { yAxis: { data: string[] } };
+    const byCharacters = options().at(-1) as { yAxis: { data: string[] } };
     expect(byCharacters.yAxis.data.at(-1)).toBe("Alice");
   });
 });
@@ -240,7 +227,7 @@ describe("empty and degenerate payloads", () => {
     for (const title of TITLES) expect(screen.getByText(title)).toBeInTheDocument();
     expect(screen.getAllByText(/^No /)).toHaveLength(11);
     expect(document.body.textContent).not.toContain("NaN");
-    expect(options.flatMap((option) => nonFinite(option))).toEqual([]);
+    expect(options().flatMap((option) => nonFinite(option))).toEqual([]);
   });
 
   it("does the same when every author is switched off", () => {
@@ -254,16 +241,16 @@ describe("empty and degenerate payloads", () => {
     render(<PeopleSection payload={singleDay} filters={initialFilters(singleDay)} />);
     expect(screen.getByText(/2 authors · 4 cells/)).toBeInTheDocument();
     expect(document.body.textContent).not.toContain("NaN");
-    expect(options.length).toBeGreaterThan(0); // the check below is not vacuous
-    expect(options.flatMap((option) => nonFinite(option))).toEqual([]);
+    expect(options().length).toBeGreaterThan(0); // the check below is not vacuous
+    expect(options().flatMap((option) => nonFinite(option))).toEqual([]);
   });
 
   it("survives one author who never replied to anyone", () => {
     const lonely = { ...payload, edges: [], response: [], starters: [], editSpeed: [] } as unknown as Payload;
     render(<PeopleSection payload={lonely} filters={initialFilters(lonely)} />);
     expect(document.body.textContent).not.toContain("NaN");
-    expect(options.length).toBeGreaterThan(0);
-    expect(options.flatMap((option) => nonFinite(option))).toEqual([]);
+    expect(options().length).toBeGreaterThan(0);
+    expect(options().flatMap((option) => nonFinite(option))).toEqual([]);
   });
 
   it("explains what an average wait is, where the number is shown", () => {

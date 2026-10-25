@@ -5,13 +5,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { MediaRow, Payload } from "../api/types";
 import { MediaDetailBody, MediaDetailDialog } from "./MediaDetail";
 import { MediaTile } from "./MediaTile";
+import { charts } from "../test/echarts";
 
-const mocks = vi.hoisted(() => {
-  const instance = { setOption: vi.fn(), resize: vi.fn(), dispose: vi.fn(), on: vi.fn(), off: vi.fn(), clear: vi.fn() };
-  return { instance, init: vi.fn(() => instance), useMediaDetail: vi.fn() };
-});
+const mocks = vi.hoisted(() => ({ useMediaDetail: vi.fn() }));
 
-vi.mock("echarts", () => ({ init: mocks.init, use: vi.fn() }));
 vi.mock("../api/queries", () => ({ useMediaDetail: mocks.useMediaDetail }));
 
 const cat: MediaRow = ["https://tenor.com/view/cat", "Tenor", "gifv", "zesty cat", "", "", 3];
@@ -105,7 +102,7 @@ describe("media detail", () => {
       "href",
       "https://discord.com/channels/@me/c1/m1",
     );
-    expect(mocks.init).toHaveBeenCalledTimes(1);
+    expect(charts.init).toHaveBeenCalledTimes(1);
   });
 
   it("asks for a rebuild when the per-person table is not built yet", () => {

@@ -1,8 +1,9 @@
 import { render, screen } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import type { Payload } from "../api/types";
 import { EMPTY_FILTERS, type Filters } from "../filters/reducer";
+import { charts } from "../test/echarts";
 import { EmbedTypes } from "./EmbedTypes";
 import { LinkDomains } from "./LinkDomains";
 import { LinksSection } from "./LinksSection";
@@ -15,25 +16,11 @@ import { TopLinks } from "./TopLinks";
  * that cannot honour a filter has to say so.
  */
 
-const mocks = vi.hoisted(() => {
-  const instance = {
-    setOption: vi.fn(),
-    resize: vi.fn(),
-    dispose: vi.fn(),
-    on: vi.fn(),
-    off: vi.fn(),
-    clear: vi.fn(),
-  };
-  return { instance, init: vi.fn(() => instance) };
-});
-
-vi.mock("echarts", () => ({ init: mocks.init, use: vi.fn() }));
-
 type LastOption = {
   yAxis: { data: string[] };
   series: { type?: string; data: (number | { name?: string; value?: number })[] }[];
 };
-const lastOption = () => mocks.instance.setOption.mock.calls.at(-1)?.[0] as unknown as LastOption;
+const lastOption = () => charts.lastOption() as LastOption;
 
 const meta: Payload["meta"] = {
   total: 400,
@@ -105,10 +92,6 @@ const allOn: Filters = { ...EMPTY_FILTERS, active: [true, true] };
 const statsLine = "17,135 msgs · 539 domains · 16,569 unfurled";
 
 describe("Links & embeds section", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   it("prints the payload's three link totals verbatim in the subtitle", () => {
     render(<LinkDomains payload={makePayload()} filters={allOn} />);
 
@@ -139,7 +122,7 @@ describe("Links & embeds section", () => {
     const { rerender } = render(<LinkDomains payload={makePayload({ linkCells: [] })} filters={allOn} />);
     expect(screen.getByText("No links match the active filters — widen the time range, or switch an author back on.")).toBeInTheDocument();
     expect(screen.getByText(statsLine)).toBeInTheDocument(); // the totals survive an empty filter
-    expect(mocks.init).not.toHaveBeenCalled();
+    expect(charts.init).not.toHaveBeenCalled();
 
     rerender(<LinkDomains payload={makePayload()} filters={{ ...allOn, active: [false, false] }} />);
     expect(screen.getByText("No authors selected — switch one back on in the filters.")).toBeInTheDocument();
@@ -224,7 +207,7 @@ describe("Links & embeds section", () => {
     render(<EmbedTypes payload={makePayload({ embedTypes: [] })} filters={allOn} />);
 
     expect(screen.getByText(/no embeds yet/i)).toBeInTheDocument();
-    expect(mocks.init).not.toHaveBeenCalled();
+    expect(charts.init).not.toHaveBeenCalled();
   });
 
   it("leaves the embed-type doughnut unbadged under a filter", () => {

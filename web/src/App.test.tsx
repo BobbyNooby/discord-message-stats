@@ -31,6 +31,7 @@ import App from "./App";
 import { Forbidden, Offline, ServerError } from "./api/client";
 import { CHARTS_KEY } from "./filters/persist";
 import type { Payload } from "./api/types";
+import { charts } from "./test/echarts";
 
 const TYPES: [number, string, number][] = [
   [0, "Default", 1000],
@@ -314,9 +315,7 @@ describe("re-rendering the dashboard without a data change", () => {
   it("does not redraw every chart when a card's scope opens", async () => {
     // Opening a scope (and each minute's health poll) re-renders the dashboard
     // body; on the real data that redrew 38 charts and blocked for over a second.
-    const echarts = await import("echarts");
-    const chart = echarts.init(document.createElement("div"));
-    const setOption = vi.mocked(chart.setOption);
+    const setOption = charts.setOption;
     renderApp();
     const filter = await screen.findByRole("button", { name: "Filter Stat cards" });
     await waitFor(() => expect(setOption).toHaveBeenCalled());

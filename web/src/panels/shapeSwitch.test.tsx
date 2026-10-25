@@ -1,7 +1,7 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useCallback, useState, type ReactNode } from "react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
 /**
  * The shape switch: where it appears, what it does to the series, and what it
@@ -11,20 +11,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
  * the context's chart map is real state — the switch has to change what the
  * panel draws, not just its own `aria-pressed`.
  */
-const mocks = vi.hoisted(() => {
-  const instance = {
-    setOption: vi.fn(),
-    resize: vi.fn(),
-    dispose: vi.fn(),
-    on: vi.fn(),
-    off: vi.fn(),
-    getOption: vi.fn(() => ({})),
-  };
-  return { instance, init: vi.fn(() => instance) };
-});
-
-vi.mock("echarts", () => ({ init: mocks.init, use: vi.fn(), default: { init: mocks.init, use: vi.fn() } }));
-
 import type { Payload } from "../api/types";
 import { initialFilters } from "../filters/reducer";
 import type { Charts } from "../filters/persist";
@@ -36,6 +22,7 @@ import { RepliesVsStandalone } from "./RepliesVsStandalone";
 import { ShareOfVoice } from "./ShareOfVoice";
 import { TextVsMedia } from "./TextVsMedia";
 import { PanelScopeProvider } from "./panelScope";
+import { charts as chartMock } from "../test/echarts";
 
 /** Twelve message types, so the pie has a tail to fold. */
 const TYPES: [number, string, number][] = [
@@ -103,7 +90,7 @@ function fixture(): Payload {
 }
 
 type Option = { series: { type: string; data: (number | { name?: string; value?: number })[] }[] };
-const lastOption = () => mocks.instance.setOption.mock.calls.at(-1)?.[0] as unknown as Option;
+const lastOption = () => chartMock.lastOption() as Option;
 
 /** The shell's chart map, as real state, so the switch changes the drawing. */
 function Shell({ children }: { children: ReactNode }) {
@@ -130,10 +117,6 @@ const switchShownAs = (label: string, shape: "bars" | "pie") =>
   screen.getByRole("button", { name: `${label} as ${shape}`, pressed: shape === "pie" });
 
 const noSwitch = () => screen.queryByRole("button", { name: /as (bars|pie)$/i });
-
-beforeEach(() => {
-  mocks.instance.setOption.mockClear();
-});
 
 describe("the chart-shape switch", () => {
   it("appears on a card that can be both, and not on a card that cannot", () => {

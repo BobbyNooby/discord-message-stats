@@ -1,17 +1,6 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import type { ComponentType } from "react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
-
-// jsdom has no canvas, so the chart library is replaced with a recorder: the
-// tests assert on the option each panel hands to ECharts.
-const mocks = vi.hoisted(() => ({
-  instance: { setOption: vi.fn(), resize: vi.fn(), dispose: vi.fn() },
-}));
-
-vi.mock("echarts", () => ({
-  init: vi.fn(() => mocks.instance),
-  use: vi.fn(),
-}));
+import { describe, expect, it } from "vitest";
 
 import type { Payload } from "../api/types";
 import { initialFilters } from "../filters/reducer";
@@ -25,6 +14,7 @@ import { Reactions } from "./Reactions";
 import { RepliesVsStandalone } from "./RepliesVsStandalone";
 import { TextVsMedia } from "./TextVsMedia";
 import { healthGauges, mediaShare, replyShare, type MediaPanelProps } from "./mediaData";
+import { charts } from "../test/echarts";
 
 type DoughnutOption = { series: { data: { value: number; name?: string }[] }[] };
 
@@ -119,7 +109,7 @@ function fixture(overrides: Partial<Payload> = {}): Payload {
 }
 
 function lastOption(): DoughnutOption {
-  const calls = mocks.instance.setOption.mock.calls;
+  const calls = charts.setOption.mock.calls;
   expect(calls.length).toBeGreaterThan(0);
   return calls[calls.length - 1][0] as DoughnutOption;
 }
@@ -129,10 +119,6 @@ function sum(values: number[]): number {
 }
 
 describe("Media & reactions", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   it("sums the four doughnut slices to the filtered total, with no double counting", () => {
     const payload = fixture();
     const filters = { ...initialFilters(payload), years: [2023] };
@@ -247,7 +233,7 @@ describe("Media & reactions", () => {
     render(<MediaSection payload={payload} filters={initialFilters(payload)} />);
 
     expect(screen.getAllByText("No messages yet — ingest, or upload a database from the Admin board.")).toHaveLength(7);
-    expect(mocks.instance.setOption).not.toHaveBeenCalled();
+    expect(charts.setOption).not.toHaveBeenCalled();
     expect(document.body.textContent).not.toMatch(/NaN/);
   });
 
@@ -257,7 +243,7 @@ describe("Media & reactions", () => {
     render(<MediaSection payload={payload} filters={filters} />);
 
     expect(screen.getAllByText("No authors selected — switch one back on in the filters.")).toHaveLength(7);
-    expect(mocks.instance.setOption).not.toHaveBeenCalled();
+    expect(charts.setOption).not.toHaveBeenCalled();
   });
 
   it("treats a filtered total of zero as an empty state rather than dividing by zero", () => {
@@ -269,7 +255,7 @@ describe("Media & reactions", () => {
     render(<ChatHealth payload={payload} filters={filters} />);
 
     expect(screen.getAllByText("No messages match the active filters — widen the time range, or switch an author back on.")).toHaveLength(3);
-    expect(mocks.instance.setOption).not.toHaveBeenCalled();
+    expect(charts.setOption).not.toHaveBeenCalled();
     expect(document.body.textContent).not.toMatch(/NaN/);
   });
 

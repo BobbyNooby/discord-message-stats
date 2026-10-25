@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { Payload } from "../api/types";
 import { EMPTY_FILTERS, type Filters } from "../filters/reducer";
+import { charts } from "../test/echarts";
 import { PanelScopeProvider } from "./panelScope";
 import { WhoSaysIt } from "./WhoSaysIt";
 import { WordCloud } from "./WordCloud";
@@ -16,25 +17,12 @@ import { WordLift, liftGrid } from "./WordLift";
  * so instead of drawing an empty chart.
  */
 
-const mocks = vi.hoisted(() => {
-  const instance = {
-    setOption: vi.fn(),
-    resize: vi.fn(),
-    dispose: vi.fn(),
-    on: vi.fn(),
-    off: vi.fn(),
-    clear: vi.fn(),
-  };
-  return {
-    instance,
-    init: vi.fn(() => instance),
-    useWords: vi.fn(),
-    useWordSuggestions: vi.fn(),
-    useWordPeriod: vi.fn(),
-  };
-});
+const mocks = vi.hoisted(() => ({
+  useWords: vi.fn(),
+  useWordSuggestions: vi.fn(),
+  useWordPeriod: vi.fn(),
+}));
 
-vi.mock("echarts", () => ({ init: mocks.init, use: vi.fn() }));
 vi.mock("../api/queries", () => ({
   useWords: mocks.useWords,
   useWordSuggestions: mocks.useWordSuggestions,
@@ -42,7 +30,7 @@ vi.mock("../api/queries", () => ({
 }));
 
 type LastOption = { yAxis: { data: string[] }; series: { data: { name?: string; value?: number }[] }[] };
-const lastOption = () => mocks.instance.setOption.mock.calls.at(-1)?.[0] as unknown as LastOption;
+const lastOption = () => charts.lastOption() as LastOption;
 
 const meta: Payload["meta"] = {
   total: 400,
@@ -163,7 +151,7 @@ describe("Words section", () => {
     mocks.useWordPeriod.mockReturnValue({ data: undefined, isFetching: true });
     render(<WordLift payload={makePayload()} filters={{ ...allOn, years: [2023] }} />);
     expect(screen.getByText("Counting words for 2023…")).toBeInTheDocument();
-    expect(mocks.init).not.toHaveBeenCalled();
+    expect(charts.init).not.toHaveBeenCalled();
   });
 
   it("asks for a rebuild when the month table is not there yet", () => {
@@ -222,7 +210,7 @@ describe("Words section", () => {
     expect(screen.queryByText(/outside the indexed slice/i)).not.toBeInTheDocument();
     expect(screen.getByText("9 uses total")).toBeInTheDocument();
     // The bars and the timeline are two charts.
-    expect(mocks.init).toHaveBeenCalledTimes(2);
+    expect(charts.init).toHaveBeenCalledTimes(2);
     expect(screen.getByText(/first seen Jan 2024 · busiest Mar 2024 \(5 uses\)/)).toBeInTheDocument();
     const timeline = lastOption() as unknown as { xAxis: { data: string[] }; series: { name: string }[] };
     // February is drawn even though nobody said it: a quiet month is still a month.
@@ -271,7 +259,7 @@ describe("Words section", () => {
     render(<WhoSaysIt payload={makePayload()} filters={allOn} word="gpu" />);
 
     expect(screen.getByText(/outside the indexed slice/i)).toBeInTheDocument();
-    expect(mocks.init).not.toHaveBeenCalled();
+    expect(charts.init).not.toHaveBeenCalled();
   });
 
   it("draws who says it for a word inside the breakdown slice", () => {
@@ -280,7 +268,7 @@ describe("Words section", () => {
 
     expect(screen.queryByText(/outside the indexed slice/i)).not.toBeInTheDocument();
     expect(screen.getByText("42 uses total")).toBeInTheDocument();
-    expect(mocks.init).toHaveBeenCalledTimes(1);
+    expect(charts.init).toHaveBeenCalledTimes(1);
     // Horizontal bars are sorted by value, so the smallest sits at the bottom.
     expect(lastOption().yAxis.data).toEqual(["Bo", "Ada"]);
 
@@ -378,7 +366,7 @@ describe("Words section", () => {
 
     rerender(<WordLift payload={payload} filters={{ ...allOn, active: [false, false] }} />);
     expect(screen.getByText("No authors selected — switch one back on in the filters.")).toBeInTheDocument();
-    expect(mocks.init).not.toHaveBeenCalled();
+    expect(charts.init).not.toHaveBeenCalled();
   });
 
   it("renders the cloud's empty state without loading the plugin", () => {
@@ -387,7 +375,7 @@ describe("Words section", () => {
 
     expect(screen.getByText(/no words to plot/i)).toBeInTheDocument();
     expect(loadPlugin).not.toHaveBeenCalled();
-    expect(mocks.init).not.toHaveBeenCalled();
+    expect(charts.init).not.toHaveBeenCalled();
   });
 
   it("degrades to a sentence when the word cloud plugin is unavailable", async () => {

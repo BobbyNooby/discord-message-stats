@@ -1,26 +1,18 @@
 import "@testing-library/jest-dom/vitest";
-import { vi } from "vitest";
+import { beforeEach, vi } from "vitest";
+
+import { charts } from "./test/echarts";
 
 // jsdom has no canvas and no layout, so a real ECharts instance cannot paint.
-// Every component test gets a chart that records what it was asked to draw;
-// `src/lib/echart.test.tsx` overrides this with its own mock to assert the
-// lifecycle itself.
-const instance = {
-  setOption: vi.fn(),
-  resize: vi.fn(),
-  dispose: vi.fn(),
-  on: vi.fn(),
-  off: vi.fn(),
-  getOption: vi.fn(() => ({})),
-};
-
-vi.mock("echarts", () => ({
-  init: vi.fn(() => instance),
-  use: vi.fn(),
-  default: { init: vi.fn(() => instance), use: vi.fn() },
-}));
+// Every component test gets a chart that records what it was asked to draw
+// (`src/test/echarts.ts`); `src/lib/echart.test.tsx` overrides this with its
+// own mock to assert the lifecycle itself.
+vi.mock("echarts", async () => (await import("./test/echarts")).echartsModule);
 
 vi.mock("echarts-wordcloud", () => ({ default: {} }));
+
+// One test's charts must not leak into the next one's counts.
+beforeEach(() => charts.reset());
 
 class ResizeObserverStub {
   observe() {}
