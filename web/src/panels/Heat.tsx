@@ -1,4 +1,5 @@
 import type { EChartsOption } from "echarts";
+import { useMemo } from "react";
 
 import { EmptyState, Panel } from "../components/Panel";
 import { axisLabel, axisLine, tooltip } from "../lib/chartStyle";
@@ -6,44 +7,20 @@ import { EChart } from "../lib/echart";
 import { emptyLabel } from "../lib/empty";
 import { fmt } from "../lib/format";
 import { ramp, token } from "../lib/palette";
-import { hourLabel, timeFormatOf } from "../lib/timeFormat";
-import { DOW, heatGrid, type PanelProps } from "./timeAggregates";
+import { hourLabel, timeFormatOf, type TimeFormat } from "../lib/timeFormat";
+import { DOW, heatGrid, type HeatGrid, type PanelProps } from "./timeAggregates";
 import type { WithPanelId } from "./panelScope";
 import { usePanelFilters } from "./panelScope";
 
 const HOURS = Array.from({ length: 24 }, (_, hour) => hour);
 
-/**
- * When the chat comes alive — `drawHeat`, fed by `rollup_heat` rather than the
- * calendar cells so it survives any time filter coarser than a day.
- *
- * The map is the mockup's: dark = quiet to light = busy, monotonically, so a
- * busy hour can never render darker than a quiet one (§11.4's second finding).
- */
-export function Heat({ payload, filters: fallbackFilters }: PanelProps & WithPanelId) {
-  const filters = usePanelFilters("when-the-chat-comes-alive", fallbackFilters);
-  const heat = heatGrid(payload, filters);
-  // `ui.time_format`: the hour labels on the axis, the peak in the subtitle and
-  // every tooltip are the same clock, written the way the operator asked.
-  const timeFormat = timeFormatOf(payload.meta);
-  const subtitle = `${fmt(heat.total)} messages · ${payload.tz.label} · busiest ${
-    DOW[heat.peakDow]
-  } ${hourLabel(heat.peakHour, timeFormat)}`;
-
-  if (!heat.total) {
-    return (
-      <Panel title="When the chat comes alive" subtitle={subtitle}>
-        <EmptyState>{emptyLabel(payload, filters)}</EmptyState>
-      </Panel>
-    );
-  }
-
+function heatOption(heat: HeatGrid, timeFormat: TimeFormat): EChartsOption {
   const data: [number, number, number][] = [];
   for (let dow = 0; dow < 7; dow += 1) {
     for (let hour = 0; hour < 24; hour += 1) data.push([hour, dow, heat.grid[dow * 24 + hour]]);
   }
 
-  const option: EChartsOption = {
+  return {
     tooltip: {
       ...tooltip(),
       formatter: (p: any) =>
@@ -84,6 +61,33 @@ export function Heat({ payload, filters: fallbackFilters }: PanelProps & WithPan
       },
     ],
   };
+}
+
+/**
+ * When the chat comes alive — `drawHeat`, fed by `rollup_heat` rather than the
+ * calendar cells so it survives any time filter coarser than a day.
+ *
+ * The map is the mockup's: dark = quiet to light = busy, monotonically, so a
+ * busy hour can never render darker than a quiet one (§11.4's second finding).
+ */
+export function Heat({ payload, filters: fallbackFilters }: PanelProps & WithPanelId) {
+  const filters = usePanelFilters("when-the-chat-comes-alive", fallbackFilters);
+  const heat = useMemo(() => heatGrid(payload, filters), [payload, filters]);
+  // `ui.time_format`: the hour labels on the axis, the peak in the subtitle and
+  // every tooltip are the same clock, written the way the operator asked.
+  const timeFormat = timeFormatOf(payload.meta);
+  const option = useMemo(() => heatOption(heat, timeFormat), [heat, timeFormat]);
+  const subtitle = `${fmt(heat.total)} messages · ${payload.tz.label} · busiest ${
+    DOW[heat.peakDow]
+  } ${hourLabel(heat.peakHour, timeFormat)}`;
+
+  if (!heat.total) {
+    return (
+      <Panel title="When the chat comes alive" subtitle={subtitle}>
+        <EmptyState>{emptyLabel(payload, filters)}</EmptyState>
+      </Panel>
+    );
+  }
 
   return (
     <Panel title="When the chat comes alive" subtitle={subtitle}>

@@ -12,9 +12,47 @@ import {
   calendarGeometry,
   clampStart,
   weekdayLabels,
+  type Geometry,
   type WeekStart,
 } from "./calendarWeeks";
 import { usePanelFilters } from "./panelScope";
+
+function calendarOption(
+  visible: string[],
+  labels: string[],
+  data: [number, number, number][],
+  geometry: Geometry,
+) {
+  const peak = Math.max(1, ...data.map((point) => point[2]));
+  return {
+    grid: {
+      left: 46,
+      right: 12,
+      top: 8,
+      bottom: 24,
+      width: geometry.grid.width,
+      height: geometry.grid.height,
+    },
+    xAxis: { type: "category" as const, data: visible },
+    yAxis: {
+      type: "category" as const,
+      data: labels,
+      // All seven labels, at a size that fits the row height: a narrow window
+      // makes the cells small, and 12px text in a 7px row is illegible.
+      axisLabel: {
+        interval: 0,
+        fontSize: Math.max(8, Math.min(12, Math.round(geometry.cell * 0.7))),
+      },
+    },
+    visualMap: {
+      min: 0,
+      max: peak,
+      show: false,
+      inRange: { color: [token("--color-surface"), swatch(0)] },
+    },
+    series: [{ type: "heatmap" as const, data, itemStyle: { borderWidth: 0 } }],
+  };
+}
 
 /**
  * Every day, six years — square cells in a window the component owns (§11.3).
@@ -56,8 +94,11 @@ export function Calendar({ payload, filters: fallbackFilters }: { panelId?: stri
   const columns = calSize ?? Math.max(MIN_WEEKS, Math.min(DEFAULT_WEEKS, Math.floor((width || 900) / 14)));
   const newest = clampStart(weeks.weeks.length - columns, columns, weeks.weeks.length);
   const start = clampStart(calStart || newest, columns, weeks.weeks.length);
-  const visible = weeks.weeks.slice(start, start + columns);
-  const geometry = calendarGeometry(width || 600, Math.max(MIN_WEEKS, visible.length || columns));
+  const visible = useMemo(() => weeks.weeks.slice(start, start + columns), [weeks, start, columns]);
+  const geometry = useMemo(
+    () => calendarGeometry(width || 600, Math.max(MIN_WEEKS, visible.length || columns)),
+    [width, visible.length, columns],
+  );
 
   const data = useMemo(() => {
     const points: [number, number, number][] = [];
@@ -68,6 +109,10 @@ export function Calendar({ payload, filters: fallbackFilters }: { panelId?: stri
     });
     return points;
   }, [visible, weeks, labels]);
+  const option = useMemo(
+    () => calendarOption(visible, labels, data, geometry),
+    [visible, labels, data, geometry],
+  );
 
   if (!weeks.weeks.length) {
     return (
@@ -76,37 +121,6 @@ export function Calendar({ payload, filters: fallbackFilters }: { panelId?: stri
       </Panel>
     );
   }
-
-  const peak = Math.max(1, ...data.map((point) => point[2]));
-  const option = {
-    grid: {
-      left: 46,
-
-      right: 12,
-      top: 8,
-      bottom: 24,
-      width: geometry.grid.width,
-      height: geometry.grid.height,
-    },
-    xAxis: { type: "category" as const, data: visible },
-    yAxis: {
-      type: "category" as const,
-      data: labels,
-      // All seven labels, at a size that fits the row height: a narrow window
-      // makes the cells small, and 12px text in a 7px row is illegible.
-      axisLabel: {
-        interval: 0,
-        fontSize: Math.max(8, Math.min(12, Math.round(geometry.cell * 0.7))),
-      },
-    },
-    visualMap: {
-      min: 0,
-      max: peak,
-      show: false,
-      inRange: { color: [token("--color-surface"), swatch(0)] },
-    },
-    series: [{ type: "heatmap" as const, data, itemStyle: { borderWidth: 0 } }],
-  };
 
   return (
     <Panel

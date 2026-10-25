@@ -1,7 +1,9 @@
-import { C_DAY, C_MSGS, C_REPLIES } from "../api/types";
 import type { EChartsOption } from "echarts";
+import { useMemo } from "react";
 
+import { C_DAY, C_MSGS, C_REPLIES, type Payload } from "../api/types";
 import { EmptyState, Panel } from "../components/Panel";
+import type { Filters } from "../filters/reducer";
 import { bucketOf, selectVisibleCells } from "../filters/selectors";
 import { axis, axisLabel, splitLine, tooltip } from "../lib/chartStyle";
 import { EChart } from "../lib/echart";
@@ -12,13 +14,17 @@ import { bucketCountLabel, pct, type PanelProps } from "./timeAggregates";
 import type { WithPanelId } from "./panelScope";
 import { usePanelFilters } from "./panelScope";
 
-/**
- * How conversational — `drawConvo`: replies as a percentage of messages, with
- * the mean marked. A line, not a bar, because the interesting thing is the
- * trend in the ratio, not any single month's height.
- */
-export function Conversational({ payload, filters: fallbackFilters }: PanelProps & WithPanelId) {
-  const filters = usePanelFilters("how-conversational", fallbackFilters);
+type ReplyShare = {
+  /** The x axis: one sorted entry per bucket with messages. */
+  order: string[];
+  /** Replies as a percentage of each bucket's messages, to two decimals. */
+  series: number[];
+  msgs: number;
+  replies: number;
+};
+
+/** Replies per bucket as a share of that bucket's messages. */
+function replyShare(payload: Payload, filters: Filters): ReplyShare {
   const sums = new Map<string, number>();
   const replies = new Map<string, number>();
   const order: string[] = [];
@@ -37,21 +43,16 @@ export function Conversational({ payload, filters: fallbackFilters }: PanelProps
   }
   order.sort();
 
-  if (!order.length) {
-    return (
-      <Panel title="How conversational" subtitle={`${fmt(0)} replies · 0% of messages`}>
-        <EmptyState>{emptyLabel(payload, filters)}</EmptyState>
-      </Panel>
-    );
-  }
-
   const series = order.map((key) => {
     const total = sums.get(key) ?? 0;
     return total ? Number(pct(replies.get(key) ?? 0, total).toFixed(2)) : 0;
   });
-  const mean = series.reduce((sum, value) => sum + value, 0) / series.length;
+  return { order, series, msgs, replies: replyCount };
+}
 
-  const option: EChartsOption = {
+function replyLine({ order, series }: ReplyShare): EChartsOption {
+  const mean = series.reduce((sum, value) => sum + value, 0) / series.length;
+  return {
     tooltip: {
       trigger: "axis",
       ...tooltip(),
@@ -83,11 +84,31 @@ export function Conversational({ payload, filters: fallbackFilters }: PanelProps
       },
     ],
   };
+}
+
+/**
+ * How conversational — `drawConvo`: replies as a percentage of messages, with
+ * the mean marked. A line, not a bar, because the interesting thing is the
+ * trend in the ratio, not any single month's height.
+ */
+export function Conversational({ payload, filters: fallbackFilters }: PanelProps & WithPanelId) {
+  const filters = usePanelFilters("how-conversational", fallbackFilters);
+  const share = useMemo(() => replyShare(payload, filters), [payload, filters]);
+  const option = useMemo(() => replyLine(share), [share]);
+  const { order, msgs, replies } = share;
+
+  if (!order.length) {
+    return (
+      <Panel title="How conversational" subtitle={`${fmt(0)} replies · 0% of messages`}>
+        <EmptyState>{emptyLabel(payload, filters)}</EmptyState>
+      </Panel>
+    );
+  }
 
   return (
     <Panel
       title="How conversational"
-      subtitle={`${fmt(replyCount)} replies · ${pct(replyCount, msgs).toFixed(1)}% of ${fmt(
+      subtitle={`${fmt(replies)} replies · ${pct(replies, msgs).toFixed(1)}% of ${fmt(
         msgs,
       )} messages across ${bucketCountLabel(order.length, filters.bucket)}`}
     >

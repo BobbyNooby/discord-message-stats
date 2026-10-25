@@ -1,7 +1,9 @@
-import { C_DAY, C_MSGS } from "../api/types";
 import type { EChartsOption } from "echarts";
+import { useMemo } from "react";
 
+import { C_DAY, C_MSGS, type Payload } from "../api/types";
 import { EmptyState, Panel } from "../components/Panel";
+import type { Filters } from "../filters/reducer";
 import { selectVisibleCells } from "../filters/selectors";
 import { axisLabel, axisLine, splitLine, tooltip } from "../lib/chartStyle";
 import { EChart } from "../lib/echart";
@@ -12,12 +14,15 @@ import { MON, type PanelProps } from "./timeAggregates";
 import type { WithPanelId } from "./panelScope";
 import { usePanelFilters } from "./panelScope";
 
-/**
- * Which month of the year — `drawSeason`: every year pooled into twelve bars,
- * which is the only way a seasonal habit shows through six years of drift.
- */
-export function Season({ payload, filters: fallbackFilters }: PanelProps & WithPanelId) {
-  const filters = usePanelFilters("which-month-of-the-year", fallbackFilters);
+type MonthTotals = {
+  /** Messages per calendar month, January first, every year pooled. */
+  months: number[];
+  /** How many distinct years contributed. */
+  years: number;
+  total: number;
+};
+
+function monthTotals(payload: Payload, filters: Filters): MonthTotals {
   const months = new Array<number>(12).fill(0);
   const years = new Set<string>();
   let total = 0;
@@ -30,19 +35,12 @@ export function Season({ payload, filters: fallbackFilters }: PanelProps & WithP
     total += cell[C_MSGS];
     years.add(day.slice(0, 4));
   }
+  return { months, years: years.size, total };
+}
 
-  if (!total) {
-    return (
-      <Panel title="Which month of the year" subtitle={`${fmt(0)} messages · 12 months pooled`}>
-        <EmptyState>{emptyLabel(payload, filters)}</EmptyState>
-      </Panel>
-    );
-  }
-
+function monthBars(months: number[]): EChartsOption {
   const peak = Math.max(...months);
-  const peakMonth = MON[months.indexOf(peak)];
-
-  const option: EChartsOption = {
+  return {
     tooltip: {
       ...tooltip(),
       formatter: (p: any) => `${MON[p.dataIndex]} — <b>${fmt(Number(p.value))}</b> msgs`,
@@ -74,11 +72,32 @@ export function Season({ payload, filters: fallbackFilters }: PanelProps & WithP
       },
     ],
   };
+}
+
+/**
+ * Which month of the year — `drawSeason`: every year pooled into twelve bars,
+ * which is the only way a seasonal habit shows through six years of drift.
+ */
+export function Season({ payload, filters: fallbackFilters }: PanelProps & WithPanelId) {
+  const filters = usePanelFilters("which-month-of-the-year", fallbackFilters);
+  const totals = useMemo(() => monthTotals(payload, filters), [payload, filters]);
+  const option = useMemo(() => monthBars(totals.months), [totals]);
+  const { months, years, total } = totals;
+
+  if (!total) {
+    return (
+      <Panel title="Which month of the year" subtitle={`${fmt(0)} messages · 12 months pooled`}>
+        <EmptyState>{emptyLabel(payload, filters)}</EmptyState>
+      </Panel>
+    );
+  }
+
+  const peakMonth = MON[months.indexOf(Math.max(...months))];
 
   return (
     <Panel
       title="Which month of the year"
-      subtitle={`${fmt(total)} messages pooled over ${years.size} years · peak ${peakMonth}`}
+      subtitle={`${fmt(total)} messages pooled over ${years} years · peak ${peakMonth}`}
     >
       <EChart option={option} height={280} />
     </Panel>
