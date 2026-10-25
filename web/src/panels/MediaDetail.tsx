@@ -6,6 +6,7 @@ import type { MediaRow, Payload } from "../api/types";
 import { NARROW, useNarrow } from "../components/AppShell";
 import { Dialog, Sheet } from "../components/ui";
 import { kindLabel, postedLabel, providerLabel } from "../lib/mediaLabels";
+import { fmt } from "../lib/format";
 import { useReducedMotion } from "../lib/motion";
 import { swatch } from "../lib/palette";
 import { mediaName, thumbnailSrc } from "./MediaTile";
@@ -19,8 +20,6 @@ import { authorIndexById, MonthlyBars, monthlyStacks } from "./MonthlyBars";
  * that at once and fills in the people and the timeline from
  * `/api/media/detail` — one request, and only for the item someone tapped.
  */
-
-const nf = new Intl.NumberFormat("en-US");
 
 function dayLabel(iso: string | null | undefined, zone: string): string {
   if (!iso) return "—";
@@ -164,7 +163,7 @@ export function MediaDetailBody({ row, payload, mode }: { row: MediaRow; payload
                     <div className="flex items-baseline justify-between gap-2">
                       <span className="text-[var(--color-text)]">{person.name}</span>
                       <span className="tabular-nums text-[var(--color-muted)]">
-                        {nf.format(person.count)} {person.count === 1 ? "time" : "times"} · {share}%
+                        {fmt(person.count)} {person.count === 1 ? "time" : "times"} · {share}%
                       </span>
                     </div>
                     <div className="mt-0.5 h-1.5 rounded bg-[var(--color-surface-2)]" aria-hidden>

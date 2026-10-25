@@ -5,6 +5,7 @@ import type { Payload } from "../api/types";
 import { EmptyState, Panel } from "../components/Panel";
 import type { Filters } from "../filters/reducer";
 import { EChart } from "../lib/echart";
+import { fmt } from "../lib/format";
 import { swatch } from "../lib/palette";
 import { usePanelFilters } from "./panelScope";
 import { periodNote, periodPrefix, useWordView } from "./wordPeriod";
@@ -19,8 +20,6 @@ import { periodNote, periodPrefix, useWordView } from "./wordPeriod";
  */
 
 const LIMIT = 120;
-
-const fmt = (n: number) => Math.round(n).toLocaleString("en-US");
 
 /** Importing `echarts-wordcloud` is what registers the `wordCloud` series type. */
 function importWordCloudPlugin(): Promise<unknown> {

@@ -4,8 +4,16 @@ import type { EChartsOption } from "echarts";
 import { EmptyState, Panel } from "../components/Panel";
 import { bucketOf, selectVisibleCells } from "../filters/selectors";
 import { EChart } from "../lib/echart";
+import { fmt } from "../lib/format";
 import { swatch } from "../lib/palette";
-import { AXIS, TOOLTIP, bucketCountLabel, emptyLabel, fmt, pct, type PanelProps } from "./timeAggregates";
+import {
+  AXIS,
+  TOOLTIP,
+  bucketCountLabel,
+  emptyLabel,
+  pct,
+  type PanelProps,
+} from "./timeAggregates";
 import type { WithPanelId } from "./panelScope";
 import { usePanelFilters } from "./panelScope";
 

@@ -3,6 +3,7 @@ import { useMemo } from "react";
 
 import type { Author } from "../api/types";
 import { EChart } from "../lib/echart";
+import { fmt } from "../lib/format";
 import { chartTooltipBg, swatch, token } from "../lib/palette";
 
 /**
@@ -93,8 +94,6 @@ export function monthlyStacks(rows: MonthRow[], authors: Author[], active: boole
   };
 }
 
-const nf = new Intl.NumberFormat("en-US");
-
 export function MonthlyBars({
   stacks,
   unit,
@@ -118,7 +117,7 @@ export function MonthlyBars({
         formatter: (params: any) => {
           const items = (Array.isArray(params) ? params : [params]).filter((p: any) => p.value > 0);
           const month = Array.isArray(params) ? params[0]?.axisValue : params.axisValue;
-          const lines = items.map((p: any) => `${p.marker}${p.seriesName}: <b>${nf.format(p.value)}</b>`);
+          const lines = items.map((p: any) => `${p.marker}${p.seriesName}: <b>${fmt(p.value)}</b>`);
           return [`${monthLabel(String(month))}`, ...(lines.length ? lines : [`no ${unit}`])].join("<br>");
         },
       },

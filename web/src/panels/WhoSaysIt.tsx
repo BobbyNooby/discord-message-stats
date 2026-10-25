@@ -6,6 +6,7 @@ import type { Payload } from "../api/types";
 import { EmptyState, Panel } from "../components/Panel";
 import type { Filters } from "../filters/reducer";
 import { EChart } from "../lib/echart";
+import { fmt } from "../lib/format";
 import { swatch } from "../lib/palette";
 import { authorIndexById, monthLabel, MonthlyBars, monthlyStacks } from "./MonthlyBars";
 import { usePanelFilters } from "./panelScope";
@@ -19,8 +20,6 @@ import { answerFor, inPeriod, periodLabel, periodOf } from "./wordPeriod";
  * index. That same request carries the word's month-by-month timeline, so a
  * word nobody would find in the top 500 still gets both charts.
  */
-
-const fmt = (n: number) => Math.round(n).toLocaleString("en-US");
 
 export const OUTSIDE_SLICE = "No per-author breakdown — outside the indexed slice.";
 

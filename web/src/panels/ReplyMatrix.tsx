@@ -4,7 +4,8 @@ import type { Payload } from "../api/types";
 import { EmptyState, Panel } from "../components/Panel";
 import type { Filters } from "../filters/reducer";
 import { EChart } from "../lib/echart";
-import { AXIS_LINE, AXIS_TEXT, fmt, matrixData, TOOLTIP } from "./people";
+import { fmt } from "../lib/format";
+import { AXIS_LINE, AXIS_TEXT, matrixData, TOOLTIP } from "./people";
 import { usePanelFilters } from "./panelScope";
 
 const PIECES = [

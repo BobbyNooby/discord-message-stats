@@ -4,11 +4,11 @@ import { C_AUTHOR, C_DAY, C_MSGS } from "../api/types";
 import { EmptyState, Panel } from "../components/Panel";
 import { selectVisibleCells, yearOf } from "../filters/selectors";
 import { EChart } from "../lib/echart";
+import { fmt } from "../lib/format";
 import { swatch } from "../lib/palette";
 import {
   TOOLTIP,
   emptyLabel,
-  fmt,
   foldSlices,
   otherColor,
   yearCountLabel,

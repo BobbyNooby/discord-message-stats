@@ -4,8 +4,9 @@ import type { Payload } from "../api/types";
 import { EmptyState, Panel } from "../components/Panel";
 import type { Filters } from "../filters/reducer";
 import { EChart } from "../lib/echart";
+import { fmt } from "../lib/format";
 import { swatch } from "../lib/palette";
-import { fmt, tint, TOOLTIP, treemapData } from "./people";
+import { tint, TOOLTIP, treemapData } from "./people";
 import { usePanelFilters } from "./panelScope";
 
 /** "Volume by author and year" — activity cells, so both filters apply. */

@@ -1,9 +1,10 @@
 import { EmptyState, Panel } from "../components/Panel";
 import { StatCard } from "../components/StatCard";
 import { selectTotals, selectVisibleCells } from "../filters/selectors";
-import { emptyLabel, fmt, kfmt, type PanelProps } from "./timeAggregates";
+import { emptyLabel, type PanelProps } from "./timeAggregates";
 import type { WithPanelId } from "./panelScope";
 import { usePanelFilters } from "./panelScope";
+import { fmt, kfmt } from "../lib/format";
 
 const DASH = "—";
 

@@ -1,14 +1,13 @@
 import { EmptyState, Panel } from "../components/Panel";
 import { EChart } from "../lib/echart";
+import { fmt, pctOf } from "../lib/format";
 import {
   REMAINDER_COLOR,
   colorBarsOption,
   doughnutOption,
-  fmt,
   mediaCells,
   mediaColor,
   mediaShare,
-  pctOf,
   type MediaPanelProps,
 } from "./mediaData";
 import type { WithPanelId } from "./panelScope";

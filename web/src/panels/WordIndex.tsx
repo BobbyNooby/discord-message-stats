@@ -5,6 +5,7 @@ import { useWords, useWordSuggestions } from "../api/queries";
 import type { Payload } from "../api/types";
 import { EmptyState, Panel } from "../components/Panel";
 import { EChart } from "../lib/echart";
+import { fmt, kfmt } from "../lib/format";
 import { chartPeak, chartTooltipBg, swatch, token } from "../lib/palette";
 import { WORD_SEARCH_ID } from "../lib/shortcuts";
 import { usePanelFilters } from "./panelScope";
@@ -22,15 +23,6 @@ import { answerFor, periodLabel, periodNote, useWordView } from "./wordPeriod";
 
 /** How many bars the panel has room for, as in the mockup. */
 const INDEX_ROWS = 22;
-
-const nf = new Intl.NumberFormat("en-US");
-const fmt = (n: number) => nf.format(Math.round(n));
-const kfmt = (n: number) => {
-  const rounded = Math.round(n);
-  if (rounded >= 1e6) return `${(rounded / 1e6).toFixed(1).replace(/\.0$/, "")}M`;
-  if (rounded >= 1e3) return `${(rounded / 1e3).toFixed(1).replace(/\.0$/, "")}k`;
-  return String(rounded);
-};
 
 export type WordIndexProps = {
   /** The slice comes from `payload.words`, or from the period's while a time filter is on. */

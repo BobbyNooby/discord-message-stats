@@ -3,7 +3,8 @@ import { EmptyState, Panel } from "../components/Panel";
 import type { Filters } from "../filters/reducer";
 import { TERMS } from "../lib/glossary";
 import { EChart } from "../lib/echart";
-import { dur, fmt, hbarOption, responseRows, weightedAverage } from "./people";
+import { dur, fmt } from "../lib/format";
+import { hbarOption, responseRows, weightedAverage } from "./people";
 import { usePanelFilters } from "./panelScope";
 
 /** "How fast people reply" — `rollup_response`, so the time filter cannot apply. */

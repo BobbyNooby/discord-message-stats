@@ -1,10 +1,10 @@
 import { EmptyState, Panel } from "../components/Panel";
 import { EChart } from "../lib/echart";
+import { fmt } from "../lib/format";
 import { swatch } from "../lib/palette";
 import { foldPie, pieNote, pieOption } from "./chartShape";
 import {
   allTypeRows,
-  fmt,
   globalEmpty,
   horizontalBarsOption,
   sumRows,

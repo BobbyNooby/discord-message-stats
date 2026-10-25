@@ -2,6 +2,7 @@ import { useMemo, useRef, useState, type Dispatch } from "react";
 
 import type { Payload } from "../api/types";
 import type { DashboardAction } from "../filters/reducer";
+import { fmt } from "../lib/format";
 import { GLOBAL_SEARCH_ID } from "../lib/shortcuts";
 import type { PanelId } from "../panels/registry";
 
@@ -22,8 +23,6 @@ export type SearchHit =
   | { kind: "media"; label: string; detail: string; panelId: PanelId; url: string };
 
 const LIMIT = 8;
-
-const fmt = (n: number) => Math.round(n).toLocaleString("en-US");
 
 /** The cards each index belongs to, so a hit can take the reader there. */
 const TARGETS = {

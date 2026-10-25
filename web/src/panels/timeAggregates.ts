@@ -20,19 +20,6 @@ export const MON = [
   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
 ] as const;
 
-/** The mockup's number formatting, ported so a figure reads the same everywhere. */
-export function fmt(n: number): string {
-  return Math.round(n).toLocaleString("en-US");
-}
-
-export function kfmt(n: number): string {
-  const value = Math.round(n);
-  const abs = Math.abs(value);
-  if (abs >= 1e6) return `${(value / 1e6).toFixed(1).replace(/\.0$/, "")}M`;
-  if (abs >= 1e3) return `${(value / 1e3).toFixed(1).replace(/\.0$/, "")}k`;
-  return String(value);
-}
-
 export function pct(part: number, whole: number): number {
   return whole ? (100 * part) / whole : 0;
 }

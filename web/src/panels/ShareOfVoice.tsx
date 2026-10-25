@@ -3,12 +3,12 @@ import type { EChartsOption } from "echarts";
 import { EmptyState, Panel } from "../components/Panel";
 import { selectAuthors } from "../filters/selectors";
 import { EChart } from "../lib/echart";
+import { fmt } from "../lib/format";
 import { swatch } from "../lib/palette";
 import {
   LEGEND,
   TOOLTIP,
   emptyLabel,
-  fmt,
   foldSlices,
   otherColor,
   type PanelProps,

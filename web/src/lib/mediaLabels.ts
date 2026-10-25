@@ -12,6 +12,8 @@
  * provider name and gets "No provider" — the honest half of the distinction.
  */
 
+import { fmt } from "./format";
+
 /** Discord's word for "I could not name this". */
 const UNNAMED = "unprovidenced";
 
@@ -69,10 +71,8 @@ export function kindLabel(kind: string): string {
   return KIND_LABELS[kind] ?? kind;
 }
 
-const nf = new Intl.NumberFormat("en-US");
-
 /** "posted 63 times", not "63×": the count is a sentence a reader can read. */
 export function postedLabel(uses: number): string {
-  const count = nf.format(Math.round(uses));
+  const count = fmt(uses);
   return uses === 1 ? "posted 1 time" : `posted ${count} times`;
 }

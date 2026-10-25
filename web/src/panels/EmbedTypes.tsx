@@ -1,9 +1,10 @@
 import { EmptyState, Panel } from "../components/Panel";
 import { EChart } from "../lib/echart";
+import { fmt } from "../lib/format";
 import { swatch } from "../lib/palette";
 import type { Payload } from "../api/types";
 import { foldPie, pieNote, pieOption } from "./chartShape";
-import { allPairRows, fmt, horizontalBarsOption, sumRows } from "./mediaData";
+import { allPairRows, horizontalBarsOption, sumRows } from "./mediaData";
 import type { Filters } from "../filters/reducer";
 import { useChartShape } from "./panelScope";
 

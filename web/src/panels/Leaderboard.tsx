@@ -2,7 +2,8 @@ import type { Payload } from "../api/types";
 import { EmptyState, Panel } from "../components/Panel";
 import type { Filters } from "../filters/reducer";
 import { EChart } from "../lib/echart";
-import { fmt, hbarOption, kfmt, leaderLabel, leaderRows } from "./people";
+import { fmt, kfmt } from "../lib/format";
+import { hbarOption, leaderLabel, leaderRows } from "./people";
 import { usePanelFilters } from "./panelScope";
 
 /** "Who talks the most" — cells, so it honours the time filter (§11.1). Its

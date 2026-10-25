@@ -6,6 +6,7 @@ import { EmptyState, Panel } from "../components/Panel";
 import type { Filters } from "../filters/reducer";
 import { inRange } from "../filters/selectors";
 import { EChart } from "../lib/echart";
+import { fmt, kfmt } from "../lib/format";
 import { swatch } from "../lib/palette";
 import { usePanelFilters } from "./panelScope";
 
@@ -21,14 +22,6 @@ import { usePanelFilters } from "./panelScope";
 
 /** The top cut §5.11 documents; the long tail is already dropped from the payload. */
 const TOP_DOMAINS = 15;
-
-const fmt = (n: number) => Math.round(n).toLocaleString("en-US");
-const kfmt = (n: number) => {
-  const value = Math.round(n);
-  if (Math.abs(value) >= 1e6) return `${(value / 1e6).toFixed(1).replace(/\.0$/, "")}M`;
-  if (Math.abs(value) >= 1e3) return `${(value / 1e3).toFixed(1).replace(/\.0$/, "")}k`;
-  return String(value);
-};
 
 export function linkStatsLine(stats: Payload["linkStats"]): string {
   return `${fmt(stats.msgs)} msgs · ${fmt(stats.domains)} domains · ${fmt(stats.both)} unfurled`;

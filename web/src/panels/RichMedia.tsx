@@ -7,6 +7,7 @@ import { useMedia } from "../api/queries";
 import { EmptyState, Panel, CARD_COLUMNS, SectionHeading } from "../components/Panel";
 import { SectionScopeNote } from "../components/SectionScopeNote";
 import { EChart } from "../lib/echart";
+import { fmt } from "../lib/format";
 import { kindLabel, providerChoices, providerLabel } from "../lib/mediaLabels";
 import type { Filters } from "../filters/reducer";
 import { readMediaOpen, writeMediaState } from "../filters/persist";
@@ -39,9 +40,6 @@ const IN_CARD = 10;
 /** How many provider shortcuts the card offers before "More". Five fits one
  *  wrapped row at 390px, where the owner was looking for the switch. */
 const CARD_PROVIDERS = 5;
-
-const nf = new Intl.NumberFormat("en-US");
-const fmt = (n: number) => nf.format(Math.round(n));
 
 /**
  * Whether the top-50 view is open is a URL state, not local state: that is what

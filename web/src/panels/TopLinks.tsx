@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import type { Payload } from "../api/types";
 import { EmptyState, Panel } from "../components/Panel";
 import { EChart } from "../lib/echart";
+import { fmt, kfmt } from "../lib/format";
 import { swatch } from "../lib/palette";
 import type { Filters } from "../filters/reducer";
 
@@ -17,14 +18,6 @@ import type { Filters } from "../filters/reducer";
  */
 
 const TOP_LINKS = 13;
-
-const fmt = (n: number) => Math.round(n).toLocaleString("en-US");
-const kfmt = (n: number) => {
-  const value = Math.round(n);
-  if (Math.abs(value) >= 1e6) return `${(value / 1e6).toFixed(1).replace(/\.0$/, "")}M`;
-  if (Math.abs(value) >= 1e3) return `${(value / 1e3).toFixed(1).replace(/\.0$/, "")}k`;
-  return String(value);
-};
 
 export function TopLinks({ payload, }: { panelId?: string; payload: Payload; filters?: Filters }) {
   const rows = useMemo(

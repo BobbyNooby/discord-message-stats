@@ -25,27 +25,8 @@ import {
 } from "../api/types";
 import type { Filters } from "../filters/reducer";
 import { bucketOf, selectAuthors, selectVisibleCells } from "../filters/selectors";
+import { kfmt } from "../lib/format";
 import { swatch } from "../lib/palette";
-
-/* ---------- formatting: the mockup's `fmt`, `kfmt` and `dur` ---------- */
-
-export function fmt(value: number): string {
-  return Math.round(value).toLocaleString("en-US");
-}
-
-export function kfmt(value: number): string {
-  const n = Math.round(value);
-  if (n >= 1e6) return `${(n / 1e6).toFixed(1).replace(/\.0$/, "")}M`;
-  if (n >= 1e3) return `${(n / 1e3).toFixed(1).replace(/\.0$/, "")}k`;
-  return String(n);
-}
-
-export function dur(seconds: number): string {
-  if (!Number.isFinite(seconds)) return "—";
-  if (seconds < 90) return `${seconds.toFixed(0)}s`;
-  if (seconds < 5400) return `${(seconds / 60).toFixed(1)}m`;
-  return `${(seconds / 3600).toFixed(1)}h`;
-}
 
 /* ---------- shared chart styling ---------- */
 

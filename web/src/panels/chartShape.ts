@@ -12,6 +12,7 @@
  */
 import type { EChartsOption } from "echarts";
 
+import { fmt } from "../lib/format";
 import { swatch } from "../lib/palette";
 
 /** Eight named slices + "Other". A ninth colour is already indistinguishable. */
@@ -24,8 +25,6 @@ export const otherColor = () => swatch(11);
 const MUTED_TEXT = "#8a93a8";
 
 export type ShapeRow = { name: string; value: number };
-
-const fmt = (value: number) => Math.round(value).toLocaleString("en-US");
 
 /**
  * Sorted desc, the top `max` named, the rest summed into one "Other" slice.

@@ -23,6 +23,7 @@ import {
 import type { Filters } from "../filters/reducer";
 import { selectVisibleCells } from "../filters/selectors";
 import { EMPTY_AUTHORS, EMPTY_DATABASE, EMPTY_FILTER } from "../lib/empty";
+import { fmt, kfmt } from "../lib/format";
 import { swatch } from "../lib/palette";
 
 export type MediaPanelProps = { payload: Payload; filters: Filters };
@@ -53,22 +54,6 @@ const TOOLTIP = {
   borderColor: "#2b3244",
   textStyle: { color: "#e7eaf2", fontSize: 12 },
 };
-
-export function fmt(value: number): string {
-  return Math.round(value).toLocaleString("en-US");
-}
-
-export function kfmt(value: number): string {
-  const rounded = Math.round(value);
-  if (rounded >= 1e6) return `${(rounded / 1e6).toFixed(1).replace(/\.0$/, "")}M`;
-  if (rounded >= 1e3) return `${(rounded / 1e3).toFixed(1).replace(/\.0$/, "")}k`;
-  return String(rounded);
-}
-
-/** A share as the subtitle prints it: one decimal, and 0 rather than NaN. */
-export function pctOf(part: number, whole: number): string {
-  return whole > 0 ? ((100 * part) / whole).toFixed(1) : "0.0";
-}
 
 export function truncate(name: string, max: number): string {
   return name.length > max ? `${name.slice(0, max - 1)}…` : name;

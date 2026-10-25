@@ -5,13 +5,12 @@ import { Chip } from "../components/AppShell";
 import { EmptyState, GlobalOnlyBadge, Panel } from "../components/Panel";
 import type { Filters } from "../filters/reducer";
 import { EChart } from "../lib/echart";
+import { dur, fmt } from "../lib/format";
 import { swatch } from "../lib/palette";
 import {
   AXIS_TEXT,
-  dur,
   editRateRows,
   editTrend,
-  fmt,
   hbarOption,
   SPLIT_LINE,
   TOOLTIP,

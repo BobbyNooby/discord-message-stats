@@ -4,8 +4,9 @@ import type { Payload } from "../api/types";
 import { EmptyState, Panel } from "../components/Panel";
 import type { Filters } from "../filters/reducer";
 import { EChart } from "../lib/echart";
+import { fmt, kfmt } from "../lib/format";
 import { swatch } from "../lib/palette";
-import { AXIS_TEXT, fmt, globalTotals, kfmt, sendRecv, SPLIT_LINE, TOOLTIP } from "./people";
+import { AXIS_TEXT, globalTotals, sendRecv, SPLIT_LINE, TOOLTIP } from "./people";
 import { usePanelFilters } from "./panelScope";
 
 /**

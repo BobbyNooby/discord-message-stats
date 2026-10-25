@@ -4,8 +4,9 @@ import { C_DAY, C_MSGS } from "../api/types";
 import { EmptyState, Panel } from "../components/Panel";
 import { selectVisibleCells, yearOf } from "../filters/selectors";
 import { EChart } from "../lib/echart";
+import { fmt, kfmt } from "../lib/format";
 import { chartPeak, swatch, token } from "../lib/palette";
-import { AXIS, TOOLTIP, emptyLabel, fmt, kfmt, yearCountLabel, type PanelProps } from "./timeAggregates";
+import { AXIS, TOOLTIP, emptyLabel, yearCountLabel, type PanelProps } from "./timeAggregates";
 import type { WithPanelId } from "./panelScope";
 import { usePanelFilters } from "./panelScope";
 

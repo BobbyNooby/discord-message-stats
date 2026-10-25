@@ -2,7 +2,8 @@ import type { Payload } from "../api/types";
 import { EmptyState, Panel } from "../components/Panel";
 import type { Filters } from "../filters/reducer";
 import { EChart } from "../lib/echart";
-import { fmt, hbarOption, kfmt, starterRows } from "./people";
+import { fmt, kfmt } from "../lib/format";
+import { hbarOption, starterRows } from "./people";
 import { usePanelFilters } from "./panelScope";
 
 /** "Who starts conversations" — `rollup_starter`, so the time filter cannot apply. */

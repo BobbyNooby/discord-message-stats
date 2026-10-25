@@ -2,6 +2,7 @@ import type { EChartsOption, LineSeriesOption } from "echarts";
 
 import { EmptyState, Panel } from "../components/Panel";
 import { EChart } from "../lib/echart";
+import { fmt, kfmt } from "../lib/format";
 import { swatch } from "../lib/palette";
 import {
   AXIS,
@@ -10,8 +11,6 @@ import {
   bucketCountLabel,
   bucketSeries,
   emptyLabel,
-  fmt,
-  kfmt,
   type PanelProps,
 } from "./timeAggregates";
 import type { WithPanelId } from "./panelScope";
