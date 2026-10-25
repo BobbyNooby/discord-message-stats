@@ -32,6 +32,8 @@ import { Season } from "./Season";
 import { TextVsMedia } from "./TextVsMedia";
 import { TopLinks } from "./TopLinks";
 import { WordCloud } from "./WordCloud";
+import { WordLift } from "./WordLift";
+import { ReplyMatrix } from "./ReplyMatrix";
 
 const payload = {
   authors: [{ id: "u1", name: "A", msgs: 5 }],
@@ -288,5 +290,68 @@ describe("the remaining palette literals read the theme", () => {
     cssValues({ "--chart-8": "#111111" });
     render(<TopLinks payload={payload} />);
     expect(barColor(captured.option)).toBe("#111111");
+  });
+});
+
+describe("the chart chrome reads the theme", () => {
+  type Chrome = {
+    tooltip: { backgroundColor: string; borderColor: string; textStyle: { color: string } };
+    xAxis: { axisLabel: { color: string }; axisLine: { lineStyle: { color: string } } };
+    yAxis: { splitLine: { lineStyle: { color: string } } };
+  };
+
+  it("draws the tooltip, the axes and the gridlines from the base tokens", () => {
+    cssValues({
+      "--chart-tooltip-bg": "#010101",
+      "--color-line": "#020202",
+      "--color-text": "#030303",
+      "--color-muted": "#040404",
+      "--color-surface-2": "#050505",
+    });
+    render(<MessagesPerYear payload={payload} filters={filters} />);
+
+    const option = captured.option as Chrome;
+    expect(option.tooltip).toMatchObject({
+      backgroundColor: "#010101",
+      borderColor: "#020202",
+      textStyle: { color: "#030303" },
+    });
+    expect(option.xAxis.axisLabel.color).toBe("#040404");
+    expect(option.xAxis.axisLine.lineStyle.color).toBe("#020202");
+    expect(option.yAxis.splitLine.lineStyle.color).toBe("#050505");
+  });
+
+  it("keeps the upstream chrome when nothing overrides it", () => {
+    render(<MessagesPerYear payload={payload} filters={filters} />);
+
+    const option = captured.option as Chrome;
+    expect(option.tooltip.backgroundColor).toBe("#171b25");
+    expect(option.xAxis.axisLabel.color).toBe("#8a93a8");
+    expect(option.yAxis.splitLine.lineStyle.color).toBe("#1b202c");
+  });
+
+  type Pieces = { visualMap: { pieces: { color: string }[] } };
+
+  it("colours the reply matrix's steps from --chart-matrix-N", () => {
+    cssValues({ "--chart-matrix-5": "#111111", "--chart-matrix-1": "#222222" });
+    render(<ReplyMatrix payload={{ ...payload, edges: [[0, 0, 3]] }} filters={filters} />);
+
+    const pieces = (captured.option as Pieces).visualMap.pieces.map((piece) => piece.color);
+    // Busiest first, then the empty cell on the surface colour.
+    expect(pieces).toEqual(["#111111", "#7180f0", "#3c56c4", "#2a3a78", "#222222", "#141822"]);
+  });
+
+  it("colours whose-word-is-it's lift steps from --chart-lift-N", async () => {
+    cssValues({ "--chart-lift-5": "#111111" });
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <WordLift payload={{ ...payload, authorWordTotals: [14] }} filters={filters} />
+      </QueryClientProvider>,
+    );
+
+    await waitFor(() => expect(captured.option).not.toBeNull());
+    const pieces = (captured.option as Pieces).visualMap.pieces.map((piece) => piece.color);
+    // 3×+ first, rare last.
+    expect(pieces).toEqual(["#111111", "#c9cdfc", "#7180f0", "#2a3a78", "#161c2e"]);
   });
 });

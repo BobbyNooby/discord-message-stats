@@ -8,6 +8,13 @@ const RAW = import.meta.glob("./*.tsx", {
   eager: true,
 }) as Record<string, string>;
 
+/** Every non-test source, for the guard that no component spells a colour out. */
+const SOURCES = import.meta.glob(["./**/*.{ts,tsx}", "!./**/*.test.{ts,tsx}"], {
+  query: "?raw",
+  import: "default",
+  eager: true,
+}) as Record<string, string>;
+
 const TOKEN_FILE = new URL("../../theme/tokens.css", import.meta.url);
 
 /** The theme file lives outside the Vite root, so read it straight off disk. */
@@ -63,5 +70,20 @@ describe("the theme seam", () => {
     expect(theme, "main.tsx does not import ../../theme/tokens.css").toBeGreaterThanOrEqual(0);
     // CSS order in the bundle follows JS import order: last import wins.
     expect(theme).toBeGreaterThan(base);
+  });
+});
+
+describe("where a chart colour may be written", () => {
+  it("spells no colour outside the palette, so a theme reaches every card", () => {
+    // A literal in a panel is a colour the theme cannot reach: it has to be a
+    // token in styles.css, read through lib/palette.ts at draw time.
+    const literal = /["'`](?:#[0-9a-fA-F]{3,8}|rgba?\(\s*\d)/;
+    const offenders = Object.entries(SOURCES)
+      .filter(([file]) => !file.endsWith("/lib/palette.ts"))
+      .filter(([, text]) => literal.test(text))
+      .map(([file]) => file);
+
+    expect(Object.keys(SOURCES).length).toBeGreaterThan(50);
+    expect(offenders).toEqual([]);
   });
 });
