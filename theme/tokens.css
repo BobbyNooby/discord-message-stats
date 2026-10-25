@@ -50,7 +50,26 @@
  *   --chart-heat-edge: #11141c;
  *   --chart-tooltip-bg: #171b25;
  *   --chart-axis-dim: #5b6478;
+ *   --chart-guide: #3a4257;
  *
- * web/src/lib/palette.ts reads the `--chart-*` variables and falls back to the
- * same values, so an override reaches a chart without a component edit.
+ * Particular charts (radar, reply matrix, word lift, burstiness boxes, the
+ * reply network, providers, the "everyone else" slice, gauges):
+ *   --chart-radar-line: #252c3d;
+ *   --chart-radar-band-1: rgba(255,255,255,.012);
+ *   --chart-radar-band-2: rgba(255,255,255,.03);
+ *   --chart-matrix-1: #1c2542;  …through…  --chart-matrix-5: #c3c8fb;
+ *   --chart-lift-1: #161c2e;    …through…  --chart-lift-5: #eb459e;
+ *   --chart-box-fill: rgba(88,101,242,.22);
+ *   --chart-box-line: #7180f0;
+ *   --chart-box-emphasis: #c3c8fb;
+ *   --chart-outlier: rgba(235,69,158,.5);
+ *   --chart-link: #4a5570;
+ *   --chart-link-emphasis: #8ea1ff;
+ *   --chart-provider: #6c8cff;
+ *   --chart-remainder: #2a3145;
+ *   --chart-gauge-track: #1c2230;
+ *
+ * The full list with every step of the ramps is web/src/styles.css.
+ * web/src/charts/palette.ts reads these variables at draw time and falls back
+ * to the same values, so an override reaches a chart without a component edit.
  */
