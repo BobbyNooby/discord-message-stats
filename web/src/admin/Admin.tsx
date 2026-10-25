@@ -144,10 +144,10 @@ export function Admin() {
           </p>
         </div>
         <div className="flex items-center gap-3 text-xs">
-          <a className="underline" href="/">
+          <a className="inline-flex items-center underline" href="/">
             Back to the stats page
           </a>
-          <a className="underline" href="/auth/logout">
+          <a className="inline-flex items-center underline" href="/auth/logout">
             Sign out
           </a>
           <button

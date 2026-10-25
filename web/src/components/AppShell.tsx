@@ -129,12 +129,13 @@ export function AppShell({
             {header}
             <CopyViewLink />
             {canAdmin ? (
-              <a href="/admin" className="rounded border border-[var(--color-line)] px-2 py-0.5">
+              <a href="/admin" className="inline-flex items-center rounded border border-[var(--color-line)] px-2 py-0.5">
                 Admin
               </a>
             ) : null}
-            {/* Ends this browser's session on the server, not only the cookie. */}
-            <a href="/auth/logout" className="underline">
+            {/* Ends this browser's session on the server, not only the cookie. On a
+                phone a header link is a 40px tap target, so its text is centred. */}
+            <a href="/auth/logout" className="inline-flex items-center underline">
               Sign out
             </a>
           </div>
