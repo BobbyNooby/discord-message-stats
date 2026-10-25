@@ -5,7 +5,7 @@
  * each failure means here: a 401 becomes `Unauthorized` (the caller shows the
  * login wall), everything else is an `ApiError` carrying the server's `detail`.
  *
- * Response shapes are read from `src/discord_stats/api/admin.py`, not guessed.
+ * Response shapes are read from `src/discord_stats/api/admin/`, not guessed.
  * One rule holds here as everywhere: the bot token's value is never sent to the
  * browser, so nothing in this file returns one. `saveToken` is the one call
  * that sends a token up; the server checks it, stores it and never echoes it.
@@ -213,7 +213,7 @@ export type ProgressLast = {
 };
 
 /**
- * One poll's answer (`src/discord_stats/api/progress.py`): the run state,
+ * One poll's answer (`src/discord_stats/api/admin/progress.py`): the run state,
  * every family, and the events newer than the `since` that was asked for. The
  * run state, the totals and the freshness facts all arrive in this one body.
  */
