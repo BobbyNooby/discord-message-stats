@@ -14,7 +14,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from discord_stats.api.app import create_app
-from tests.conftest import cfg_fixture
+from discord_scraper.testing import cfg_fixture
 
 INDEX_MARKER = "SPA-INDEX-MARKER"
 SENTINEL_TEXT = "root:x:0:0:root:/root:/bin/bash\nSENTINEL-OUTSIDE-STATIC\n"

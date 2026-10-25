@@ -15,7 +15,7 @@ from discord_scraper.cli import main
 from discord_scraper.rollups import identity, query
 from discord_scraper.rollups.build import config_digest, rebuild_all
 from discord_scraper.rollups.schema import is_stale
-from tests.conftest import author_raw, cfg_fixture, seed_messages
+from discord_scraper.testing import author_raw, cfg_fixture, seed_messages
 
 # u9 is the alt: it must disappear from the author list once merged into u1.
 ALT_ROWS = (

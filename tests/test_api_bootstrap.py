@@ -23,7 +23,7 @@ def test_health(seeded_db_path, tmp_path):
 
 
 def cfg_for(tmp_path):
-    from tests.conftest import cfg_fixture
+    from discord_scraper.testing import cfg_fixture
 
     return cfg_fixture(tmp_path)
 
@@ -197,7 +197,7 @@ def test_word_suggestions_complete_from_the_full_index(client):
 def test_media_detail_says_who_posted_it_and_links_the_first_post(client, conn, db_cfg):
     cfg, path = db_cfg
     from discord_scraper.rollups.build import rebuild_all
-    from tests.conftest import author_raw, seed_messages
+    from discord_scraper.testing import author_raw, seed_messages
 
     gif = [{"type": "gifv", "url": "https://tenor.com/view/cat", "provider": {"name": "Tenor"}}]
     seed_messages(conn, [
@@ -229,7 +229,7 @@ def test_a_period_with_no_bounds_is_the_payloads_own_word_data(client):
 def test_a_period_keeps_only_its_months_and_years(client, conn, db_cfg):
     cfg, _path = db_cfg
     from discord_scraper.rollups.build import rebuild_all
-    from tests.conftest import author_raw, seed_messages
+    from discord_scraper.testing import author_raw, seed_messages
 
     seed_messages(conn, [
         ("y1", "u1", "u1handle", "zebra", "2021-03-05T10:00:00+00:00", None, None, 0, 0,
@@ -343,7 +343,7 @@ def test_link_stats_report_messages_hosts_and_unfurled(client, conn):
     and `both` is messages carrying a link *and* an embed — none of which the
     top-60 grain can answer.
     """
-    from tests.conftest import author_raw, seed_messages
+    from discord_scraper.testing import author_raw, seed_messages
 
     seed_messages(conn, [
         ("u1", "u1", "u1handle", "look https://youtube.com/watch?v=x",
@@ -378,7 +378,7 @@ def cfg_for_writes(conn):
 
 
 def test_meta_reports_the_rollup_timezone_and_freshness(client, conn):
-    from tests.conftest import author_raw, seed_messages
+    from discord_scraper.testing import author_raw, seed_messages
 
     meta = client.get("/api/bootstrap").json()["meta"]
     assert meta["timezone"] == "UTC"     # the zone the numbers were built in
@@ -403,7 +403,7 @@ def test_meta_carries_the_ui_display_settings(db_cfg, tmp_path, conn, client):
 
     from discord_stats.api.app import create_app
     from discord_stats.auth.session import SESSION_COOKIE, Level, establish_session
-    from tests.conftest import cfg_fixture
+    from discord_scraper.testing import cfg_fixture
 
     # The documented defaults, from a config that sets neither.
     defaults = client.get("/api/bootstrap").json()["meta"]
@@ -429,7 +429,7 @@ def test_a_timezone_change_is_served_with_a_warning(db_cfg, tmp_path, conn):
 
     from discord_stats.api.app import create_app
     from discord_stats.auth.session import SESSION_COOKIE, Level, establish_session
-    from tests.conftest import cfg_fixture
+    from discord_scraper.testing import cfg_fixture
 
     _cfg, path = db_cfg
     moved = cfg_fixture(tmp_path, timezone="Europe/London")

@@ -15,7 +15,7 @@ def test_recent_returns_the_newest_first_with_names(client):
 
 
 def test_recent_truncates_a_long_body(client, conn):
-    from tests.conftest import author_raw, seed_messages
+    from discord_scraper.testing import author_raw, seed_messages
 
     seed_messages(conn, [("long", "u1", "u1handle", "x" * 400,
                           "2026-04-01T10:00:00+00:00", None, None, 0, 0,
@@ -35,7 +35,7 @@ def test_show_recent_zero_restores_the_strict_rule(seeded_db_path, tmp_path):
 
     from discord_stats.api.app import create_app
     from discord_stats.auth.session import SESSION_COOKIE, Level, establish_session
-    from tests.conftest import cfg_fixture
+    from discord_scraper.testing import cfg_fixture
 
     cfg = cfg_fixture(tmp_path, ui={"show_recent": 0})
     client = TestClient(create_app(cfg, seeded_db_path))

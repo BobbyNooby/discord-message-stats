@@ -17,7 +17,7 @@ from discord_stats.api.app import create_app
 from discord_stats.auth.admins import is_admin
 from discord_stats.auth.allowlist import decision_for
 from discord_stats.auth.session import Level, establish_session, session_level
-from tests.conftest import cfg_fixture
+from discord_scraper.testing import cfg_fixture
 
 
 # --- the seed and the predicate ---------------------------------------------

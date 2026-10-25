@@ -22,7 +22,7 @@ from discord_scraper.rollups.build import (
     rebuild_all,
 )
 from discord_scraper.rollups.schema import FAMILIES
-from tests.conftest import cfg_fixture
+from discord_scraper.testing import cfg_fixture
 
 
 def _events(conn, **where):

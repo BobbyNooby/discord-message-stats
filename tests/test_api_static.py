@@ -3,7 +3,7 @@
 from fastapi.testclient import TestClient
 
 from discord_stats.api.app import create_app
-from tests.conftest import cfg_fixture
+from discord_scraper.testing import cfg_fixture
 
 
 def _spa(tmp_path):

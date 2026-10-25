@@ -14,7 +14,7 @@ from discord_stats.auth.session import (
     session_level,
 )
 from discord_scraper.rollups.schema import create_control_tables, create_rollup_tables
-from tests.conftest import cfg_fixture
+from discord_scraper.testing import cfg_fixture
 
 
 # --- sessions ----------------------------------------------------------------

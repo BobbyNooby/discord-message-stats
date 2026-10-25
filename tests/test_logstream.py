@@ -26,7 +26,7 @@ from discord_stats.api.app import create_app
 from discord_stats.api.progress import read_events
 from discord_stats.auth.session import SESSION_COOKIE, Level, establish_session
 from discord_scraper.rollups.build import record_event
-from tests.conftest import cfg_fixture
+from discord_scraper.testing import cfg_fixture
 
 
 def _bounded(*chunks):

@@ -9,7 +9,7 @@ import sqlite3
 
 import pytest
 
-from tests.conftest import cfg_fixture
+from discord_scraper.testing import cfg_fixture
 
 
 def _config_table(conn):

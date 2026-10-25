@@ -15,7 +15,7 @@ def test_the_api_boot_adds_the_channel_index(seeded_db_path, tmp_path):
     import sqlite3
 
     from discord_stats.api.app import create_app
-    from tests.conftest import cfg_fixture
+    from discord_scraper.testing import cfg_fixture
 
     before = {row[1] for row in sqlite3.connect(seeded_db_path).execute("PRAGMA index_list(messages)")}
     assert "idx_channel" not in before

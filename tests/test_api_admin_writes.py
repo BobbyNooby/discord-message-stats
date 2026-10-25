@@ -9,7 +9,7 @@ import sqlite3
 
 from discord_scraper.rollups.build import rebuild_all, config_digest
 from discord_scraper.rollups.schema import is_stale
-from tests.conftest import cfg_fixture
+from discord_scraper.testing import cfg_fixture
 
 
 def test_a_merge_is_written_and_a_rebuild_folds_the_accounts(admin_client, conn, tmp_path):

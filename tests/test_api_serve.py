@@ -155,7 +155,7 @@ def test_the_spa_lookup_never_raises():
 
 def test_tls_flags_must_come_as_a_pair(tmp_path, capsys):
     """A certificate without its key would silently serve plain HTTP."""
-    from tests.conftest import cfg_fixture
+    from discord_scraper.testing import cfg_fixture
 
     database = _database(tmp_path)
     cfg_fixture(tmp_path)   # never the checkout's untracked config.toml

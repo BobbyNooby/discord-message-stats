@@ -17,7 +17,7 @@ from fastapi.testclient import TestClient
 
 from discord_stats.api.app import create_app
 from discord_scraper.cli import build_parser
-from tests.conftest import cfg_fixture
+from discord_scraper.testing import cfg_fixture
 
 
 def test_the_auto_login_shim_is_gone_from_the_parser():

@@ -47,7 +47,7 @@ def test_a_rebuild_invalidates_the_cached_payload(client, conn, cfg, monkeypatch
 
 def test_freshness_is_recomputed_even_when_the_payload_is_cached(client, conn):
     """A new message changes `stale` without changing the rollups."""
-    from tests.conftest import author_raw, seed_messages
+    from discord_scraper.testing import author_raw, seed_messages
 
     assert client.get("/api/bootstrap").json()["meta"]["stale"] is False
 
