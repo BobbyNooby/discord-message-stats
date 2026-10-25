@@ -24,9 +24,7 @@ router = APIRouter()
 @router.post("/sessions/revoke-all")
 def revoke_all_sessions(request: Request) -> dict:
     """Sign everybody else out. The caller keeps their own session."""
-    from discord_stats.auth.session import hash_token
-
-    token = request.cookies.get("dsh_session", "")
+    token = request.cookies.get(SESSION_COOKIE, "")
     with database(request, write=True) as conn:
         cursor = conn.execute(
             "UPDATE sessions SET revoked = 1 WHERE revoked = 0 AND id != ?", (hash_token(token),)
