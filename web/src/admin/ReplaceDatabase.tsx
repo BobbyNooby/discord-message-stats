@@ -35,6 +35,7 @@ import {
   type SaveMode,
 } from "./shared";
 import { TimezonePicker } from "./TimezonePicker";
+import { useAction } from "./useAction";
 
 export function ReplaceDatabase({
   status,
@@ -51,16 +52,25 @@ export function ReplaceDatabase({
 }) {
   const [channel, setChannel] = useState(config?.effective.channel_id ?? "");
   const [timezone, setTimezone] = useState(config?.effective.timezone ?? "");
-  const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
-  const [saveNotice, setSaveNotice] = useState<string | null>(null);
+  const {
+    busy: saving,
+    notice: saveNotice,
+    error: saveError,
+    run: runSave,
+    setNotice: setSaveNotice,
+  } = useAction();
 
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<UploadPreview | null>(null);
-  const [uploading, setUploading] = useState(false);
   const [jobRunning, setJobRunning] = useState(false);
-  const [uploadError, setUploadError] = useState<string | null>(null);
-  const [uploadNotice, setUploadNotice] = useState<string | null>(null);
+  const {
+    busy: uploading,
+    notice: uploadNotice,
+    error: uploadError,
+    run: runUpload,
+    setNotice: setUploadNotice,
+    setError: setUploadError,
+  } = useAction();
   const fileInput = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -69,23 +79,15 @@ export function ReplaceDatabase({
     setTimezone(config.effective.timezone);
   }, [config]);
 
-  async function save(mode: SaveMode) {
-    setSaving(true);
-    setSaveError(null);
-    setSaveNotice(null);
-    try {
+  const save = (mode: SaveMode) =>
+    runSave(async () => {
       await onSave({ channel_id: channel.trim(), timezone: timezone.trim() }, mode);
       setSaveNotice(
         mode === "recalculate"
           ? "Configuration saved and a rebuild queued."
           : "Configuration saved. The cache is stale until you run Recalculate all.",
       );
-    } catch (error) {
-      setSaveError((error as Error).message);
-    } finally {
-      setSaving(false);
-    }
-  }
+    });
 
   async function stage(event: FormEvent) {
     event.preventDefault();
@@ -93,44 +95,36 @@ export function ReplaceDatabase({
       setUploadError("Choose a database file first.");
       return;
     }
-    setUploading(true);
-    setUploadError(null);
-    setUploadNotice(null);
     setJobRunning(false);
-    try {
-      setPreview(await uploadDatabase(file));
-    } catch (error) {
-      if (error instanceof JobRunning) {
+    await runUpload(async () => {
+      try {
+        setPreview(await uploadDatabase(file));
+      } catch (error) {
         // Not a failure: the operator just has to wait (§10.6 step 1).
-        setJobRunning(true);
-      } else {
-        setUploadError((error as Error).message);
+        if (error instanceof JobRunning) setJobRunning(true);
+        else throw error;
       }
-    } finally {
-      setUploading(false);
-    }
+    });
   }
 
   async function confirm() {
     if (!preview) return;
-    setUploading(true);
-    setUploadError(null);
-    try {
-      const done = await commitUpload(preview.upload_id);
-      onDirty();
-      setPreview(null);
-      setFile(null);
-      if (fileInput.current) fileInput.current.value = "";
-      setUploadNotice(
-        `Database replaced with ${done.rows} messages (${formatDay(done.first)} → ${formatDay(done.last)}). ` +
-          (done.backup ? `The previous file is kept as ${done.backup}. ` : "") +
-          `Rebuild queued as job #${done.job.id}.`,
-      );
-    } catch (error) {
-      setUploadError((error as Error).message);
-    } finally {
-      setUploading(false);
-    }
+    const staged = preview;
+    await runUpload(
+      async () => {
+        const done = await commitUpload(staged.upload_id);
+        onDirty();
+        setPreview(null);
+        setFile(null);
+        if (fileInput.current) fileInput.current.value = "";
+        setUploadNotice(
+          `Database replaced with ${done.rows} messages (${formatDay(done.first)} → ${formatDay(done.last)}). ` +
+            (done.backup ? `The previous file is kept as ${done.backup}. ` : "") +
+            `Rebuild queued as job #${done.job.id}.`,
+        );
+      },
+      { keepNotice: true },
+    );
   }
 
   async function discard() {

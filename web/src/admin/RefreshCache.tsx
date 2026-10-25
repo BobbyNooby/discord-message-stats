@@ -30,6 +30,7 @@ import {
   type FamilyProgress,
 } from "./ProgressView";
 import { TokenBox } from "./TokenBox";
+import { useAction } from "./useAction";
 import { useProgress } from "./useProgress";
 import {
   Def,
@@ -141,16 +142,18 @@ export function RefreshCache({
   const queryClient = useQueryClient();
   const jobs = useQuery({ queryKey: ["admin", "jobs"], queryFn: () => listJobs(50) });
   const feed = useProgress();
-  const [notice, setNotice] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [queued, setQueued] = useState<string | null>(null);
-  const [jobError, setJobError] = useState<string | null>(null);
+  const { busy, notice, error, run: runRebuild, setNotice } = useAction();
+  const { notice: queued, error: jobError, run: runJob, setNotice: setQueued } = useAction();
   const [cronEnabled, setCronEnabled] = useState(config?.effective.cron_enabled ?? true);
   const [cronHours, setCronHours] = useState(String(config?.effective.cron_hours ?? 6));
-  const [cronSaving, setCronSaving] = useState(false);
-  const [cronNotice, setCronNotice] = useState<string | null>(null);
-  const [cronError, setCronError] = useState<string | null>(null);
+  const {
+    busy: cronSaving,
+    notice: cronNotice,
+    error: cronError,
+    run: runCron,
+    setNotice: setCronNotice,
+    setError: setCronError,
+  } = useAction();
 
   const families = Object.entries(status.rollups);
   const totalRows = families.reduce((total, [, family]) => total + family.rows, 0);
@@ -192,25 +195,22 @@ export function RefreshCache({
     if (feed.data?.running) setNotice(null);
   }, [feed.data?.running]);
 
-  async function run() {
-    setBusy(true);
-    setError(null);
-    // The worker only picks a queued job up on its next pass, so poll from the
-    // click: waiting for the stale flag would only start the feed once the
-    // rebuild is already over.
-    feed.kick();
-    try {
-      const job = await recalculate();
-      onDirty();
-      setNotice(`Rebuild queued as job #${job.id} (${job.status}). The cache stays stale until it finishes.`);
-      await queryClient.invalidateQueries({ queryKey: ["admin", "jobs"] });
-      await queryClient.invalidateQueries({ queryKey: ["admin", "status"] });
-    } catch (failure) {
-      setError((failure as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  }
+  // The last "queued" line stays up until the next one replaces it.
+  const run = () =>
+    runRebuild(
+      async () => {
+        // The worker only picks a queued job up on its next pass, so poll from
+        // the click: waiting for the stale flag would only start the feed once
+        // the rebuild is already over.
+        feed.kick();
+        const job = await recalculate();
+        onDirty();
+        setNotice(`Rebuild queued as job #${job.id} (${job.status}). The cache stays stale until it finishes.`);
+        await queryClient.invalidateQueries({ queryKey: ["admin", "jobs"] });
+        await queryClient.invalidateQueries({ queryKey: ["admin", "status"] });
+      },
+      { keepNotice: true },
+    );
 
   async function saveCron(mode: SaveMode) {
     const hours = Number(cronHours);
@@ -221,35 +221,27 @@ export function RefreshCache({
       setCronError("The interval must be a whole number of hours from 1 to 24.");
       return;
     }
-    setCronSaving(true);
-    setCronNotice(null);
-    setCronError(null);
-    try {
+    await runCron(async () => {
       await onSave({ cron_enabled: cronEnabled, cron_hours: hours }, mode);
       setCronNotice(
         mode === "recalculate"
           ? "Schedule saved and a rebuild queued."
           : "Schedule saved. The cache is stale until you run Recalculate all.",
       );
-    } catch (failure) {
-      setCronError((failure as Error).message);
-    } finally {
-      setCronSaving(false);
-    }
+    });
   }
 
-  async function enqueue(kind: JobKind, label: string, changesData: boolean) {
-    setJobError(null);
-    try {
-      const job = await createJob(kind);
-      if (changesData) onDirty();
-      setQueued(`${label} queued as job #${job.id} (${job.status}).`);
-      await queryClient.invalidateQueries({ queryKey: ["admin", "jobs"] });
-      await queryClient.invalidateQueries({ queryKey: ["admin", "status"] });
-    } catch (failure) {
-      setJobError((failure as Error).message);
-    }
-  }
+  const enqueue = (kind: JobKind, label: string, changesData: boolean) =>
+    runJob(
+      async () => {
+        const job = await createJob(kind);
+        if (changesData) onDirty();
+        setQueued(`${label} queued as job #${job.id} (${job.status}).`);
+        await queryClient.invalidateQueries({ queryKey: ["admin", "jobs"] });
+        await queryClient.invalidateQueries({ queryKey: ["admin", "status"] });
+      },
+      { keepNotice: true },
+    );
 
   return (
     <Section id="refresh-cache" title="Refresh the cache">

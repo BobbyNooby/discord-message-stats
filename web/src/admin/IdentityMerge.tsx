@@ -20,6 +20,7 @@ import { EmptyState } from "../components/Panel";
 import { RebuildRequired } from "./Rebuild";
 import { putIdentity, type AdminMove, type MergeEntry } from "./api";
 import { Notice, SubSection } from "./shared";
+import { useAction } from "./useAction";
 
 type Merge = { canonical: string; members: string[] };
 
@@ -125,9 +126,7 @@ export function IdentityMerge({
   const [pickB, setPickB] = useState("");
   const [nameChoice, setNameChoice] = useState<"a" | "b" | "custom" | null>(null);
   const [customName, setCustomName] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [notice, setNotice] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const { busy: saving, notice, error, run, setNotice, setError } = useAction();
   const [undoes, setUndoes] = useState<MergeEntry[] | null>(null);
   /** Pins the last write introduced, so undo can drop them (§11.6). */
   const [undoClear, setUndoClear] = useState<string[]>([]);
@@ -237,13 +236,10 @@ export function IdentityMerge({
     pinned?: { canonical: string; name: string },
     rebuildWhy = "A rebuild is required to apply this change.",
   ) {
-    setSaving(true);
-    setNotice(null);
-    setError(null);
-    // Immediate and conservative: a write is going out, so the cache may be
-    // stale until a rebuild (§11.6).
-    onDirty();
-    try {
+    await run(async () => {
+      // Immediate and conservative: a write is going out, so the cache may be
+      // stale until a rebuild (§11.6).
+      onDirty();
       const written = await putIdentity(wireFrom(next, pinned));
       if (written.cache_stale) onDirty();
       setMerges(mergesFromWire(written.merges));
@@ -254,32 +250,22 @@ export function IdentityMerge({
       setRebuildWhy(rebuildWhy);
       const moved = written.admins_moved ?? [];
       setNotice(moved.length > 0 ? `${message} ${adminNote(moved)}` : message);
-    } catch (failure) {
-      setError((failure as Error).message);
-    } finally {
-      setSaving(false);
-    }
+    });
   }
 
   /** Puts the set back to what it was before the last write. */
   async function undo() {
     if (!undoes) return;
-    setSaving(true);
-    setNotice(null);
-    setError(null);
-    onDirty();
-    try {
-      const written = await putIdentity(undoes, undoClear);
+    const previous = undoes;
+    await run(async () => {
+      onDirty();
+      const written = await putIdentity(previous, undoClear);
       setUndoes(null);
       setUndoClear([]);
       setMerges(mergesFromWire(written.merges));
       setRebuildWhy("A rebuild is required to apply the undo.");
       setNotice("Undone — the merge set is back to what it was before that change.");
-    } catch (failure) {
-      setError((failure as Error).message);
-    } finally {
-      setSaving(false);
-    }
+    });
   }
 
   function mergeSelected() {

@@ -17,12 +17,14 @@ import type { Payload } from "../api/types";
 import { EmptyState } from "../components/Panel";
 import { putInclusions } from "./api";
 import { Notice, SubSection } from "./shared";
+import { useAction } from "./useAction";
 
 export function WhoShows({ payload, onDirty }: { payload: Payload | null; onDirty: () => void }) {
   const [excluded, setExcluded] = useState<Record<string, boolean>>({});
   const [saved, setSaved] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState<string | null>(null);
+  const { error, run } = useAction();
+  /** The one identity whose toggle is on its way to the server. */
+  const [pending, setPending] = useState<string | null>(null);
 
   const identities = useMemo(() => {
     if (!payload) return [];
@@ -48,24 +50,20 @@ export function WhoShows({ payload, onDirty }: { payload: Payload | null; onDirt
    */
   async function toggle(authorId: string, shown: boolean) {
     setExcluded((current) => ({ ...current, [authorId]: !shown }));
-    setError(null);
-    setBusy(authorId);
-    // Conservative and immediate: a write is going out, so the rollups may no
-    // longer match the configuration (§11.6). A failure keeps it stale rather
-    // than pretending the numbers are current.
-    onDirty();
-    try {
+    setPending(authorId);
+    // A failure leaves the toggle as the operator set it, but the page says
+    // plainly that the server does not have it, so a rebuild will not apply it.
+    await run(async () => {
+      // Conservative and immediate: a write is going out, so the rollups may no
+      // longer match the configuration (§11.6). A failure keeps it stale rather
+      // than pretending the numbers are current.
+      onDirty();
       const written = await putInclusions({ [authorId]: shown });
       // The response says it too; the server's word is the one that counts.
       if (written.cache_stale) onDirty();
       setSaved(true);
-    } catch (failure) {
-      // The toggle stays as the operator set it, but the page says plainly that
-      // the server does not have it, so a rebuild will not apply it.
-      setError((failure as Error).message);
-    } finally {
-      setBusy(null);
-    }
+    });
+    setPending(null);
   }
 
   return (
@@ -98,7 +96,7 @@ export function WhoShows({ payload, onDirty }: { payload: Payload | null; onDirt
                 id={`who-${author.id}`}
                 type="checkbox"
                 checked={included}
-                disabled={busy === author.id}
+                disabled={pending === author.id}
                 onChange={(event) => void toggle(author.id, event.target.checked)}
                 className="h-4 w-4"
               />

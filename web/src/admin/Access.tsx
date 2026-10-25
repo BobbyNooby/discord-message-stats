@@ -24,6 +24,7 @@ import {
   revokeAllSessions,
 } from "./api";
 import { Def, DefList, Notice, SaveBar, Section, SubSection, type SaveMode } from "./shared";
+import { useAction } from "./useAction";
 
 const POLICIES: { value: string; label: string; hint: string }[] = [
   {
@@ -51,51 +52,42 @@ export function Access({
 }) {
   const queryClient = useQueryClient();
   const [policy, setPolicy] = useState(config?.effective.allowlist_policy ?? "posted");
-  const [saving, setSaving] = useState(false);
-  const [notice, setNotice] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [revoking, setRevoking] = useState(false);
-  const [revokeNotice, setRevokeNotice] = useState<string | null>(null);
-  const [revokeError, setRevokeError] = useState<string | null>(null);
+  const { busy: saving, notice, error, run: runSave, setNotice } = useAction();
+  const {
+    busy: revoking,
+    notice: revokeNotice,
+    error: revokeError,
+    run: runRevoke,
+    setNotice: setRevokeNotice,
+  } = useAction();
 
   useEffect(() => {
     if (config) setPolicy(config.effective.allowlist_policy);
   }, [config]);
 
-  async function revokeAll() {
-    setRevoking(true);
-    setRevokeError(null);
-    setRevokeNotice(null);
-    try {
+  const revokeAll = () =>
+    runRevoke(async () => {
       const result = await revokeAllSessions();
       setRevokeNotice(
         `${result.revoked} session${result.revoked === 1 ? "" : "s"} revoked. ` +
           "You stay signed in — this ends everyone else's session, not yours.",
       );
       await queryClient.invalidateQueries({ queryKey: ["admin", "status"] });
-    } catch (failure) {
-      setRevokeError((failure as Error).message);
-    } finally {
-      setRevoking(false);
-    }
-  }
+    });
 
-  async function save(mode: SaveMode) {
-    setSaving(true);
-    setError(null);
-    try {
-      await onSave({ allowlist_policy: policy }, mode);
-      setNotice(
-        mode === "recalculate"
-          ? "Policy saved and a rebuild queued."
-          : "Policy saved. The cache is stale until you run Recalculate all.",
-      );
-    } catch (failure) {
-      setError((failure as Error).message);
-    } finally {
-      setSaving(false);
-    }
-  }
+  // The last confirmation stays up while a new save runs.
+  const save = (mode: SaveMode) =>
+    runSave(
+      async () => {
+        await onSave({ allowlist_policy: policy }, mode);
+        setNotice(
+          mode === "recalculate"
+            ? "Policy saved and a rebuild queued."
+            : "Policy saved. The cache is stale until you run Recalculate all.",
+        );
+      },
+      { keepNotice: true },
+    );
 
   return (
     <Section id="access" title="Access">
@@ -216,11 +208,10 @@ export function Access({
 function Admins({ payload }: { payload: Payload | null }) {
   const [admins, setAdmins] = useState<AdminRow[]>([]);
   const [loaded, setLoaded] = useState(false);
-  const [listError, setListError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
+  // One error line for the list: a failed load and a failed write read the same.
+  const { busy, notice, error: listError, run, setNotice, setError: setListError } = useAction();
   const [picked, setPicked] = useState("");
   const [manual, setManual] = useState("");
-  const [busy, setBusy] = useState(false);
   const [unknown, setUnknown] = useState<string | null>(null);
 
   const authors = useMemo(
@@ -247,31 +238,28 @@ function Admins({ payload }: { payload: Payload | null }) {
   }, []);
 
   async function add(discordId: string, force: boolean) {
-    setBusy(true);
-    setNotice(null);
     setUnknown(null);
-    setListError(null);
-    try {
-      await addAdmin(discordId, force);
+    await run(async () => {
+      try {
+        await addAdmin(discordId, force);
+      } catch (failure) {
+        // A 409 is the server saying "that id matches no message"; the operator
+        // can say they meant it, so the warning carries the override.
+        if (failure instanceof ApiError && failure.status === 409) {
+          setUnknown(discordId);
+          return;
+        }
+        throw failure;
+      }
       setNotice(`Added ${discordId} as an admin.`);
       setPicked("");
       setManual("");
       await refresh();
-    } catch (failure) {
-      // A 409 is the server saying "that id matches no message"; the operator
-      // can say they meant it, so the warning carries the override.
-      if (failure instanceof ApiError && failure.status === 409) setUnknown(discordId);
-      else setListError((failure as Error).message);
-    } finally {
-      setBusy(false);
-    }
+    });
   }
 
-  async function remove(discordId: string) {
-    setBusy(true);
-    setNotice(null);
-    setListError(null);
-    try {
+  const remove = (discordId: string) =>
+    run(async () => {
       const result = await removeAdmin(discordId);
       setNotice(
         result.revoked > 0
@@ -281,12 +269,7 @@ function Admins({ payload }: { payload: Payload | null }) {
           : `Removed ${discordId}.`,
       );
       await refresh();
-    } catch (failure) {
-      setListError((failure as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  }
+    });
 
   const candidate = manual.trim() || picked;
 
