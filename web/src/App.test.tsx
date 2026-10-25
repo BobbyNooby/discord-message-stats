@@ -281,4 +281,20 @@ describe("re-rendering the dashboard without a data change", () => {
     expect(await screen.findByRole("button", { name: "Back to global" })).toBeInTheDocument();
     expect(setOption.mock.calls.length).toBeLessThan(drawn / 4);
   });
+
+  it("redraws only the card whose scope was applied", async () => {
+    // Every card used to rebuild its option when any card's scope changed, so
+    // applying one scope redrew all 38 charts on the real data.
+    renderApp();
+    await userEvent.click(await screen.findByRole("button", { name: "Filter Messages per year" }));
+    await userEvent.click(await screen.findByRole("button", { name: "2024" }));
+    const before = charts.instances.map((chart) => chart.options.length);
+
+    await userEvent.click(screen.getByRole("button", { name: "Apply" }));
+
+    const redrawn = charts.instances
+      .filter((chart, index) => chart.options.length > (before[index] ?? 0))
+      .map((chart) => chart.container?.closest("section")?.id);
+    expect(redrawn).toEqual(["messages-per-year"]);
+  });
 });
