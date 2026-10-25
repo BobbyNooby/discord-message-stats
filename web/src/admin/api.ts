@@ -344,6 +344,22 @@ export const saveToken = (token: string) =>
 
 export const forgetToken = () => request<void>("/api/admin/token", { method: "DELETE" });
 
+/** One check of the token in use: who it signs in as, and whether it reaches the channel. */
+export type TokenTest = {
+  ok: boolean;
+  checked_at: string;
+  http_status: number | null;
+  bot: TokenCheck["bot"];
+  error: string | null;
+  channel: TokenCheck["channel"];
+};
+
+/**
+ * Ask Discord about the token in use, now. A 409 means this server holds no
+ * token of its own (the worker may), and its message says to use Probe token.
+ */
+export const testToken = () => request<TokenTest>("/api/admin/token/test", { method: "POST" });
+
 export const createJob = (kind: JobKind) =>
   request<{ id: number; channel_id: string; kind: string; status: string }>(
     "/api/admin/jobs",

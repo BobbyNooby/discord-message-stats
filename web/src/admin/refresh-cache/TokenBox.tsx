@@ -11,7 +11,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, type CSSProperties } from "react";
 
-import { forgetToken, getTokenCheck, saveToken, type TokenSource } from "../api";
+import { forgetToken, getTokenCheck, saveToken, testToken, type TokenSource } from "../api";
 import { ActionNotices } from "../shared";
 import { useAction } from "../useAction";
 
@@ -52,6 +52,22 @@ export function TokenBox() {
     });
   };
 
+  // Asks Discord about the token already in use, without touching it: who it
+  // signs in as, and whether that account can read the channel.
+  const checkNow = () =>
+    run(async () => {
+      const result = await testToken();
+      await refresh();
+      if (!result.ok) {
+        throw new Error(`Discord did not accept the token in use: ${result.error ?? "no answer"}`);
+      }
+      const who = result.bot?.global_name || result.bot?.username || "the account";
+      const channel = result.channel?.ok
+        ? ` and can read ${result.channel.name ? `#${result.channel.name}` : "the channel"}`
+        : " but cannot read the channel — check the channel id";
+      setNotice(`It works: it signs in as ${who}${channel}.`);
+    });
+
   const forget = () =>
     run(async () => {
       await forgetToken();
@@ -62,9 +78,19 @@ export function TokenBox() {
   const source = check.data?.source;
   return (
     <div className="mt-3 rounded border border-[var(--color-line)] bg-[var(--color-surface-2)] p-3">
-      <p className="text-[11px] text-[var(--color-muted)]">
-        Token in use: <span className="text-[var(--color-text)]">{source ? SOURCE_LABEL[source] : "…"}</span>
-      </p>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-[11px] text-[var(--color-muted)]">
+          Token in use: <span className="text-[var(--color-text)]">{source ? SOURCE_LABEL[source] : "…"}</span>
+        </p>
+        <button
+          type="button"
+          onClick={() => void checkNow()}
+          disabled={busy || !source || source === "none"}
+          className="min-h-9 rounded border border-[var(--color-line)] px-3 text-xs disabled:opacity-50"
+        >
+          Check now
+        </button>
+      </div>
       <form
         className="mt-2 flex flex-wrap items-end gap-2"
         onSubmit={(event) => {

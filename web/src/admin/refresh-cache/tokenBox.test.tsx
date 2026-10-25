@@ -9,6 +9,7 @@ const api = vi.hoisted(() => ({
   getTokenCheck: vi.fn(),
   saveToken: vi.fn(),
   forgetToken: vi.fn(),
+  testToken: vi.fn(),
 }));
 
 vi.mock("../api", () => api);
@@ -66,5 +67,40 @@ describe("<TokenBox>", () => {
     renderBox();
     await user.click(await screen.findByRole("button", { name: "Forget saved token" }));
     expect(api.forgetToken).toHaveBeenCalledTimes(1);
+  });
+
+  it("checks the token in use and says who it is and whether it reaches the channel", async () => {
+    const user = userEvent.setup();
+    api.testToken.mockResolvedValue({
+      ok: true,
+      checked_at: "2026-10-25T10:00:00+00:00",
+      http_status: 200,
+      bot: { id: "1", username: "alt", global_name: "Alt Account" },
+      error: null,
+      channel: { ok: false, id: "c1", name: null, error: "HTTP 403" },
+    });
+    renderBox();
+    await user.click(await screen.findByRole("button", { name: "Check now" }));
+    expect(api.testToken).toHaveBeenCalledTimes(1);
+    expect(
+      await screen.findByText(/signs in as Alt Account but cannot read the channel/),
+    ).toBeInTheDocument();
+  });
+
+  it("shows why a check failed, including when only the worker holds the token", async () => {
+    const user = userEvent.setup();
+    api.testToken.mockRejectedValue(
+      new Error("this server holds no token to check — save one here, or use Probe token"),
+    );
+    renderBox();
+    await user.click(await screen.findByRole("button", { name: "Check now" }));
+    expect(await screen.findByText(/use Probe token/)).toBeInTheDocument();
+  });
+
+  it("offers no check while there is no token at all", async () => {
+    api.getTokenCheck.mockResolvedValue({ status: "unknown", source: "none" });
+    renderBox();
+    expect(await screen.findByText(/none yet/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Check now" })).toBeDisabled();
   });
 });
