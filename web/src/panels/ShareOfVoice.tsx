@@ -1,6 +1,9 @@
 import type { EChartsOption } from "echarts";
+import { useMemo } from "react";
 
+import type { Payload } from "../api/types";
 import { EmptyState, Panel } from "../components/Panel";
+import type { Filters } from "../filters/reducer";
 import { selectAuthors } from "../filters/selectors";
 import { legend, tooltip } from "../lib/chartStyle";
 import { EChart } from "../lib/echart";
@@ -12,35 +15,16 @@ import { colorBarsOption } from "./mediaData";
 import type { WithPanelId } from "./panelScope";
 import { useChartShape, usePanelFilters } from "./panelScope";
 
-/**
- * Share of voice — `drawSov` from the mockup: one wedge per author, coloured by
- * the author's index so the colour means the same thing in every panel.
- *
- * §11.5 caps a doughnut at "few categories", so authors past the fifth fold into
- * one "Others" wedge; the total and the tooltip still carry them. The bar keeps
- * every author, and colour follows the author there too.
- */
-export function ShareOfVoice({ payload, filters: fallbackFilters }: PanelProps & WithPanelId) {
-  const filters = usePanelFilters("share-of-voice", fallbackFilters);
-  const shape = useChartShape("share-of-voice");
-  const rows: Slice[] = selectAuthors(payload, filters)
+/** One row per author with messages in view, busiest first. */
+function voiceRows(payload: Payload, filters: Filters): Slice[] {
+  return selectAuthors(payload, filters)
     .map((author, index) => ({ name: author.name, value: author.msgs, index }))
     .filter((row) => row.value > 0)
     .sort((a, b) => b.value - a.value);
-  const total = rows.reduce((sum, row) => sum + row.value, 0);
+}
 
-  if (!rows.length) {
-    return (
-      <Panel title="Share of voice" subtitle={`${fmt(0)} messages · 0 authors`}>
-        <EmptyState>{emptyLabel(payload, filters)}</EmptyState>
-      </Panel>
-    );
-  }
-
-  const slices = foldSlices(rows);
-  const folded = slices.length < rows.length;
-
-  const option: EChartsOption = {
+function doughnut(slices: Slice[]): EChartsOption {
+  return {
     tooltip: {
       trigger: "item",
       ...tooltip(),
@@ -69,6 +53,41 @@ export function ShareOfVoice({ payload, filters: fallbackFilters }: PanelProps &
       },
     ],
   };
+}
+
+/**
+ * Share of voice — `drawSov` from the mockup: one wedge per author, coloured by
+ * the author's index so the colour means the same thing in every panel.
+ *
+ * §11.5 caps a doughnut at "few categories", so authors past the fifth fold into
+ * one "Others" wedge; the total and the tooltip still carry them. The bar keeps
+ * every author, and colour follows the author there too.
+ */
+export function ShareOfVoice({ payload, filters: fallbackFilters }: PanelProps & WithPanelId) {
+  const filters = usePanelFilters("share-of-voice", fallbackFilters);
+  const shape = useChartShape("share-of-voice");
+  const rows = useMemo(() => voiceRows(payload, filters), [payload, filters]);
+  const slices = useMemo(() => foldSlices(rows), [rows]);
+  // Built only when the rows or the shape change, so another card's scope
+  // leaves this chart as it is.
+  const option = useMemo(
+    () =>
+      shape === "bar"
+        ? colorBarsOption(rows.map((row) => ({ name: row.name, value: row.value, color: swatch(row.index) })))
+        : doughnut(slices),
+    [rows, slices, shape],
+  );
+  const total = rows.reduce((sum, row) => sum + row.value, 0);
+
+  if (!rows.length) {
+    return (
+      <Panel title="Share of voice" subtitle={`${fmt(0)} messages · 0 authors`}>
+        <EmptyState>{emptyLabel(payload, filters)}</EmptyState>
+      </Panel>
+    );
+  }
+
+  const folded = slices.length < rows.length;
 
   return (
     <Panel
@@ -81,16 +100,7 @@ export function ShareOfVoice({ payload, filters: fallbackFilters }: PanelProps &
             }`
       }
     >
-      {shape === "bar" ? (
-        <EChart
-          option={colorBarsOption(
-            rows.map((row) => ({ name: row.name, value: row.value, color: swatch(row.index) })),
-          )}
-          height={300}
-        />
-      ) : (
-        <EChart option={option} height={300} />
-      )}
+      <EChart option={option} height={300} />
     </Panel>
   );
 }

@@ -1,7 +1,9 @@
 import type { EChartsOption } from "echarts";
+import { useMemo } from "react";
 
-import { C_AUTHOR, C_DAY, C_MSGS } from "../api/types";
+import { C_AUTHOR, C_DAY, C_MSGS, type Payload } from "../api/types";
 import { EmptyState, Panel } from "../components/Panel";
+import type { Filters } from "../filters/reducer";
 import { selectVisibleCells, yearOf } from "../filters/selectors";
 import { tooltip } from "../lib/chartStyle";
 import { EChart } from "../lib/echart";
@@ -26,12 +28,15 @@ function radiusFor(count: number): number {
   return 27;
 }
 
-/**
- * Share of voice, year by year — `drawSovYear`: one small-multiple doughnut per
- * year, so the mix shifting over time is visible at a glance.
- */
-export function ShareOfVoiceByYear({ payload, filters: fallbackFilters }: PanelProps & WithPanelId) {
-  const filters = usePanelFilters("share-of-voice-year-by-year", fallbackFilters);
+type YearMix = {
+  years: number[];
+  /** Year to author index to messages. */
+  byYear: Map<number, Map<number, number>>;
+  total: number;
+};
+
+/** Each author's filtered messages, year by year, years ascending. */
+function yearMix(payload: Payload, filters: Filters): YearMix {
   const byYear = new Map<number, Map<number, number>>();
   let total = 0;
   for (const cell of selectVisibleCells(payload, filters)) {
@@ -43,22 +48,12 @@ export function ShareOfVoiceByYear({ payload, filters: fallbackFilters }: PanelP
     byYear.set(year, authors);
     total += cell[C_MSGS];
   }
-  const years = [...byYear.keys()].sort();
+  return { years: [...byYear.keys()].sort(), byYear, total };
+}
 
-  if (!years.length) {
-    return (
-      <Panel
-        title="Share of voice, year by year"
-        subtitle={`${fmt(0)} messages · 0 years`}
-        className="md:col-span-2"
-      >
-        <EmptyState>{emptyLabel(payload, filters)}</EmptyState>
-      </Panel>
-    );
-  }
-
+function doughnuts(payload: Payload, { years, byYear }: YearMix): EChartsOption {
   const radius = radiusFor(years.length);
-  const option: EChartsOption = {
+  return {
     tooltip: {
       trigger: "item",
       ...tooltip(),
@@ -96,6 +91,29 @@ export function ShareOfVoiceByYear({ payload, filters: fallbackFilters }: PanelP
       silent: true,
     })),
   };
+}
+
+/**
+ * Share of voice, year by year — `drawSovYear`: one small-multiple doughnut per
+ * year, so the mix shifting over time is visible at a glance.
+ */
+export function ShareOfVoiceByYear({ payload, filters: fallbackFilters }: PanelProps & WithPanelId) {
+  const filters = usePanelFilters("share-of-voice-year-by-year", fallbackFilters);
+  const mix = useMemo(() => yearMix(payload, filters), [payload, filters]);
+  const option = useMemo(() => doughnuts(payload, mix), [payload, mix]);
+  const { years, total } = mix;
+
+  if (!years.length) {
+    return (
+      <Panel
+        title="Share of voice, year by year"
+        subtitle={`${fmt(0)} messages · 0 years`}
+        className="md:col-span-2"
+      >
+        <EmptyState>{emptyLabel(payload, filters)}</EmptyState>
+      </Panel>
+    );
+  }
 
   return (
     <Panel

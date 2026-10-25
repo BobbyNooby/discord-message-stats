@@ -1,7 +1,9 @@
 import type { EChartsOption } from "echarts";
+import { useMemo } from "react";
 
-import { C_DAY, C_MSGS } from "../api/types";
+import { C_DAY, C_MSGS, type Payload } from "../api/types";
 import { EmptyState, Panel } from "../components/Panel";
+import type { Filters } from "../filters/reducer";
 import { selectVisibleCells, yearOf } from "../filters/selectors";
 import { axis, axisLabel, splitLine, tooltip } from "../lib/chartStyle";
 import { EChart } from "../lib/echart";
@@ -12,13 +14,10 @@ import { yearCountLabel, type PanelProps } from "./timeAggregates";
 import type { WithPanelId } from "./panelScope";
 import { usePanelFilters } from "./panelScope";
 
-/**
- * Messages per year — `drawYearBar`. Counts, not shares: this is the same data
- * as the doughnuts above it, in the form that answers "which year was biggest?"
- * without making the reader compare arc lengths.
- */
-export function MessagesPerYear({ payload, filters: fallbackFilters }: PanelProps & WithPanelId) {
-  const filters = usePanelFilters("messages-per-year", fallbackFilters);
+type YearTotals = { years: number[]; values: number[]; total: number };
+
+/** Filtered messages per calendar year, years ascending. */
+function yearTotals(payload: Payload, filters: Filters): YearTotals {
   const byYear = new Map<number, number>();
   for (const cell of selectVisibleCells(payload, filters)) {
     const day = payload.days[cell[C_DAY]];
@@ -27,24 +26,13 @@ export function MessagesPerYear({ payload, filters: fallbackFilters }: PanelProp
     byYear.set(year, (byYear.get(year) ?? 0) + cell[C_MSGS]);
   }
   const years = [...byYear.keys()].sort();
-  const total = years.reduce((sum, year) => sum + (byYear.get(year) ?? 0), 0);
-
-  if (!years.length) {
-    return (
-      <Panel
-        title="Messages per year"
-        subtitle={`${fmt(0)} messages · 0 years`}
-      >
-        <EmptyState>{emptyLabel(payload, filters)}</EmptyState>
-      </Panel>
-    );
-  }
-
   const values = years.map((year) => byYear.get(year) ?? 0);
-  const peak = Math.max(...values);
-  const peakYear = years[values.indexOf(peak)];
+  return { years, values, total: values.reduce((sum, value) => sum + value, 0) };
+}
 
-  const option: EChartsOption = {
+function yearBars({ years, values }: YearTotals): EChartsOption {
+  const peak = Math.max(...values);
+  return {
     tooltip: {
       ...tooltip(),
       formatter: (p: any) => `${p.name} — <b>${fmt(Number(p.value))}</b> msgs`,
@@ -67,16 +55,41 @@ export function MessagesPerYear({ payload, filters: fallbackFilters }: PanelProp
           fontSize: 10.5,
           formatter: (p: any) => kfmt(Number(p.value)),
         },
-        data: years.map((year) => ({
-          value: byYear.get(year) ?? 0,
+        data: values.map((value) => ({
+          value,
           itemStyle: {
-            color: (byYear.get(year) ?? 0) === peak ? token("--chart-peak") : swatch(0),
+            color: value === peak ? token("--chart-peak") : swatch(0),
             borderRadius: [4, 4, 0, 0],
           },
         })),
       },
     ],
   };
+}
+
+/**
+ * Messages per year — `drawYearBar`. Counts, not shares: this is the same data
+ * as the doughnuts above it, in the form that answers "which year was biggest?"
+ * without making the reader compare arc lengths.
+ */
+export function MessagesPerYear({ payload, filters: fallbackFilters }: PanelProps & WithPanelId) {
+  const filters = usePanelFilters("messages-per-year", fallbackFilters);
+  const totals = useMemo(() => yearTotals(payload, filters), [payload, filters]);
+  const option = useMemo(() => yearBars(totals), [totals]);
+  const { years, values, total } = totals;
+
+  if (!years.length) {
+    return (
+      <Panel
+        title="Messages per year"
+        subtitle={`${fmt(0)} messages · 0 years`}
+      >
+        <EmptyState>{emptyLabel(payload, filters)}</EmptyState>
+      </Panel>
+    );
+  }
+
+  const peakYear = years[values.indexOf(Math.max(...values))];
 
   return (
     <Panel
