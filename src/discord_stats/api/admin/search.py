@@ -9,8 +9,8 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Query, Request
 
+from discord_stats.api import query
 from discord_stats.api.deps import board
-from discord_scraper.rollups import query
 
 router = APIRouter()
 

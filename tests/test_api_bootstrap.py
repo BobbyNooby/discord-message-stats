@@ -254,7 +254,7 @@ def test_each_year_is_counted_at_boot_so_a_year_chip_answers_from_cache(db_cfg, 
 
     from fastapi.testclient import TestClient
 
-    from discord_scraper.rollups import query as rollup_query
+    from discord_stats.api import query as rollup_query
     from discord_stats.auth.session import SESSION_COOKIE, Level, establish_session
 
     cfg, path = db_cfg

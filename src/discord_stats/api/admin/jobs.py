@@ -5,8 +5,8 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel
 
+from discord_stats.api import query
 from discord_stats.api.deps import board, database
-from discord_scraper.rollups import query
 
 router = APIRouter()
 

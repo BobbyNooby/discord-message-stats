@@ -15,8 +15,8 @@ import json
 import sqlite3
 from typing import Any
 
+from discord_stats.api import query
 from discord_scraper.config import Config
-from discord_scraper.rollups import query
 from discord_scraper.rollups.build import config_digest
 from discord_scraper.rollups.schema import is_stale
 from discord_scraper.text import load_stopwords

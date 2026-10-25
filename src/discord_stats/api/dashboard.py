@@ -14,12 +14,11 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, Query, Request
 
-from discord_stats.api import viewer
+from discord_stats.api import query, viewer
 from discord_stats.api.deps import board, connect, database
 from discord_stats.auth.session import Level, require_viewer
 from discord_scraper.config import Config
 from discord_scraper.overrides import effective_for
-from discord_scraper.rollups import query
 from discord_scraper.rollups.schema import is_stale
 from discord_scraper.timeutil import utc_stamp
 

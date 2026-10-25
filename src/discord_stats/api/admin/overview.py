@@ -11,6 +11,7 @@ from zoneinfo import available_timezones
 
 from fastapi import APIRouter, HTTPException, Request
 
+from discord_stats.api import query
 from discord_stats.api.admin.common import app_db_path, log_event, saved_config
 from discord_stats.api.admin.jobs import JOB_STATUSES
 from discord_stats.api.deps import board, database
@@ -22,7 +23,6 @@ from discord_scraper.overrides import (
     read as _overrides,
     validate as _validate_override,
 )
-from discord_scraper.rollups import query
 from discord_scraper.rollups.build import config_digest
 from discord_scraper.rollups.schema import FAMILIES, is_stale
 from discord_scraper.timeutil import utc_stamp
