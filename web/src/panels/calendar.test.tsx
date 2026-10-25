@@ -2,7 +2,7 @@ import { render } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import type { Payload } from "../api/types";
-import { EMPTY_FILTERS, initialFilters } from "../filters/reducer";
+import { EMPTY_FILTERS, initialFilters } from "../app/reducer";
 import { buildWeeks, calendarGeometry, clampStart, MIN_WEEKS, weekdayLabels } from "../selectors/calendar";
 import { Calendar } from "./Calendar";
 

@@ -4,7 +4,7 @@
  * check them without a chart.
  */
 import { C_AUTHOR, C_DAY, C_MSGS, type Payload } from "../api/types";
-import type { Filters } from "../filters/reducer";
+import type { Filters } from "../app/reducer";
 import { selectAuthors, selectVisibleCells, yearOf } from "./cells";
 
 /** One author's share of the messages in view. */

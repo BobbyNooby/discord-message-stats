@@ -3,7 +3,7 @@
  * cells carry a day and an author; every other list here is one flat rollup.
  */
 import type { Payload } from "../api/types";
-import type { Filters } from "../filters/reducer";
+import type { Filters } from "../app/reducer";
 import { providerLabel } from "../lib/mediaLabels";
 import { inRange } from "./cells";
 import { allPairRows, type Row } from "./media";

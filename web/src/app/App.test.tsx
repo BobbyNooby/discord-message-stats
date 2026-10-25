@@ -16,7 +16,7 @@ const server = vi.hoisted(() => ({
   words: vi.fn(),
 }));
 
-vi.mock("./api/client", () => ({
+vi.mock("../api/client", () => ({
   Unauthorized: class Unauthorized extends Error {},
   Forbidden: class Forbidden extends Error {},
   Offline: class Offline extends Error {},
@@ -28,10 +28,10 @@ vi.mock("./api/client", () => ({
 }));
 
 import App from "./App";
-import { Forbidden, Offline, ServerError } from "./api/client";
-import { CHARTS_KEY } from "./filters/persist";
-import { charts } from "./test/echarts";
-import { dashboardPayload } from "./test/payload";
+import { Forbidden, Offline, ServerError } from "../api/client";
+import { CHARTS_KEY } from "./persist";
+import { charts } from "../test/echarts";
+import { dashboardPayload } from "../test/payload";
 
 const TYPES: [number, string, number][] = [
   [0, "Default", 1000],

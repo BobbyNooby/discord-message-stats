@@ -21,7 +21,7 @@ import {
   type Cell,
   type Payload,
 } from "../api/types";
-import type { Filters } from "../filters/reducer";
+import type { Filters } from "../app/reducer";
 import { bucketOf, selectAuthors, selectVisibleCells } from "./cells";
 
 export type Row = { index: number; name: string; value: number; n: number };

@@ -5,7 +5,7 @@
  * browser rather than following the reader's locale.
  */
 
-import type { Filters } from "../filters/reducer";
+import type { Filters } from "../app/reducer";
 
 /** A whole number with thousands separators: "17,135". */
 export function fmt(value: number): string {

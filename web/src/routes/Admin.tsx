@@ -33,7 +33,7 @@ import {
   Offline as OfflineScreen,
   ServerError as ServerErrorScreen,
 } from "../components/States";
-import { Login } from "./Login";
+import { Login } from "../app/Login";
 
 /** The workflow, in the order an operator moves through it (§11.6). */
 const TASKS = [

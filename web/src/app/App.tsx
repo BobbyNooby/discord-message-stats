@@ -5,23 +5,23 @@ import {
   Offline as OfflineError,
   ServerError as ServerErrorResponse,
   Unauthorized,
-} from "./api/client";
-import { useBootstrap, useHealth, useRecent } from "./api/queries";
-import { AppShell } from "./components/AppShell";
-import { FilterSidebar } from "./components/FilterSidebar";
-import { GlobalSearch } from "./components/GlobalSearch";
-import { HealthBanner } from "./components/HealthBanner";
-import { JumpNav } from "./components/JumpNav";
-import { NoticeProvider, useNotice } from "./components/Notice";
-import { RecalculateNow } from "./components/RecalculateNow";
-import { RecentStrip } from "./components/RecentStrip";
+} from "../api/client";
+import { useBootstrap, useHealth, useRecent } from "../api/queries";
+import { AppShell } from "../components/AppShell";
+import { FilterSidebar } from "../components/FilterSidebar";
+import { GlobalSearch } from "../components/GlobalSearch";
+import { HealthBanner } from "../components/HealthBanner";
+import { JumpNav } from "../components/JumpNav";
+import { NoticeProvider, useNotice } from "../components/Notice";
+import { RecalculateNow } from "../components/RecalculateNow";
+import { RecentStrip } from "../components/RecentStrip";
 import {
   DashboardSkeleton,
   Forbidden as ForbiddenScreen,
   Offline as OfflineScreen,
   ServerError as ServerErrorScreen,
-} from "./components/States";
-import { dashboardReducer, initialDashboardState } from "./filters/reducer";
+} from "../components/States";
+import { dashboardReducer, initialDashboardState } from "./reducer";
 import {
   describeDropped,
   loadCharts,
@@ -32,16 +32,16 @@ import {
   saveScopes,
   writeUrlState,
   type Charts,
-} from "./filters/persist";
-import { PanelScopeProvider } from "./panels/panelScope";
-import { PANELS, specFor, type ChartKind, type PanelId } from "./panels/registry";
-import { useKeyboardShortcuts } from "./lib/shortcuts";
-import { schemaWarning } from "./lib/schemaWarning";
-import { stampLabel, timeFormatOf } from "./lib/timeFormat";
-import { CustomSection } from "./panels/CustomSection";
-import { PanelSections } from "./panels/Sections";
-import { Admin } from "./routes/Admin";
-import { Login } from "./routes/Login";
+} from "./persist";
+import { PanelScopeProvider } from "../panels/panelScope";
+import { PANELS, specFor, type ChartKind, type PanelId } from "../panels/registry";
+import { useKeyboardShortcuts } from "../lib/shortcuts";
+import { schemaWarning } from "../lib/schemaWarning";
+import { stampLabel, timeFormatOf } from "../lib/timeFormat";
+import { CustomSection } from "../panels/CustomSection";
+import { PanelSections } from "../panels/Sections";
+import { Admin } from "../routes/Admin";
+import { Login } from "./Login";
 
 export default function App() {
   // The admin board is its own route with its own shell (§11.6), and there is no

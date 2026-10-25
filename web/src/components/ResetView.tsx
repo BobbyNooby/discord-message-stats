@@ -1,7 +1,7 @@
 import { useState } from "react";
 
-import type { Scopes } from "../filters/reducer";
-import type { Charts } from "../filters/persist";
+import type { Scopes } from "../app/reducer";
+import type { Charts } from "../app/persist";
 import { Banner } from "./ui";
 
 /**

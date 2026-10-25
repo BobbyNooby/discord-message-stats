@@ -1,8 +1,8 @@
 import { createContext, useContext, useMemo, type ReactNode } from "react";
 
 import type { Payload } from "../api/types";
-import { EMPTY_FILTERS, type Filters, type Scopes } from "../filters/reducer";
-import type { Charts } from "../filters/persist";
+import { EMPTY_FILTERS, type Filters, type Scopes } from "../app/reducer";
+import type { Charts } from "../app/persist";
 import { isPanelId, specFor, type ChartKind, type PanelId } from "./registry";
 import { effective } from "../selectors/cells";
 

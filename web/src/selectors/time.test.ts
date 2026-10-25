@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { initialFilters } from "../filters/reducer";
+import { initialFilters } from "../app/reducer";
 import { fourDayPayload } from "../test/payload";
 import { byHour, heatGrid, monthTotals, repliesByBucket } from "./time";
 

@@ -6,7 +6,7 @@ import { AppShell } from "./components/AppShell";
 import { CARD_COLUMNS } from "./components/Panel";
 import { JumpNav } from "./components/JumpNav";
 import { MediaTile } from "./panels/MediaTile";
-import { initialFilters } from "./filters/reducer";
+import { initialFilters } from "./app/reducer";
 import type { SectionId } from "./panels/registry";
 import { PanelSection } from "./panels/Sections";
 import type { MediaRow } from "./api/types";

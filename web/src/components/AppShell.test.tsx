@@ -6,7 +6,7 @@ import type { Payload } from "../api/types";
 import { OPEN_FILTERS_EVENT } from "../lib/shortcuts";
 import { AppShell } from "./AppShell";
 import { FilterSidebar } from "./FilterSidebar";
-import { initialFilters } from "../filters/reducer";
+import { initialFilters } from "../app/reducer";
 
 const payload = {
   meta: { lastLocal: "2024-01-01", firstLocal: "2023-01-01" },

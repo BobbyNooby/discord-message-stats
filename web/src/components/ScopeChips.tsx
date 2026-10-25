@@ -1,4 +1,4 @@
-import type { FilterPatch } from "../filters/reducer";
+import type { FilterPatch } from "../app/reducer";
 import { kindLabel, providerLabel } from "../lib/mediaLabels";
 import type { Dimension } from "../panels/registry";
 import { Chip } from "./ui";

@@ -1,5 +1,5 @@
 import { C_DAY, C_MSGS, type Payload } from "../api/types";
-import type { Filters } from "../filters/reducer";
+import type { Filters } from "../app/reducer";
 import { selectVisibleCells } from "./cells";
 
 /** Default visible weeks, and the smallest window worth drawing (§11.3). */

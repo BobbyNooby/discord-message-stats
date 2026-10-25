@@ -1,7 +1,7 @@
 import type { ComponentType } from "react";
 
 import type { Payload } from "../../api/types";
-import type { Filters } from "../../filters/reducer";
+import type { Filters } from "../../app/reducer";
 import type { PanelSpec } from "../registry";
 
 /**

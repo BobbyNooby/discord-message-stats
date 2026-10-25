@@ -2,8 +2,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
-import type { Action } from "../filters/reducer";
-import { initialFilters } from "../filters/reducer";
+import type { Action } from "../app/reducer";
+import { initialFilters } from "../app/reducer";
 
 import type { Payload } from "../api/types";
 import { Leaderboard } from "./Leaderboard";

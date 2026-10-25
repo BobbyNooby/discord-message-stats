@@ -2,7 +2,7 @@ import { useMemo } from "react";
 
 import type { Payload } from "../api/types";
 import { EmptyState, Panel } from "../components/Panel";
-import type { Filters } from "../filters/reducer";
+import type { Filters } from "../app/reducer";
 import { TERMS } from "../lib/glossary";
 import { EChart } from "../lib/echart";
 import { emptyFor } from "../lib/empty";

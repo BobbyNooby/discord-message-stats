@@ -3,7 +3,7 @@ import { Fragment, type Dispatch, type ReactNode } from "react";
 import type { Payload } from "../api/types";
 import { CARD_COLUMNS, SectionHeading } from "../components/Panel";
 import { SectionScopeNote } from "../components/SectionScopeNote";
-import type { Action, Filters } from "../filters/reducer";
+import type { Action, Filters } from "../app/reducer";
 import { Activity } from "./Activity";
 import { Attachments } from "./Attachments";
 import { AuthorRadar } from "./AuthorRadar";

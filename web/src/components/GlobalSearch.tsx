@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState, type Dispatch } from "react";
 
 import type { Payload } from "../api/types";
-import type { DashboardAction } from "../filters/reducer";
+import type { DashboardAction } from "../app/reducer";
 import { fmt } from "../lib/format";
 import { GLOBAL_SEARCH_ID } from "../lib/shortcuts";
 import type { PanelId } from "../panels/registry";

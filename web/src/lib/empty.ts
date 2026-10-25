@@ -9,7 +9,7 @@
  */
 
 import type { Payload } from "../api/types";
-import type { Filters } from "../filters/reducer";
+import type { Filters } from "../app/reducer";
 
 export const EMPTY_DATABASE = "No messages yet — ingest, or upload a database from the Admin board.";
 

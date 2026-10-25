@@ -23,7 +23,7 @@ vi.mock("../api/client", () => ({
 }));
 
 import type { MediaRow, Payload } from "../api/types";
-import { initialFilters, type Filters } from "../filters/reducer";
+import { initialFilters, type Filters } from "../app/reducer";
 import { EmbedsByProvider, MostReposted } from "./RichMedia";
 
 const cat: MediaRow = [

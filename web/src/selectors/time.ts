@@ -6,7 +6,7 @@
  * month" means.
  */
 import { C_AUTHOR, C_DAY, C_MSGS, C_REPLIES, type Payload } from "../api/types";
-import type { Filters } from "../filters/reducer";
+import type { Filters } from "../app/reducer";
 import { bucketOf, selectVisibleCells } from "./cells";
 
 export const DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;

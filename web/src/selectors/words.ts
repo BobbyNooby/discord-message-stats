@@ -2,7 +2,7 @@
  * The numbers the word cards draw, from the payload's word slice or a period's.
  */
 import type { Payload } from "../api/types";
-import type { Filters } from "../filters/reducer";
+import type { Filters } from "../app/reducer";
 import { authorIndexById } from "./months";
 
 const TOP_WORDS = 18;

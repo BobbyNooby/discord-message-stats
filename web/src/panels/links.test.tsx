@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import type { Payload } from "../api/types";
-import { EMPTY_FILTERS, type Filters } from "../filters/reducer";
+import { EMPTY_FILTERS, type Filters } from "../app/reducer";
 import { charts } from "../test/echarts";
 import { testPayload } from "../test/payload";
 import { EmbedTypes } from "./EmbedTypes";

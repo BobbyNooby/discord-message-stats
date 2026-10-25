@@ -18,7 +18,7 @@ import {
   type Payload,
   type TypeRow,
 } from "../api/types";
-import type { Filters } from "../filters/reducer";
+import type { Filters } from "../app/reducer";
 import { emptyLabel } from "../lib/empty";
 import { selectVisibleCells } from "./cells";
 

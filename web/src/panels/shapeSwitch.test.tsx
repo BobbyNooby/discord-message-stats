@@ -12,8 +12,8 @@ import { describe, expect, it } from "vitest";
  * panel draws, not just its own `aria-pressed`.
  */
 import type { Payload } from "../api/types";
-import { initialFilters } from "../filters/reducer";
-import type { Charts } from "../filters/persist";
+import { initialFilters } from "../app/reducer";
+import type { Charts } from "../app/persist";
 import type { ChartKind } from "./registry";
 import type { PanelId } from "./registry";
 import { Attachments } from "./Attachments";

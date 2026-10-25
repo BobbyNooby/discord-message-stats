@@ -1,7 +1,7 @@
 import { SlidersHorizontal } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 
-import type { SidebarMode } from "../filters/reducer";
+import type { SidebarMode } from "../app/reducer";
 import { OPEN_FILTERS_EVENT } from "../lib/shortcuts";
 import { CopyViewLink } from "./CopyLink";
 import { IconButton, Sheet } from "./ui";

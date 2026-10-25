@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 
 import type { Payload } from "../api/types";
-import { initialFilters } from "../filters/reducer";
+import { initialFilters } from "../app/reducer";
 import { bucketSeries } from "../selectors/time";
 import { charts } from "../test/echarts";
 import { emptyFourDayPayload, fourDayPayload } from "../test/payload";

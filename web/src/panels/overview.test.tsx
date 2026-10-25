@@ -2,7 +2,7 @@ import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import type { Cell } from "../api/types";
-import { initialFilters } from "../filters/reducer";
+import { initialFilters } from "../app/reducer";
 import { emptyFourDayPayload, fourDayPayload } from "../test/payload";
 import { MessagesPerYear } from "./MessagesPerYear";
 import { PanelSection } from "./Sections";

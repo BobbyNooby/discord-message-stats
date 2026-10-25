@@ -23,7 +23,7 @@ vi.mock("../api/client", () => ({
 }));
 
 import type { Payload } from "../api/types";
-import { dashboardReducer, initialDashboardState } from "../filters/reducer";
+import { dashboardReducer, initialDashboardState } from "../app/reducer";
 import { PANELS, type Dimension, type PanelId } from "../panels/registry";
 import { PanelScopeProvider } from "../panels/panelScope";
 import { FilterSidebar } from "./FilterSidebar";

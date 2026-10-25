@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { initialFilters } from "../filters/reducer";
+import { initialFilters } from "../app/reducer";
 import { testPayload } from "../test/payload";
 import { leaderRows, replyBalance, replyNetwork } from "./people";
 

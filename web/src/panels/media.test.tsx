@@ -3,7 +3,7 @@ import type { ComponentType } from "react";
 import { describe, expect, it } from "vitest";
 
 import type { Payload } from "../api/types";
-import { initialFilters } from "../filters/reducer";
+import { initialFilters } from "../app/reducer";
 import { selectTotals, selectVisibleCells } from "../selectors/cells";
 import { healthGauges, mediaShare, replyShare } from "../selectors/media";
 import { charts } from "../test/echarts";

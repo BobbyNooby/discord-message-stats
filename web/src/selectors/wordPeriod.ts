@@ -3,7 +3,7 @@ import { useMemo } from "react";
 import type { getWords, Period } from "../api/client";
 import { useWordPeriod } from "../api/queries";
 import type { Payload } from "../api/types";
-import type { Filters } from "../filters/reducer";
+import type { Filters } from "../app/reducer";
 import { monthLabel } from "./months";
 
 /**

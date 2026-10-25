@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import type { Payload } from "../api/types";
-import { EMPTY_FILTERS, initialFilters, type Filters } from "../filters/reducer";
+import { EMPTY_FILTERS, initialFilters, type Filters } from "../app/reducer";
 import { matrixData } from "../selectors/people";
 import { charts } from "../test/echarts";
 import { EditRate } from "./EditRate";

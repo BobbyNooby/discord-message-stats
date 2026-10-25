@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import type { Payload } from "../api/types";
 import { Chip } from "../components/AppShell";
 import { EmptyState, GlobalOnlyBadge, Panel } from "../components/Panel";
-import type { Filters } from "../filters/reducer";
+import type { Filters } from "../app/reducer";
 import { axisLabel, splitLine, tooltip } from "../lib/chartStyle";
 import { EChart } from "../lib/echart";
 import { dur, fmt } from "../lib/format";

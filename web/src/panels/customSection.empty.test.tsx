@@ -2,7 +2,7 @@ import { render } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import type { Payload } from "../api/types";
-import { initialFilters } from "../filters/reducer";
+import { initialFilters } from "../app/reducer";
 import { CustomSection } from "./CustomSection";
 
 /** No mock here: this is the upstream seam, whose `custom` exports are empty. */

@@ -15,7 +15,7 @@ vi.mock("../lib/echart", () => ({
 
 import type { Payload } from "../api/types";
 import { foldPie, pieOption } from "../charts/pie";
-import { initialFilters } from "../filters/reducer";
+import { initialFilters } from "../app/reducer";
 import { Attachments } from "./Attachments";
 import { ChatHealth } from "./ChatHealth";
 import { Conversational } from "./Conversational";

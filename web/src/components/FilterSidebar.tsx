@@ -2,8 +2,8 @@ import type { Dispatch, ReactNode } from "react";
 
 import type { Payload } from "../api/types";
 import { useMediaKinds } from "../api/queries";
-import type { Charts } from "../filters/persist";
-import type { DashboardAction, FilterPatch, Filters, Scopes, SidebarMode } from "../filters/reducer";
+import type { Charts } from "../app/persist";
+import type { DashboardAction, FilterPatch, Filters, Scopes, SidebarMode } from "../app/reducer";
 import { effective } from "../selectors/cells";
 import { kindLabel, providerChoices } from "../lib/mediaLabels";
 import { specFor, type Dimension, type PanelId } from "../panels/registry";

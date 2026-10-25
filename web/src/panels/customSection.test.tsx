@@ -49,7 +49,7 @@ vi.mock("../api/client", () => ({
   getWords: server.words,
 }));
 
-import App from "../App";
+import App from "../app/App";
 import { dashboardPayload } from "../test/payload";
 
 const payload = dashboardPayload([[0, "Default", 2490]]);
