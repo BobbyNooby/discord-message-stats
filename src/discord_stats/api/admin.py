@@ -822,6 +822,8 @@ def list_jobs(request: Request, limit: int = Query(50, ge=1, le=200)) -> dict:
 
 @router.post("/jobs", status_code=201)
 def create_job(request: Request, body: JobRequest) -> dict:
+    from discord_scraper.worker.jobs import enqueue
+
     if body.kind not in JOB_KINDS:
         raise HTTPException(status_code=400, detail=f"kind must be one of {', '.join(JOB_KINDS)}")
     conn = _conn(request)
@@ -843,12 +845,8 @@ def create_job(request: Request, body: JobRequest) -> dict:
                         "kind": existing["kind"], "status": existing["status"],
                         "already": True,
                         "message": f"already {state} as job #{existing['id']}"}
-        cursor = conn.execute(
-            "INSERT INTO jobs (channel_id, kind, status, requested_at) VALUES (?, ?, 'queued', ?)",
-            (cfg.channel_id, body.kind, utc_stamp()),
-        )
-        conn.commit()
-        return {"id": int(cursor.lastrowid), "channel_id": cfg.channel_id,
+        job_id = enqueue(conn, cfg.channel_id, body.kind)
+        return {"id": job_id, "channel_id": cfg.channel_id,
                 "kind": body.kind, "status": "queued", "already": False}
     finally:
         conn.close()
