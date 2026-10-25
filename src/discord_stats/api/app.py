@@ -20,6 +20,7 @@ from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from discord_stats.api import admin, logstream, progress, viewer
+from discord_stats.api.cache import BoundedCache
 from discord_stats.api.deps import connect, connect_writable
 from discord_stats.auth import oauth
 from discord_stats.auth.allowlist import decision_for, record_login_attempt, too_many_attempts
@@ -443,8 +444,7 @@ def create_app(
         print(f"payload {why} in {time.monotonic() - started:.2f}s", file=sys.stderr)
         return payload
 
-    period_cache: dict[tuple, dict] = {}
-    period_lock = threading.Lock()
+    period_cache = BoundedCache(PERIOD_CACHE_ENTRIES)
 
     def period_for(conn: sqlite3.Connection, effective, key: tuple, first: str | None,
                    last: str | None, picked: tuple[int, ...]) -> dict:
@@ -454,10 +454,7 @@ def create_app(
             conn, effective.channel_id, query.author_index(author_rows), first, last, picked)
         body = {"built": uses is not None, "from": first, "to": last, "years": list(picked),
                 **viewer.period_words(uses or {}, len(author_rows))}
-        with period_lock:
-            if len(period_cache) >= PERIOD_CACHE_ENTRIES:
-                period_cache.pop(next(iter(period_cache)))
-            period_cache[key] = body
+        period_cache.put(key, body)
         return body
 
     def warm_the_years(conn: sqlite3.Connection, effective) -> None:
@@ -714,8 +711,7 @@ def create_app(
             # Keyed on the payload's own key, so a rebuild or a merge retires
             # every cached period along with the payload it was computed beside.
             key = (_payload_key(conn, effective), first, last, picked)
-            with period_lock:
-                cached = period_cache.get(key)
+            cached = period_cache.get(key)
             if cached is not None:
                 return cached
             return period_for(conn, effective, key, first, last, picked)
