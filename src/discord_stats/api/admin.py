@@ -20,7 +20,7 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile
 from pydantic import BaseModel
 
-from discord_stats.api.deps import connect_writable
+from discord_stats.api.deps import connect_readonly, connect_writable
 from discord_stats.auth.admins import (
     AdminLocked,
     UnknownAdmin,
@@ -939,7 +939,7 @@ def _describe_existing(target: Path) -> dict[str, Any]:
     if not target.exists():
         return {"rows": 0, "first": None, "last": None, "size_bytes": 0}
     try:
-        conn = sqlite3.connect(f"file:{target}?mode=ro", uri=True)
+        conn = connect_readonly(target)
         try:
             rows, first, last = conn.execute(
                 "SELECT COUNT(*), MIN(created_at), MAX(created_at) FROM messages"

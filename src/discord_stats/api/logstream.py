@@ -35,6 +35,7 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import StreamingResponse
 
+from discord_stats.api.deps import connect_readonly
 from discord_stats.api.progress import read_events
 from discord_stats.auth.session import require_admin
 
@@ -100,12 +101,7 @@ def _open(db_path: str | Path) -> sqlite3.Connection:
     Read-only is what keeps the streaming path unable to write, and one handle
     per stream is what keeps two streams from sharing a cursor's connection.
     """
-    conn = sqlite3.connect(
-        f"file:{Path(db_path)}?mode=ro", uri=True, check_same_thread=False
-    )
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA busy_timeout=10000")
-    return conn
+    return connect_readonly(db_path, check_same_thread=False)
 
 
 def _frame(event: dict) -> str:
