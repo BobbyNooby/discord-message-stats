@@ -35,9 +35,14 @@ describe("<DiagnosticsView>", () => {
     expect(screen.getByText("#7 rebuild_rollups · writing")).toBeInTheDocument();
   });
 
-  it("shows the worker's last error and the recent failures", () => {
+  it("warns about the worker's last error while it keeps failing", () => {
+    render(<DiagnosticsView data={{ ...data, worker: { ...data.worker, consecutive_failures: "2" } }} />);
+    expect(screen.getByText(/Worker's last error: .*no route to host/)).toBeInTheDocument();
+  });
+
+  it("drops the warning once a job has worked, and keeps the failure in the list", () => {
     render(<DiagnosticsView data={data} />);
-    expect(screen.getByText(/no route to host/)).toBeInTheDocument();
+    expect(screen.queryByText(/Worker's last error/)).toBeNull();
     expect(screen.getByText("job #5 · catch_up")).toBeInTheDocument();
     expect(screen.getByText("HTTP 401")).toBeInTheDocument();
   });

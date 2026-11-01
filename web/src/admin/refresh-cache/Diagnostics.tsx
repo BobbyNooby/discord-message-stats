@@ -51,7 +51,10 @@ export function DiagnosticsView({ data }: { data: DiagnosticsData }) {
         <Def label="Running job">{running ? `#${running.id} ${running.kind}${running.phase ? ` · ${running.phase}` : ""}` : "none"}</Def>
         <Def label="Stale families">{data.families.stale_count}</Def>
       </DefList>
-      {data.worker.last_error ? (
+      {/* The worker keeps its last error after it recovers, so this warns only
+          while it is still failing; the count arrives as text, and "0" is truthy.
+          An older failure stays in the list below with its date. */}
+      {Number(data.worker.consecutive_failures) > 0 && data.worker.last_error ? (
         <Notice tone="warn">Worker's last error: {data.worker.last_error}</Notice>
       ) : null}
       <div>
