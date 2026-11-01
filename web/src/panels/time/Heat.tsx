@@ -46,8 +46,9 @@ function heatOption(heat: HeatGrid, timeFormat: TimeFormat): EChartsOption {
       orient: "horizontal",
       left: "center",
       bottom: 2,
-      itemWidth: 120,
-      itemHeight: 10,
+      // A continuous legend's itemHeight is its length whichever way it lies.
+      itemWidth: 10,
+      itemHeight: 120,
       textStyle: { color: token("--color-muted"), fontSize: 10 },
       inRange: { color: ramp("--chart-heat") },
     },

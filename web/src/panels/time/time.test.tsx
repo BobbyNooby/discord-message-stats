@@ -147,6 +147,15 @@ describe("when the chat comes alive", () => {
     render(<Heat payload={payload} filters={all(payload)} />);
     expect(screen.getByText(/busiest Sun 09:00/)).toBeInTheDocument();
   });
+
+  it("lays its colour legend along the bottom instead of standing it over the map", () => {
+    const payload = fourDayPayload();
+    render(<Heat payload={payload} filters={all(payload)} />);
+    const legend = lastOption().visualMap;
+    expect(legend.orient).toBe("horizontal");
+    // A continuous legend's itemHeight is its length whichever way it lies.
+    expect(legend.itemHeight).toBeGreaterThan(legend.itemWidth);
+  });
 });
 
 describe("what time of day", () => {
