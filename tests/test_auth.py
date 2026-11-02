@@ -165,6 +165,17 @@ def test_a_successful_login_clears_the_attempts(conn):
     assert too_many_attempts(conn, "203.0.113.5") is False
 
 
+def test_login_addresses_are_dropped_once_the_limiter_no_longer_needs_them(conn):
+    """An IP is personal data, kept only for the window the limiter counts."""
+    conn.execute("INSERT INTO login_attempts (ip, at, ok) VALUES "
+                 "('203.0.113.9', '2026-01-01T00:00:00+00:00', 1), "
+                 "('203.0.113.8', '2026-01-01T00:00:00+00:00', 0)")
+    conn.commit()
+    record_login_attempt(conn, "203.0.113.5", ok=True)
+    left = [row[0] for row in conn.execute("SELECT ip FROM login_attempts")]
+    assert left == ["203.0.113.5"]
+
+
 # --- oauth -------------------------------------------------------------------
 
 def test_authorize_url_asks_for_identify_and_carries_state():

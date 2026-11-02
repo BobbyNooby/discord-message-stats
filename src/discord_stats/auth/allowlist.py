@@ -45,8 +45,13 @@ def decision_for(conn: sqlite3.Connection, cfg: Config, discord_id: str) -> Leve
 
 
 def record_login_attempt(conn: sqlite3.Connection, ip: str, *, ok: bool) -> None:
-    """One row per attempt; a success clears the failures for that address."""
+    """One row per attempt; a success clears the failures for that address.
+
+    An address is personal data and only the limiter's window needs it, so
+    anything older goes on every write rather than piling up for good.
+    """
     now = utc_stamp()
+    conn.execute("DELETE FROM login_attempts WHERE at < ?", (_window_start(),))
     if ok:
         conn.execute("DELETE FROM login_attempts WHERE ip = ? AND ok = 0", (str(ip),))
     conn.execute(
@@ -56,12 +61,15 @@ def record_login_attempt(conn: sqlite3.Connection, ip: str, *, ok: bool) -> None
     conn.commit()
 
 
-def too_many_attempts(conn: sqlite3.Connection, ip: str) -> bool:
-    since = (datetime.now(timezone.utc) - timedelta(minutes=LOGIN_WINDOW_MINUTES)).isoformat(
+def _window_start() -> str:
+    return (datetime.now(timezone.utc) - timedelta(minutes=LOGIN_WINDOW_MINUTES)).isoformat(
         timespec="seconds"
     )
+
+
+def too_many_attempts(conn: sqlite3.Connection, ip: str) -> bool:
     found = conn.execute(
         "SELECT COUNT(*) FROM login_attempts WHERE ip = ? AND ok = 0 AND at >= ?",
-        (str(ip), since),
+        (str(ip), _window_start()),
     ).fetchone()
     return int(found[0]) >= LOGIN_ATTEMPT_LIMIT
