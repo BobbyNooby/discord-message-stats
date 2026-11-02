@@ -50,11 +50,10 @@ deploy time, or edit `/data/config.toml`, or set it in the admin board.
 
 Every step is idempotent: an existing file or channel is never overwritten.
 
-Until a channel is set, the **worker** exits with `Missing source.channel_id in
-config.toml` and restarts — that is expected on a fresh volume and stops as soon
-as `CHANNEL_ID` or `config.toml` provides one. Coolify gates rollout on the
-**api** healthcheck; the worker's inherited HTTP healthcheck is disabled in
-compose because it serves no port at all.
+Until a channel is set, the **worker** stays up and logs `no channel yet`, and
+it starts scraping on its next pass once one is saved, wherever it comes from.
+Coolify gates rollout on the **api** healthcheck; the worker's inherited HTTP
+healthcheck is disabled in compose because it serves no port at all.
 
 ## TLS and login
 
