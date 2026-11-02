@@ -9,7 +9,9 @@ no hostnames, no TLS paths and no invented stack.
 serve the API and the SPA (`discord-scraper serve --all`), or split them
 (`--api` + `--worker`) so the Discord token lives on the machine that serves no
 HTTP. For a public listener, pass `--tls-cert`/`--tls-key`; otherwise terminate
-TLS in front. Publish exactly one port.
+TLS in front. Publish exactly one port. Behind a proxy, set
+`FORWARDED_ALLOW_IPS` to its address (compose defaults to `*`) so the login rate
+limit sees each visitor rather than the proxy.
 
 ## Database volume
 

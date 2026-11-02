@@ -15,6 +15,11 @@ services:
       DISCORD_SCRAPER_HOME: /data
       DISCORD_SCRAPER_DB: /data/messages.db
       DISCORD_SCRAPER_STATIC: /app/static
+      # Behind a reverse proxy every request arrives from the proxy, so without
+      # this all visitors share one address and ten failed logins lock out
+      # everybody. Narrow it to your proxy's address if port 8000 is reachable
+      # directly: a client could otherwise claim any address it likes.
+      FORWARDED_ALLOW_IPS: ${FORWARDED_ALLOW_IPS:-*}
     ports:
       - "8000:8000"
     volumes:

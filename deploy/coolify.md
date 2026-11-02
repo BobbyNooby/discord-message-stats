@@ -70,6 +70,12 @@ https://<your-domain>/auth/callback
 Set the same value in `config.toml` (`access.redirect_uri`). A mismatch is the
 usual cause of a silent login failure.
 
+The login rate limit counts by visitor address, and behind a proxy that address
+comes from `X-Forwarded-For`. Compose sets `FORWARDED_ALLOW_IPS=*` so it does.
+Without it every visitor looks like the proxy, and ten failed logins lock
+everyone out for fifteen minutes. Keep port 8000 reachable only through the
+proxy, or set `FORWARDED_ALLOW_IPS` to the proxy's address.
+
 ## Rebuilds
 
 A redeploy replaces the image but must reuse the same `discord-data` volume.
