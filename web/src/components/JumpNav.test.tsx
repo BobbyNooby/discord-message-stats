@@ -36,7 +36,7 @@ describe("<JumpNav>", () => {
     // background is what shows in the gap above the bar.
     expect(wrapper.className).toContain("sticky");
     expect(wrapper.className).toContain("bg-[var(--color-ink)]");
-    expect(wrapper.style.paddingTop).toContain("max(0.75rem, env(safe-area-inset-top))");
+    expect(wrapper.className).toContain("pt-[max(0.75rem,env(safe-area-inset-top))]");
     // The bar keeps its own border and blur.
     expect(nav.className).toContain("backdrop-blur");
   });

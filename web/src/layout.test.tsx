@@ -188,4 +188,18 @@ describe("layout guards the browser used to be the only witness to", () => {
     expect(wrapper.className).toContain("top-0");
     expect(wrapper.className).toContain("z-20");
   });
+
+  it("lines the stuck jump bar up with the top of the sidebar on a wide screen", () => {
+    // Both are the page's 16px margin, spelled in two components: the sidebar
+    // sticks at it and the bar pads down to it. They sat 4px apart once.
+    render(<JumpNav />);
+    const bar = document.querySelector('nav[aria-label="Sections"]')!.parentElement!;
+    expect(bar.className).toContain("min-[861px]:pt-4");
+    const { container } = render(
+      <AppShell sidebar={<p>filters</p>} header={<span>range</span>}>
+        <p>charts</p>
+      </AppShell>,
+    );
+    expect(container.querySelector("#filters")!.className).toContain("md:top-4");
+  });
 });

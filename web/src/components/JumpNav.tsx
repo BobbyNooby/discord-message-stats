@@ -42,10 +42,9 @@ export function JumpNav() {
     // Filters button, kept outside the strip: padding inside a strip that
     // scrolls sideways scrolls away with it, so the button sat on top of
     // "Links". The breakpoint is AppShell's NARROW, where the button appears.
-    <div
-      className="sticky top-0 z-20 bg-[var(--color-ink)] pr-12 min-[861px]:pr-0"
-      style={{ paddingTop: "max(0.75rem, env(safe-area-inset-top))" }}
-    >
+    // The offset follows the same split: 12px beside that button on a phone,
+    // and the page's 16px on a wide screen, where the sidebar sticks at it.
+    <div className="sticky top-0 z-20 bg-[var(--color-ink)] pr-12 pt-[max(0.75rem,env(safe-area-inset-top))] min-[861px]:pr-0 min-[861px]:pt-4">
       {/* No inline padding of its own: the column the headings and cards sit in
           has none, so a left inset would start the bar's content inside that
           column while the cards start on its edge. */}
