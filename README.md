@@ -380,6 +380,24 @@ search. Everything else returns numbers.
   viewer or admin. **Development only** — it prints a warning, and it must never
   be used on a public host.
 
+### Privacy
+
+Running this means holding other people's messages. Everyone in the chat is in
+the database, whether or not they know this exists, so tell them, and treat it
+as your responsibility: you are the one deciding to keep it.
+
+- **Stored:** every scraped message with its raw JSON, in your SQLite file, plus
+  the rollups built from it, hashed sessions, and admin and viewer ids.
+- **Login addresses** are kept only for the fifteen minutes the rate limit
+  counts them, then dropped.
+- **Nothing leaves the host** apart from your calls to Discord and the thumbnail
+  proxy's fetches: there are no analytics or third-party scripts, and the only
+  cookies are the session and the login state.
+- **Removing someone:** *Who shows* on the admin board hides a person from every
+  card, but their messages stay in the database. There is no self-service
+  deletion, so a real removal means deleting their rows from your copy and any
+  backups, then recalculating.
+
 ### Deploying
 
 `Dockerfile` is a two-stage build: Node builds `web/dist`, then Python installs
