@@ -415,3 +415,7 @@ English stopwords come from [stopwords-iso](https://github.com/stopwords-iso/sto
 along with an opt-in Malay pack. Charting is [ECharts](https://echarts.apache.org/) (Apache-2.0) and its
 word-cloud extension. UI chrome follows [shadcn/ui](https://ui.shadcn.com/)
 conventions over Radix primitives.
+
+## License
+
+MIT — see [LICENSE](LICENSE). The bundled word lists keep their own licence, noted above.
