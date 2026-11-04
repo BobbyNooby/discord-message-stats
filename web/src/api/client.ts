@@ -98,6 +98,38 @@ export const getHealth = () =>
     last_ingest_at: string | null;
   }>("/api/health");
 
+/** The newest scrape or rebuild, as `/api/setup` reports it to an admin. */
+export type SetupJob = {
+  id: number;
+  kind: string;
+  status: string;
+  phase: string | null;
+  requested_at: string;
+  started_at: string | null;
+  finished_at: string | null;
+  result: string | null;
+  error: string | null;
+};
+
+/**
+ * Whether there is anything to show yet (`/api/setup`). A viewer gets the two
+ * flags only; an admin also gets what the first-run screen draws.
+ */
+export type Setup = {
+  needed: boolean;
+  can_admin: boolean;
+  channel_id?: string;
+  /** Rows stored for the channel so far: the live figure during a first scrape. */
+  messages?: number;
+  rollups_built?: boolean;
+  worker_seen_at?: string | null;
+  job?: SetupJob | null;
+};
+
+export type AdminSetup = Required<Setup>;
+
+export const getSetup = () => request<Setup>("/api/setup");
+
 export const getRecent = () =>
   request<{
     messages: { author: string; author_id: string; created_at: string; body: string }[];

@@ -4,7 +4,8 @@
  * Deliberately two steps, because the operator has to see what they are
  * replacing before anything is swapped. The stage step is the dry run: row
  * count, channel, zone, rows added, rows that would be lost, and the free disk
- * the swap needs.
+ * the swap needs. "Replace the database" and the first-run screen both offer
+ * it, so a new install brings its data in through the same checks.
  */
 
 import { useRef, useState, type FormEvent } from "react";
