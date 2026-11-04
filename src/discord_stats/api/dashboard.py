@@ -54,6 +54,31 @@ def _rollups_built(conn: sqlite3.Connection) -> bool:
     ).fetchone() is not None
 
 
+def _built_from(conn: sqlite3.Connection, channel_id: str) -> int | None:
+    """How many messages this channel's last build read; ``None`` if never built.
+
+    The build's own record, not a look at ``messages``: the payload is served
+    from the rollups alone (§5.3), so whether there is anything to show is too.
+    """
+    if not channel_id or not _rollups_built(conn):
+        return None
+    recorded = query.provenance_row(conn, channel_id, "activity")
+    return None if recorded is None else recorded["source_count"]
+
+
+def _setup_needed(conn: sqlite3.Connection, cfg: Config) -> bool:
+    """Nothing to show yet: never built for this channel, or built from nothing.
+
+    Both, not just the first: a scrape of the wrong channel finds nothing and
+    still queues a rebuild, and an empty build must not pass for a dashboard.
+    """
+    return not _built_from(conn, cfg.channel_id)
+
+
+# The jobs a first run waits on. A probe is the worker's own housekeeping.
+SETUP_JOB_KINDS = ("catch_up", "backfill", "rebuild_rollups")
+
+
 def _schema_meta(conn: sqlite3.Connection) -> dict:
     """The database's schema stamp versus what this library expects.
 
@@ -221,6 +246,12 @@ def bootstrap(request: Request, level: Level = Depends(require_viewer)) -> dict:
     # Admin overrides count as "the configured timezone" (§7.1).
     with board(request) as (conn, cfg):
         _require_rollups(conn)
+        if _built_from(conn, cfg.channel_id) == 0:
+            # The page asks /api/setup on a 503 and shows the first-run screen.
+            raise HTTPException(
+                status_code=503,
+                detail="nothing has been scraped for this channel yet",
+            )
         recorded = query.provenance_row(conn, cfg.channel_id, "activity")
         # A zone disagreement is not unusable data: the buckets are correct
         # for the zone they were built in, and every other panel's numbers
@@ -267,6 +298,51 @@ def bootstrap(request: Request, level: Level = Depends(require_viewer)) -> dict:
             **_channel_meta(cfg),
         }
         return body
+
+
+@router.get("/api/setup")
+def setup(request: Request, level: Level = Depends(require_viewer)) -> dict:
+    """Whether the dashboard has anything to show yet, for the first-run screen.
+
+    A viewer learns only that setup is under way. An admin also gets what the
+    screen needs to bring the data in: the channel, how many messages have
+    arrived, whether a worker is alive, and the newest scrape or rebuild job.
+    The page asks only after the bootstrap refused, so an installed dashboard
+    never pays for the count.
+    """
+    with board(request) as (conn, cfg):
+        needed = _setup_needed(conn, cfg)
+        body: dict[str, Any] = {"needed": needed, "can_admin": level >= Level.ADMIN}
+        if level < Level.ADMIN:
+            return body
+        # The one live figure during a first scrape: rows arriving, counted
+        # through idx_channel. The board asks only while setup is under way.
+        count = 0
+        if cfg.channel_id:
+            try:
+                count = int(conn.execute(
+                    "SELECT COUNT(*) FROM messages WHERE channel_id = ?", (cfg.channel_id,)
+                ).fetchone()[0] or 0)
+            except sqlite3.OperationalError:
+                pass   # a file the boot migration could not give a messages table
+        seen = conn.execute(
+            "SELECT value FROM worker_state WHERE key = 'last_seen_at'"
+        ).fetchone()
+        marks = ",".join("?" * len(SETUP_JOB_KINDS))
+        job = conn.execute(
+            "SELECT id, kind, status, phase, requested_at, started_at, finished_at, "
+            "       result, error "
+            f" FROM jobs WHERE channel_id = ? AND kind IN ({marks}) ORDER BY id DESC LIMIT 1",
+            (cfg.channel_id, *SETUP_JOB_KINDS),
+        ).fetchone()
+        return {
+            **body,
+            "channel_id": cfg.channel_id,
+            "messages": count,
+            "rollups_built": _built_from(conn, cfg.channel_id) is not None,
+            "worker_seen_at": seen[0] if seen else None,
+            "job": dict(job) if job else None,
+        }
 
 
 @router.get("/api/recent")

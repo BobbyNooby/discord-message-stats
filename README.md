@@ -355,6 +355,7 @@ stopword edit, the tables are **stale** until you rebuild.
 | `/admin` | admin | data source, who shows, identity merge, ingest, rollup cache, access |
 | `/api/health` | anyone | liveness plus the banner state |
 | `/api/bootstrap` | viewer | the whole dashboard payload in one request |
+| `/api/setup` | viewer | whether there is anything to show yet; admins also get the first-run figures |
 | `/api/recent` | viewer | the last N messages — see the privacy note below |
 | `/api/words` | viewer | search the full word index beyond the shipped 500 |
 | `/api/admin/*` | admin | status, config, jobs, recalculate, upload, search |
