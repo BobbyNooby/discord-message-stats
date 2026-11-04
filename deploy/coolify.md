@@ -39,7 +39,8 @@ A fresh volume is empty, so the entrypoint seeds it before the command runs:
 
 - `/data/config.toml` from `config.example.toml`, if absent.
 - `messages.db` with the control schema, if absent, so `/api/health` answers
-  `200` with `banner: "stale"` instead of crash-looping.
+  `200` with `banner: "stale"` instead of crash-looping. The API adds the empty
+  `messages` table when it boots.
 - `source.channel_id`, if `CHANNEL_ID` is set and the file's value is empty.
 
 The API boots even with **no channel configured** — it reports
@@ -49,6 +50,10 @@ which can set the channel, is served by that same API. Set `CHANNEL_ID` at
 deploy time, or edit `/data/config.toml`, or set it in the admin board.
 
 Every step is idempotent: an existing file or channel is never overwritten.
+
+With no messages yet, the first admin to sign in gets a first-run screen: upload
+an existing database, or set the channel and token and start scraping. See
+[Bringing your data](../README.md#bringing-your-data) in the README.
 
 Until a channel is set, the **worker** stays up and logs `no channel yet`, and
 it starts scraping on its next pass once one is saved, wherever it comes from.

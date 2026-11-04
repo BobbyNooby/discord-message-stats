@@ -410,6 +410,37 @@ and the https redirect rule — is in [deploy/coolify.md](deploy/coolify.md).
 Backup, restore, the serve shapes and the tunnel are in
 [OPERATIONS.md](OPERATIONS.md).
 
+### Bringing your data
+
+A fresh install has no messages, so the first admin to sign in gets a first-run
+screen instead of a dashboard, with two ways in. Anyone else who signs in
+meanwhile sees "This dashboard is being set up", and their page turns into the
+dashboard by itself once the stats are built. Both ways need the worker running
+(`discord-scraper serve --worker`, or the `worker` service in compose): it does
+the scraping and builds the stats.
+
+**Upload a database you already have.** Take a consistent copy first, then
+upload `copy.db` on the screen:
+
+```bash
+sqlite3 messages.db ".backup copy.db"
+```
+
+`.backup` is safe while the scraper is running and includes writes still in the
+WAL file; a plain `cp` can miss them, or catch the file mid-write. The upload
+takes files up to 4 GB, shows a dry run (rows, date range, channel, timezone,
+rows added and lost, free disk) and swaps nothing until you confirm. The swap
+usually signs you out, because sign-ins live in the database: sign in again and
+the stats will be building. Later on, the same upload is under **Admin → Replace
+the database**.
+
+**Scrape from scratch.** Save the channel id on the screen (or set `CHANNEL_ID`
+or `source.channel_id`), give the worker a bot token (paste it on the screen, or
+set `DISCORD_TOKEN` on the worker), then press **Start scraping**. The screen
+counts messages as they arrive, newest first, then shows the stats being built.
+With the schedule on, the worker also starts by itself once a channel and a
+token are both set.
+
 ## Development
 
 ```bash
