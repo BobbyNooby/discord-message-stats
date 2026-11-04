@@ -85,7 +85,7 @@ export function FirstRun({ setup }: { setup: AdminSetup }) {
       {workerOffline(setup.worker_seen_at) ? (
         <Notice tone="warn">
           No worker has checked in recently. Scraping and building the stats both run in the
-          worker, so nothing below moves until one is running: <code>discord-scraper serve --worker</code>,
+          worker, so nothing below moves until one is running: <code className="whitespace-nowrap">discord-scraper serve --worker</code>,
           or the worker service in <code>docker-compose.yml</code>.
         </Notice>
       ) : null}
