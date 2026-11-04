@@ -44,8 +44,8 @@ fi
 
 # Both serve commands exit 2 when the database file is missing, which in a
 # container is a crash loop behind a healthcheck that can never pass. Create the
-# control schema instead, so the API boots and reports the honest "stale"
-# banner; the worker fills the message tables once a channel is configured.
+# control schema instead, so the API boots; its boot migration adds the empty
+# messages table, and the first-run screen takes it from there.
 if [ ! -f "$db" ]; then
   python - "$db" <<'PY'
 import sys

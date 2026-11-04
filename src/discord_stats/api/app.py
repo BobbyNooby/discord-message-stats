@@ -71,14 +71,22 @@ def _migrate(app: FastAPI) -> None:
 
     `CREATE TABLE IF NOT EXISTS` never adds a column, so an instance started
     before a schema addition fails its first write with "no column named ..." —
-    which is exactly what a browser saw. Idempotent, control plane only, and
-    skipped when there is no database yet.
+    which is exactly what a browser saw. Idempotent, and skipped when there is
+    no database yet.
+
+    A fresh volume holds only the control tables, so the empty ``messages``
+    table is created here too, from the tool's own DDL. One table here beats a
+    guard in every reader: the board, the admin list, search and the recent
+    strip all then read an honest zero, and the worker's first scrape inserts
+    into the shape it expects. It is schema, not message data, so the API still
+    never writes a message.
     """
     if not Path(app.state.db_path).exists():
         return
     from discord_stats.auth.admins import seed_admin
     from discord_scraper.rollups.schema import create_control_tables, create_rollup_tables
     from discord_scraper.scraper.database import INDEXES as MESSAGE_INDEXES
+    from discord_scraper.scraper.database import SCHEMA as MESSAGE_SCHEMA
 
     try:
         boot = connect_writable(app.state.db_path)
@@ -88,6 +96,7 @@ def _migrate(app: FastAPI) -> None:
             # The configured admin becomes a row here, so "who is an admin"
             # lives in the database by default rather than only in `.env`.
             seed_admin(boot, app.state.cfg.admin_id)
+            boot.executescript(MESSAGE_SCHEMA)    # a no-op once the scraper has run
             boot.executescript(MESSAGE_INDEXES)   # including idx_channel
             boot.commit()
         finally:
