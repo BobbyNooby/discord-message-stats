@@ -125,8 +125,15 @@ export function SaveBar({
   );
 }
 
-export function DefList({ children }: { children: ReactNode }) {
-  return <dl className="grid gap-x-4 gap-y-1 text-xs sm:grid-cols-2">{children}</dl>;
+export function DefList({
+  children,
+  columns = "sm:grid-cols-2",
+}: {
+  children: ReactNode;
+  /** When to go two-up. A list inside a narrow card asks its container, not the viewport. */
+  columns?: string;
+}) {
+  return <dl className={`grid gap-x-4 gap-y-1 text-xs ${columns}`}>{children}</dl>;
 }
 
 export function Def({ label, children }: { label: string; children: ReactNode }) {

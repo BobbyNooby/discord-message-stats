@@ -114,12 +114,14 @@ export function UploadDatabase({ onCommitted }: { onCommitted?: (done: UploadCom
       {error ? <Notice tone="error">{error}</Notice> : null}
 
       {preview ? (
-        <div className="space-y-3 rounded border border-[var(--color-line)] bg-[var(--color-surface-2)] p-3">
+        // A container, so the dry run lays out by its own width: two-up in the
+        // admin board, stacked in a first-run card half that size.
+        <div className="@container space-y-3 rounded border border-[var(--color-line)] bg-[var(--color-surface-2)] p-3">
           <h4 className="text-xs font-semibold uppercase tracking-wider text-[var(--color-muted)]">
             Nothing has been replaced yet
           </h4>
-          <div className="grid gap-3 text-xs sm:grid-cols-2">
-            <DefList>
+          <div className="grid gap-3 text-xs @2xl:grid-cols-2">
+            <DefList columns="@md:grid-cols-2">
               <Def label="Uploaded rows">{preview.rows.toLocaleString()}</Def>
               <Def label="Uploaded range">
                 {formatDay(preview.first)} → {formatDay(preview.last)}
@@ -131,7 +133,7 @@ export function UploadDatabase({ onCommitted }: { onCommitted?: (done: UploadCom
                 {preview.timezone_source === "config" ? " (from the server)" : " (from the file)"}
               </Def>
             </DefList>
-            <DefList>
+            <DefList columns="@md:grid-cols-2">
               <Def label="Current rows">{preview.replaces.rows.toLocaleString()}</Def>
               <Def label="Current range">
                 {formatDay(preview.replaces.first)} → {formatDay(preview.replaces.last)}
