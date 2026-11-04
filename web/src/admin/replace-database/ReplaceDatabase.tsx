@@ -2,29 +2,15 @@
  * "Replace the database" (§10.6): what the database holds, the upload flow, and
  * the channel/timezone the rollups are keyed on.
  *
- * The upload is deliberately two steps — stage, then confirm — because the
- * operator has to see what they are replacing before anything is swapped. The
- * stage step is the dry run: row count, channel, zone, rows added, rows that
- * would be lost, and the free disk the swap needs.
+ * The upload itself is `UploadDatabase`, its own component so other screens can offer it.
  */
 
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useState } from "react";
 
 import type { Payload } from "../../api/types";
 import { StatCard } from "../../components/StatCard";
+import type { AdminConfig, AdminStatus, ConfigPatch } from "../api";
 import {
-  JobRunning,
-  discardUpload as discardStaged,
-  commitUpload,
-  uploadDatabase,
-  type AdminConfig,
-  type AdminStatus,
-  type ConfigPatch,
-  type UploadPreview,
-} from "../api";
-import {
-  Def,
-  DefList,
   Notice,
   SaveBar,
   Section,
@@ -35,6 +21,7 @@ import {
   type SaveMode,
 } from "../shared";
 import { TimezonePicker } from "./TimezonePicker";
+import { UploadDatabase } from "./UploadDatabase";
 import { useAction } from "../useAction";
 
 export function ReplaceDatabase({
@@ -60,19 +47,6 @@ export function ReplaceDatabase({
     setNotice: setSaveNotice,
   } = useAction();
 
-  const [file, setFile] = useState<File | null>(null);
-  const [preview, setPreview] = useState<UploadPreview | null>(null);
-  const [jobRunning, setJobRunning] = useState(false);
-  const {
-    busy: uploading,
-    notice: uploadNotice,
-    error: uploadError,
-    run: runUpload,
-    setNotice: setUploadNotice,
-    setError: setUploadError,
-  } = useAction();
-  const fileInput = useRef<HTMLInputElement>(null);
-
   useEffect(() => {
     if (!config) return;
     setChannel(config.effective.channel_id);
@@ -88,54 +62,6 @@ export function ReplaceDatabase({
           : "Configuration saved. The cache is stale until you run Recalculate all.",
       );
     });
-
-  async function stage(event: FormEvent) {
-    event.preventDefault();
-    if (!file) {
-      setUploadError("Choose a database file first.");
-      return;
-    }
-    setJobRunning(false);
-    await runUpload(async () => {
-      try {
-        setPreview(await uploadDatabase(file));
-      } catch (error) {
-        // Not a failure: the operator just has to wait (§10.6 step 1).
-        if (error instanceof JobRunning) setJobRunning(true);
-        else throw error;
-      }
-    });
-  }
-
-  async function confirm() {
-    if (!preview) return;
-    const staged = preview;
-    await runUpload(
-      async () => {
-        const done = await commitUpload(staged.upload_id);
-        onDirty();
-        setPreview(null);
-        setFile(null);
-        if (fileInput.current) fileInput.current.value = "";
-        setUploadNotice(
-          `Database replaced with ${done.rows} messages (${formatDay(done.first)} → ${formatDay(done.last)}). ` +
-            (done.backup ? `The previous file is kept as ${done.backup}. ` : "") +
-            `Rebuild queued as job #${done.job.id}.`,
-        );
-      },
-      { keepNotice: true },
-    );
-  }
-
-  async function discard() {
-    if (!preview) return;
-    try {
-      await discardStaged(preview.upload_id);
-    } catch {
-      /* the staged copy is disposable either way */
-    }
-    setPreview(null);
-  }
 
   const rawAccounts = payload
     ? payload.authors.reduce((total, author) => total + (author.accounts?.length ?? 1), 0)
@@ -165,100 +91,7 @@ export function ReplaceDatabase({
           A <code>messages.db</code> built elsewhere. It is integrity-checked and described before
           anything is swapped in; the current file survives as <code>.bak</code>.
         </p>
-        <form className="space-y-2" onSubmit={stage}>
-          <label htmlFor="admin-upload-file" className="block text-xs font-medium">
-            Database file
-          </label>
-          <input
-            ref={fileInput}
-            id="admin-upload-file"
-            name="file"
-            type="file"
-            accept=".db,.sqlite,.sqlite3,application/vnd.sqlite3,application/x-sqlite3"
-            onChange={(event) => {
-              setFile(event.target.files?.[0] ?? null);
-              setPreview(null);
-              setUploadNotice(null);
-              setUploadError(null);
-            }}
-            className="block w-full text-xs file:mr-3 file:rounded file:border file:border-[var(--color-line)] file:bg-[var(--color-surface-2)] file:px-2 file:py-1 file:text-xs file:text-[var(--color-text)]"
-          />
-          <button
-            type="submit"
-            disabled={uploading || !file}
-            className="rounded border border-[var(--color-line)] px-3 py-1.5 text-xs disabled:opacity-50"
-          >
-            {uploading ? "Checking…" : "Upload and dry-run"}
-          </button>
-        </form>
-
-        {jobRunning ? (
-          <Notice tone="warn">
-            A job is running — wait for the running job to finish, then upload again. An upload
-            replaces a file the worker may be reading.
-          </Notice>
-        ) : null}
-        {uploadError ? <Notice tone="error">{uploadError}</Notice> : null}
-
-        {preview ? (
-          <div className="space-y-3 rounded border border-[var(--color-line)] bg-[var(--color-surface-2)] p-3">
-            <h4 className="text-xs font-semibold uppercase tracking-wider text-[var(--color-muted)]">
-              Nothing has been replaced yet
-            </h4>
-            <div className="grid gap-3 text-xs sm:grid-cols-2">
-              <DefList>
-                <Def label="Uploaded rows">{preview.rows.toLocaleString()}</Def>
-                <Def label="Uploaded range">
-                  {formatDay(preview.first)} → {formatDay(preview.last)}
-                </Def>
-                <Def label="Uploaded size">{formatBytes(preview.size_bytes)}</Def>
-                <Def label="Channel">{preview.channel_id}</Def>
-                <Def label="Timezone">
-                  {preview.timezone}
-                  {preview.timezone_source === "config" ? " (from the server)" : " (from the file)"}
-                </Def>
-              </DefList>
-              <DefList>
-                <Def label="Current rows">{preview.replaces.rows.toLocaleString()}</Def>
-                <Def label="Current range">
-                  {formatDay(preview.replaces.first)} → {formatDay(preview.replaces.last)}
-                </Def>
-                <Def label="Current size">{formatBytes(preview.replaces.size_bytes)}</Def>
-                <Def label="Rows added">{preview.added === null ? "unknown" : preview.added.toLocaleString()}</Def>
-                <Def label="Rows that would be lost">
-                  {preview.lost === null ? "unknown" : preview.lost.toLocaleString()}
-                </Def>
-                <Def label="Free disk">
-                  {formatBytes(preview.disk.free_bytes)} free · {formatBytes(preview.disk.required_bytes)}{" "}
-                  needed
-                </Def>
-              </DefList>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={confirm}
-                disabled={uploading}
-                className="rounded bg-[var(--color-accent)] px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
-              >
-                Confirm and replace the database
-              </button>
-              <button
-                type="button"
-                onClick={discard}
-                disabled={uploading}
-                className="rounded border border-[var(--color-line)] px-3 py-1.5 text-xs disabled:opacity-50"
-              >
-                Discard this upload
-              </button>
-            </div>
-            <p className="text-[11px] text-[var(--color-muted)]">
-              Confirming backs the current file up first, prepares the uploaded one, and swaps it in
-              with a single rename. If any step fails, nothing is replaced.
-            </p>
-          </div>
-        ) : null}
-        {uploadNotice ? <Notice tone="ok">{uploadNotice}</Notice> : null}
+        <UploadDatabase onCommitted={onDirty} />
       </SubSection>
 
       <SubSection id="admin-scope" title="Channel and timezone">
