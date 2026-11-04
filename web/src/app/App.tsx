@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 
 import {
   Forbidden as ForbiddenError,
@@ -6,7 +6,7 @@ import {
   ServerError as ServerErrorResponse,
   Unauthorized,
 } from "../api/client";
-import { useBootstrap, useHealth, useRecent } from "../api/queries";
+import { useBootstrap, useHealth, useRecent, useSetup } from "../api/queries";
 import { AppShell } from "../components/AppShell";
 import { FilterSidebar } from "../components/FilterSidebar";
 import { GlobalSearch } from "../components/GlobalSearch";
@@ -20,6 +20,7 @@ import {
   Forbidden as ForbiddenScreen,
   Offline as OfflineScreen,
   ServerError as ServerErrorScreen,
+  SettingUp,
 } from "../components/States";
 import { dashboardReducer, initialDashboardState } from "./reducer";
 import {
@@ -41,6 +42,8 @@ import { stampLabel, timeFormatOf } from "../lib/timeFormat";
 import { CustomSection } from "../panels/CustomSection";
 import { PanelSections } from "../panels/Sections";
 import { Admin } from "../admin/Admin";
+import { FirstRun } from "../setup/FirstRun";
+import type { AdminSetup } from "../api/client";
 import { Login } from "./Login";
 
 export default function App() {
@@ -60,6 +63,22 @@ function Dashboard() {
   const bootstrap = useBootstrap();
   const health = useHealth();
   const recent = useRecent(bootstrap.isSuccess);
+  // A refusal with a 5xx may only mean "nothing scraped or built yet"; the
+  // setup answer says which, and who is asking.
+  const setup = useSetup(bootstrap.error instanceof ServerErrorResponse);
+  const needed = setup.data?.needed;
+
+  // The first run ending is the one moment the refused payload can exist, so
+  // ask for it again then — and only then, not on every plain server error.
+  const wasNeeded = useRef(false);
+  const refetchBootstrap = bootstrap.refetch;
+  useEffect(() => {
+    if (needed) wasNeeded.current = true;
+    else if (needed === false && wasNeeded.current) {
+      wasNeeded.current = false;
+      void refetchBootstrap();
+    }
+  }, [needed, refetchBootstrap]);
 
   const payload = bootstrap.data;
 
@@ -74,6 +93,16 @@ function Dashboard() {
   }
   if (bootstrap.error instanceof OfflineError) {
     return <OfflineScreen onRetry={() => void bootstrap.refetch()} />;
+  }
+  if (bootstrap.error instanceof ServerErrorResponse) {
+    if (setup.isLoading) return <DashboardSkeleton />;
+    // The upload swaps in a file with its own sign-ins, so the session can go.
+    if (setup.error instanceof Unauthorized) return <Login />;
+    if (setup.data?.needed) {
+      return setup.data.can_admin ? <FirstRun setup={setup.data as AdminSetup} /> : <SettingUp />;
+    }
+    // Setup just finished and the payload is on its way.
+    if (bootstrap.isFetching) return <DashboardSkeleton />;
   }
   if (bootstrap.isError || !payload) {
     const detail =

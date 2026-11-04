@@ -47,6 +47,8 @@ vi.mock("../api/client", () => ({
   getHealth: server.health,
   getRecent: server.recent,
   getWords: server.words,
+  // Asked only when the payload is refused, which these tests never do.
+  getSetup: vi.fn(),
 }));
 
 import App from "../app/App";

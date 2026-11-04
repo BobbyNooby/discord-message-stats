@@ -14,6 +14,7 @@ const server = vi.hoisted(() => ({
   health: vi.fn(),
   recent: vi.fn(),
   words: vi.fn(),
+  setup: vi.fn(),
 }));
 
 vi.mock("../api/client", () => ({
@@ -25,10 +26,17 @@ vi.mock("../api/client", () => ({
   getHealth: server.health,
   getRecent: server.recent,
   getWords: server.words,
+  getSetup: server.setup,
+}));
+
+// The screen's own behaviour is `src/setup/FirstRun.test.tsx`; here only which
+// screen the dashboard picks matters.
+vi.mock("../setup/FirstRun", () => ({
+  FirstRun: () => <h1>Bring your messages in</h1>,
 }));
 
 import App from "./App";
-import { Forbidden, Offline, ServerError } from "../api/client";
+import { Forbidden, Offline, ServerError, Unauthorized } from "../api/client";
 import { CHARTS_KEY } from "./persist";
 import { charts } from "../test/echarts";
 import { dashboardPayload } from "../test/payload";
@@ -68,6 +76,7 @@ beforeEach(() => {
   server.health.mockReset().mockResolvedValue({ ok: true, checked_at: "", banner: null });
   server.recent.mockReset().mockResolvedValue({ messages: [], truncated: false });
   server.words.mockReset().mockResolvedValue({ word: "", total: 0, authors: [] });
+  server.setup.mockReset().mockResolvedValue({ needed: false, can_admin: false });
 });
 
 describe("a link to a section", () => {
@@ -177,6 +186,64 @@ describe("the states a failed load can leave the reader in", () => {
       ),
     ).toBeInTheDocument();
     expect(screen.getByText("rollups are not built")).toBeInTheDocument();
+  });
+});
+
+describe("a dashboard with nothing to show yet", () => {
+  const refused = () => new ServerError("nothing has been scraped for this channel yet", 503);
+
+  it("tells a viewer it is being set up instead of showing an error", async () => {
+    server.bootstrap.mockReset().mockRejectedValue(refused());
+    server.setup.mockReset().mockResolvedValue({ needed: true, can_admin: false });
+    renderApp();
+
+    expect(
+      await screen.findByRole("heading", { name: "This dashboard is being set up" }, { timeout: 6000 }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/could not build the dashboard/i)).not.toBeInTheDocument();
+  });
+
+  it("gives an admin the first-run screen", async () => {
+    server.bootstrap.mockReset().mockRejectedValue(refused());
+    server.setup.mockReset().mockResolvedValue({
+      needed: true, can_admin: true, channel_id: "c1", messages: 0,
+      rollups_built: false, worker_seen_at: null, job: null,
+    });
+    renderApp();
+
+    expect(
+      await screen.findByRole("heading", { name: "Bring your messages in" }, { timeout: 6000 }),
+    ).toBeInTheDocument();
+  });
+
+  it("asks for a sign-in when the session went with a replaced database", async () => {
+    server.bootstrap.mockReset().mockRejectedValue(refused());
+    server.setup.mockReset().mockRejectedValue(new Unauthorized("login required"));
+    renderApp();
+
+    expect(
+      await screen.findByRole("link", { name: "Continue with Discord" }, { timeout: 6000 }),
+    ).toBeInTheDocument();
+  });
+
+  it("opens the dashboard once setup is done", async () => {
+    server.bootstrap.mockReset().mockRejectedValueOnce(refused()).mockRejectedValueOnce(refused())
+      .mockRejectedValueOnce(refused()).mockResolvedValue(payload);
+    server.setup.mockReset().mockResolvedValueOnce({ needed: true, can_admin: false })
+      .mockResolvedValue({ needed: false, can_admin: false });
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false, refetchOnWindowFocus: false } },
+    });
+    render(
+      <QueryClientProvider client={queryClient}>
+        <App />
+      </QueryClientProvider>,
+    );
+    await screen.findByRole("heading", { name: "This dashboard is being set up" }, { timeout: 6000 });
+
+    // What the page's own poll does every half minute, without the wait.
+    await queryClient.refetchQueries({ queryKey: ["setup"] });
+    expect(await screen.findByRole("heading", { name: "Words" }, { timeout: 6000 })).toBeInTheDocument();
   });
 });
 

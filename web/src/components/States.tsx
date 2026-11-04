@@ -1,4 +1,4 @@
-import { AlertTriangle, Ban, RefreshCw, WifiOff } from "lucide-react";
+import { AlertTriangle, Ban, Hourglass, RefreshCw, WifiOff } from "lucide-react";
 import type { ReactNode } from "react";
 
 /**
@@ -80,6 +80,23 @@ export function Forbidden({ what = "the admin board" }: { what?: string }) {
       <p>
         <a className="underline" href="/">
           Back to the stats page
+        </a>
+      </p>
+    </Screen>
+  );
+}
+
+/** Signed in, nothing to show yet, and not an admin: a wait, not an error. */
+export function SettingUp() {
+  return (
+    <Screen icon={<Hourglass size={18} aria-hidden />} title="This dashboard is being set up">
+      <p>
+        There is nothing to show yet: an admin is still bringing the messages in. This page turns
+        into the dashboard by itself once the stats are ready, so you can leave it open.
+      </p>
+      <p>
+        <a className="underline" href="/auth/logout">
+          Sign out
         </a>
       </p>
     </Screen>

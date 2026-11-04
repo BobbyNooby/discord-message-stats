@@ -7,6 +7,7 @@ import {
   getMedia,
   getMediaDetail,
   getRecent,
+  getSetup,
   getWordPeriod,
   getWords,
   getWordSuggestions,
@@ -32,6 +33,30 @@ export function useBootstrap() {
 
 export function useHealth() {
   return useQuery({ queryKey: ["health"], queryFn: getHealth, refetchInterval: 60_000 });
+}
+
+/** How often to ask again while there is nothing to show yet. */
+export const SETUP_ADMIN_MS = 5000;
+export const SETUP_VIEWER_MS = 30_000;
+
+/**
+ * Asked only after the bootstrap refused with a 5xx: an installed dashboard
+ * never pays for it. While setup is under way it keeps asking — an admin
+ * watches the first scrape count up, and a viewer's page opens the dashboard
+ * by itself once it is built.
+ */
+export function useSetup(enabled: boolean) {
+  return useQuery({
+    queryKey: ["setup"],
+    queryFn: getSetup,
+    enabled,
+    retry: false,
+    refetchInterval: (query) => {
+      const data = query.state.data;
+      if (!data?.needed) return false;
+      return data.can_admin ? SETUP_ADMIN_MS : SETUP_VIEWER_MS;
+    },
+  });
 }
 
 export function useRecent(enabled: boolean) {

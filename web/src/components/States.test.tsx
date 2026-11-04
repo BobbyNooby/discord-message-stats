@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-import { DashboardSkeleton, Forbidden, Offline, ServerError } from "./States";
+import { DashboardSkeleton, Forbidden, Offline, ServerError, SettingUp } from "./States";
 
 /**
  * Four states that used to look identical: a spinner that never resolves. Each
@@ -13,6 +13,14 @@ describe("fetch states", () => {
 
     expect(screen.getByRole("status")).toHaveTextContent("Loading the dashboard…");
     expect(document.querySelector("main")).toHaveAttribute("aria-busy", "true");
+  });
+
+  it("tells a viewer the dashboard is being set up, not that it broke", () => {
+    render(<SettingUp />);
+
+    expect(screen.getByRole("heading", { name: "This dashboard is being set up" })).toBeInTheDocument();
+    expect(screen.getByText(/turns into the dashboard by itself/i)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Sign out" })).toHaveAttribute("href", "/auth/logout");
   });
 
   it("names the admin boundary for a viewer who asked for /admin", () => {
